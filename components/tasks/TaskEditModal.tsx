@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { TaskForm } from "./TaskForm";
 import { SubtaskList } from "./SubtaskList";
 import { AttachmentList } from "./AttachmentList";
+import { TaskThread } from "./TaskThread";
 import { updateTaskAction } from "@/lib/actions/tasks";
 import type { MemberLite, TaskWithAssignees } from "@/lib/types";
 
@@ -38,6 +39,9 @@ export function TaskEditModal({
           </div>
           <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
             <AttachmentList taskId={task.id} attachments={task.attachments} />
+          </div>
+          <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
+            <TaskThread taskId={task.id} />
           </div>
         </div>
       )}

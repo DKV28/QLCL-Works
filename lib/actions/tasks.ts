@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import {
   createTask,
+  duplicateTask,
   setStatus,
   softDeleteTask,
   toggleComplete,
   updateTask,
 } from "@/lib/data/tasks";
-import type { TaskPriority, TaskStatus } from "@/lib/types";
+import { recordActivity } from "@/lib/data/activity";
+import { TASK_STATUS_LABEL, type TaskPriority, type TaskStatus } from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -41,7 +43,13 @@ export async function createTaskAction(
     return { ok: false, error: "Vui lòng chọn người phụ trách chính." };
 
   try {
-    await createTask({ project_id: projectId, ...fields });
+    const task = await createTask({ project_id: projectId, ...fields });
+    await recordActivity({
+      task_id: task.id,
+      project_id: projectId,
+      action: "tao_cong_viec",
+      detail: fields.title,
+    });
   } catch (e) {
     return { ok: false, error: "Không tạo được công việc." };
   }
@@ -73,10 +81,36 @@ export async function updateTaskAction(
 
   try {
     await updateTask(id, fields);
+    await recordActivity({
+      task_id: id,
+      project_id: projectId,
+      action: "cap_nhat_cong_viec",
+      detail: fields.title,
+    });
   } catch (e) {
     return { ok: false, error: "Không cập nhật được công việc." };
   }
 
+  revalidatePath(`/du-an/${projectId}`);
+  revalidatePath("/cong-viec");
+  return { ok: true };
+}
+
+export async function duplicateTaskAction(
+  taskId: string,
+  projectId: string,
+): Promise<ActionResult> {
+  try {
+    const created = await duplicateTask(taskId);
+    await recordActivity({
+      task_id: created.id,
+      project_id: projectId,
+      action: "nhan_ban_cong_viec",
+      detail: created.title,
+    });
+  } catch (e) {
+    return { ok: false, error: "Không nhân bản được công việc." };
+  }
   revalidatePath(`/du-an/${projectId}`);
   revalidatePath("/cong-viec");
   return { ok: true };
@@ -89,6 +123,11 @@ export async function updateTaskStatusAction(
 ): Promise<ActionResult> {
   try {
     await setStatus(id, status);
+    await recordActivity({
+      task_id: id,
+      action: "doi_trang_thai",
+      detail: TASK_STATUS_LABEL[status],
+    });
   } catch (e) {
     return { ok: false, error: "Không đổi được trạng thái." };
   }
@@ -103,6 +142,10 @@ export async function toggleCompleteAction(
 ): Promise<ActionResult> {
   try {
     await toggleComplete(id, completed);
+    await recordActivity({
+      task_id: id,
+      action: completed ? "danh_dau_hoan_thanh" : "mo_lai",
+    });
   } catch (e) {
     return { ok: false, error: "Không cập nhật được trạng thái." };
   }

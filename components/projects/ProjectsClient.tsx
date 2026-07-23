@@ -9,6 +9,7 @@ import { ProjectForm } from "./ProjectForm";
 import {
   createProjectAction,
   deleteProjectAction,
+  duplicateProjectAction,
   updateProjectAction,
 } from "@/lib/actions/projects";
 import type { Project } from "@/lib/types";
@@ -30,6 +31,14 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
       return;
     startDelete(async () => {
       await deleteProjectAction(p.id);
+      router.refresh();
+    });
+  }
+
+  function handleDuplicate(p: Project) {
+    if (!confirm(`Nhân bản dự án "${p.name}" cùng toàn bộ công việc?`)) return;
+    startDelete(async () => {
+      await duplicateProjectAction(p.id);
       router.refresh();
     });
   }
@@ -69,6 +78,13 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
                   onClick={() => setEditing(p)}
                 >
                   Sửa
+                </button>
+                <button
+                  className="btn-secondary text-xs"
+                  onClick={() => handleDuplicate(p)}
+                  disabled={pendingDelete}
+                >
+                  Nhân bản
                 </button>
                 <button
                   className="btn-danger text-xs"

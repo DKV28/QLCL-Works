@@ -203,6 +203,66 @@ export async function softDeleteTask(id: string): Promise<void> {
   if (error) throw error;
 }
 
+interface DuplicateSrc extends Task {
+  task_assignees: { member_id: string; is_primary: boolean }[] | null;
+  subtasks: { title: string; sort_order: number }[] | null;
+}
+
+/**
+ * Nhân bản công việc: sao chép trường + người phụ trách + nhiệm vụ con
+ * (KHÔNG sao chép tệp đính kèm). Trạng thái đặt lại "chưa bắt đầu".
+ * targetProjectId: nếu truyền (nhân bản dự án) thì đưa vào dự án mới và
+ * giữ nguyên tên; nếu không thì thêm hậu tố "(bản sao)".
+ */
+export async function duplicateTask(
+  taskId: string,
+  targetProjectId?: string,
+): Promise<Task> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*, task_assignees ( member_id, is_primary ), subtasks ( title, sort_order )")
+    .eq("id", taskId)
+    .single();
+  if (error) throw error;
+  const src = data as unknown as DuplicateSrc;
+
+  const { data: created, error: e2 } = await supabase
+    .from("tasks")
+    .insert({
+      project_id: targetProjectId ?? src.project_id,
+      title: targetProjectId ? src.title : `${src.title} (bản sao)`,
+      description: src.description,
+      start_date: src.start_date,
+      due_date: src.due_date,
+      priority: src.priority,
+      status: "chua_bat_dau",
+      completed_at: null,
+    })
+    .select("*")
+    .single();
+  if (e2) throw e2;
+  const newTask = created as Task;
+
+  const assignees = (src.task_assignees ?? []).map((a) => ({
+    task_id: newTask.id,
+    member_id: a.member_id,
+    is_primary: a.is_primary,
+  }));
+  if (assignees.length) await supabase.from("task_assignees").insert(assignees);
+
+  const subs = (src.subtasks ?? []).map((st) => ({
+    task_id: newTask.id,
+    title: st.title,
+    sort_order: st.sort_order,
+    is_done: false,
+  }));
+  if (subs.length) await supabase.from("subtasks").insert(subs);
+
+  return newTask;
+}
+
 /**
  * Gán người phụ trách: xóa hết bản ghi cũ rồi thêm mới —
  * 1 dòng phụ trách chính (is_primary) + N dòng hỗ trợ (loại trùng primary).

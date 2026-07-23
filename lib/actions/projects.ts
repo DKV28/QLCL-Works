@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import {
   createProject,
+  duplicateProject,
   softDeleteProject,
   updateProject,
 } from "@/lib/data/projects";
 import { getCurrentProfile } from "@/lib/data/profiles";
+import { recordActivity } from "@/lib/data/activity";
 import type { ProjectStatus } from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -53,6 +55,24 @@ export async function updateProjectAction(
 
   revalidatePath("/du-an");
   revalidatePath(`/du-an/${id}`);
+  return { ok: true };
+}
+
+export async function duplicateProjectAction(
+  id: string,
+): Promise<ActionResult> {
+  try {
+    const created = await duplicateProject(id);
+    await recordActivity({
+      project_id: created.id,
+      action: "nhan_ban_du_an",
+      detail: created.name,
+    });
+  } catch (e) {
+    return { ok: false, error: "Không nhân bản được dự án." };
+  }
+  revalidatePath("/du-an");
+  revalidatePath("/cong-viec");
   return { ok: true };
 }
 

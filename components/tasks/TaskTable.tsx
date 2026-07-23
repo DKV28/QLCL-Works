@@ -11,6 +11,7 @@ import {
 import { TaskEditModal } from "./TaskEditModal";
 import {
   deleteTaskAction,
+  duplicateTaskAction,
   toggleCompleteAction,
 } from "@/lib/actions/tasks";
 import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
@@ -61,6 +62,10 @@ export function TaskTable({
       if (!res.ok) setLocalTasks(tasks);
       else router.refresh();
     });
+  }
+
+  function handleDuplicate(task: TaskWithAssignees) {
+    duplicateTaskAction(task.id, task.project_id).then(() => router.refresh());
   }
 
   if (localTasks.length === 0) {
@@ -177,6 +182,12 @@ export function TaskTable({
                       onClick={() => setEditingId(t.id)}
                     >
                       Sửa
+                    </button>
+                    <button
+                      className="btn-secondary text-xs"
+                      onClick={() => handleDuplicate(t)}
+                    >
+                      Nhân bản
                     </button>
                     <button
                       className="btn-danger text-xs"

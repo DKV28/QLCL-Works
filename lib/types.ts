@@ -100,6 +100,26 @@ export interface TaskWithAssignees extends Task {
 
 export const ATTACHMENTS_BUCKET = "task-attachments";
 
+export interface Comment {
+  id: string;
+  task_id: string;
+  author_id: string | null;
+  author_name: string | null;
+  body: string;
+  created_at: string;
+}
+
+export interface ActivityEntry {
+  id: string;
+  task_id: string | null;
+  project_id: string | null;
+  actor_id: string | null;
+  actor_name: string | null;
+  action: string;
+  detail: string | null;
+  created_at: string;
+}
+
 // --- Nhãn hiển thị tiếng Việt ---
 
 export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
