@@ -90,7 +90,7 @@ export function TasksView({
       </div>
 
       <div className="card mb-4 p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <div>
             <label className="label">Từ khóa</label>
             <input
@@ -99,6 +99,21 @@ export function TasksView({
               value={filters.keyword ?? ""}
               onChange={(e) => update({ keyword: e.target.value })}
             />
+          </div>
+          <div>
+            <label className="label">Dự án</label>
+            <select
+              className="input"
+              value={filters.projectId ?? ""}
+              onChange={(e) => update({ projectId: e.target.value })}
+            >
+              <option value="">Tất cả</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="label">Người phụ trách</label>
@@ -167,7 +182,9 @@ export function TasksView({
       </div>
 
       {view === "list" && <TaskTable tasks={visible} members={members} />}
-      {view === "kanban" && <KanbanBoard tasks={visible} members={members} />}
+      {view === "kanban" && (
+        <KanbanBoard tasks={visible} members={members} projects={projects} />
+      )}
       {view === "gantt" && <GanttChart tasks={visible} members={members} />}
 
       <Modal

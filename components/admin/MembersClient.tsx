@@ -101,9 +101,11 @@ function MemberForm({
 export function MembersClient({
   members,
   teamOptions,
+  canEdit,
 }: {
   members: Member[];
   teamOptions: TeamOption[];
+  canEdit: boolean;
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
@@ -147,10 +149,19 @@ export function MembersClient({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Nhân sự</h1>
-        <button className="btn-primary" onClick={() => setCreating(true)}>
-          Thêm nhân sự
-        </button>
+        {canEdit && (
+          <button className="btn-primary" onClick={() => setCreating(true)}>
+            Thêm nhân sự
+          </button>
+        )}
       </div>
+
+      {!canEdit && (
+        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+          Bạn đang xem ở chế độ chỉ đọc. Chỉ Quản lý và Quản trị viên mới chỉnh
+          sửa được danh sách nhân sự.
+        </p>
+      )}
 
       {members.length === 0 ? (
         <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
@@ -191,20 +202,22 @@ export function MembersClient({
                           {m.note || ""}
                         </td>
                         <td className="p-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              className="btn-secondary text-xs"
-                              onClick={() => setEditing(m)}
-                            >
-                              Sửa
-                            </button>
-                            <button
-                              className="btn-secondary text-xs"
-                              onClick={() => handleToggleActive(m)}
-                            >
-                              {m.is_active ? "Ngừng" : "Kích hoạt"}
-                            </button>
-                          </div>
+                          {canEdit && (
+                            <div className="flex justify-end gap-2">
+                              <button
+                                className="btn-secondary text-xs"
+                                onClick={() => setEditing(m)}
+                              >
+                                Sửa
+                              </button>
+                              <button
+                                className="btn-secondary text-xs"
+                                onClick={() => handleToggleActive(m)}
+                              >
+                                {m.is_active ? "Ngừng" : "Kích hoạt"}
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}

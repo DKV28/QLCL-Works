@@ -3,6 +3,7 @@ import type { TaskWithAssignees } from "@/lib/types";
 import { isOverdue } from "./overdue";
 
 export interface TaskFilters {
+  projectId?: string; // "" = tất cả dự án
   assigneeId?: string; // "" = tất cả (khớp cả phụ trách chính lẫn hỗ trợ)
   teamId?: string; // "" = tất cả (khớp team của bất kỳ người phụ trách nào)
   fromDate?: string; // lọc theo due_date >= fromDate
@@ -23,6 +24,7 @@ export function filterTasks(
   const kw = f.keyword?.trim().toLowerCase();
 
   return tasks.filter((t) => {
+    if (f.projectId && t.project_id !== f.projectId) return false;
     const people = allAssignees(t);
     if (f.assigneeId && !people.some((a) => a.id === f.assigneeId)) {
       return false;

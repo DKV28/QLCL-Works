@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -11,10 +11,15 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { OverdueBadge, PriorityBadge } from "@/components/ui/Badges";
+import {
+  NeedStartBadge,
+  OverdueBadge,
+  PriorityBadge,
+} from "@/components/ui/Badges";
 import { TaskEditModal } from "./TaskEditModal";
 import { updateTaskStatusAction } from "@/lib/actions/tasks";
-import { isOverdue } from "@/lib/logic/overdue";
+import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
+import { formatFriendlyDate } from "@/lib/logic/dates";
 import {
   TASK_STATUS_LABEL,
   TASK_STATUS_OPTIONS,
@@ -25,15 +30,19 @@ import {
 
 function KanbanCard({
   task,
+  projectName,
   onEdit,
 }: {
   task: TaskWithAssignees;
+  projectName?: string;
   onEdit: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: task.id });
 
   const overdue = isOverdue(task);
+  const startLate = needsToStart(task);
+  const attention = needsAttention(task);
 
   return (
     <div
@@ -48,17 +57,23 @@ function KanbanCard({
         opacity: isDragging ? 0.5 : 1,
       }}
       className={`cursor-grab touch-none rounded-md border bg-white p-3 text-sm shadow-sm active:cursor-grabbing dark:bg-gray-900 ${
-        overdue
-          ? "border-red-300 dark:border-red-900"
+        attention
+          ? "border-red-400 dark:border-red-800"
           : "border-gray-200 dark:border-gray-800"
       }`}
     >
+      {projectName && (
+        <div className="mb-1 truncate text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+          {projectName}
+        </div>
+      )}
       <div className="mb-1 font-medium text-gray-900 dark:text-gray-100">
         {task.title}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <PriorityBadge value={task.priority} />
         {overdue && <OverdueBadge />}
+        {startLate && !overdue && <NeedStartBadge />}
         {task.subtasks.length > 0 && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {task.subtasks.filter((s) => s.is_done).length}/
@@ -66,12 +81,17 @@ function KanbanCard({
           </span>
         )}
       </div>
-      {task.primary && (
-        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {task.primary.full_name}
+      <div className="mt-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+        <span>
+          {task.primary?.full_name ?? "Chưa giao"}
           {task.supporters.length > 0 && ` +${task.supporters.length}`}
-        </div>
-      )}
+        </span>
+        {task.due_date && (
+          <span className={overdue ? "text-red-600" : ""}>
+            {formatFriendlyDate(task.due_date)}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -79,10 +99,12 @@ function KanbanCard({
 function KanbanColumn({
   status,
   tasks,
+  projectNameOf,
   onEdit,
 }: {
   status: TaskStatus;
   tasks: TaskWithAssignees[];
+  projectNameOf: (id: string) => string | undefined;
   onEdit: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
@@ -102,7 +124,12 @@ function KanbanColumn({
         }`}
       >
         {tasks.map((t) => (
-          <KanbanCard key={t.id} task={t} onEdit={onEdit} />
+          <KanbanCard
+            key={t.id}
+            task={t}
+            projectName={projectNameOf(t.project_id)}
+            onEdit={onEdit}
+          />
         ))}
         {tasks.length === 0 && (
           <div className="py-6 text-center text-xs text-gray-400">
@@ -117,13 +144,23 @@ function KanbanColumn({
 export function KanbanBoard({
   tasks,
   members,
+  projects,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
+  projects: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const editing = tasks.find((t) => t.id === editingId) ?? null;
+
+  // Bản sao cục bộ để cập nhật lạc quan khi kéo thả (phản hồi tức thì).
+  const [localTasks, setLocalTasks] = useState(tasks);
+  useEffect(() => setLocalTasks(tasks), [tasks]);
+
+  const editing = localTasks.find((t) => t.id === editingId) ?? null;
+
+  const projectNameOf = (id: string) =>
+    projects.find((p) => p.id === id)?.name;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -134,11 +171,32 @@ export function KanbanBoard({
     const newStatus = event.over?.id as TaskStatus | undefined;
     if (!newStatus) return;
 
-    const task = tasks.find((t) => t.id === taskId);
+    const task = localTasks.find((t) => t.id === taskId);
     if (!task || task.status === newStatus) return;
 
-    // Cập nhật lạc quan qua server rồi refresh.
-    updateTaskStatusAction(taskId, newStatus).then(() => router.refresh());
+    // Cập nhật lạc quan: thẻ di chuyển ngay, không chờ mạng.
+    setLocalTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              status: newStatus,
+              completed_at:
+                newStatus === "hoan_thanh"
+                  ? new Date().toISOString()
+                  : null,
+            }
+          : t,
+      ),
+    );
+
+    updateTaskStatusAction(taskId, newStatus).then((res) => {
+      if (!res.ok) {
+        setLocalTasks(tasks); // lỗi -> khôi phục
+        return;
+      }
+      router.refresh(); // đồng bộ ngầm cho các view khác
+    });
   }
 
   return (
@@ -149,7 +207,8 @@ export function KanbanBoard({
             <KanbanColumn
               key={status}
               status={status}
-              tasks={tasks.filter((t) => t.status === status)}
+              tasks={localTasks.filter((t) => t.status === status)}
+              projectNameOf={projectNameOf}
               onEdit={setEditingId}
             />
           ))}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  NeedStartBadge,
   OverdueBadge,
   PriorityBadge,
   StatusBadge,
@@ -12,14 +13,9 @@ import {
   deleteTaskAction,
   toggleCompleteAction,
 } from "@/lib/actions/tasks";
-import { isOverdue } from "@/lib/logic/overdue";
+import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
+import { formatFriendlyDate } from "@/lib/logic/dates";
 import type { MemberLite, TaskWithAssignees } from "@/lib/types";
-
-function formatDate(d: string | null): string {
-  if (!d) return "—";
-  const [y, m, day] = d.split("-");
-  return `${day}/${m}/${y}`;
-}
 
 export function TaskTable({
   tasks,
@@ -29,27 +25,45 @@ export function TaskTable({
   members: MemberLite[];
 }) {
   const router = useRouter();
-  // Lưu id để lấy bản mới nhất từ props sau mỗi refresh (vd: thêm nhiệm vụ con).
   const [editingId, setEditingId] = useState<string | null>(null);
-  const editing = tasks.find((t) => t.id === editingId) ?? null;
-  const [, startTransition] = useTransition();
+  // Bản sao cục bộ để cập nhật lạc quan (tick/xóa phản hồi tức thì).
+  const [localTasks, setLocalTasks] = useState(tasks);
+  useEffect(() => setLocalTasks(tasks), [tasks]);
+
+  const editing = localTasks.find((t) => t.id === editingId) ?? null;
 
   function handleToggle(task: TaskWithAssignees, checked: boolean) {
-    startTransition(async () => {
-      await toggleCompleteAction(task.id, checked);
-      router.refresh();
+    setLocalTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id
+          ? {
+              ...t,
+              completed_at: checked ? new Date().toISOString() : null,
+              status: checked
+                ? "hoan_thanh"
+                : t.status === "hoan_thanh"
+                  ? "dang_lam"
+                  : t.status,
+            }
+          : t,
+      ),
+    );
+    toggleCompleteAction(task.id, checked).then((res) => {
+      if (!res.ok) setLocalTasks(tasks);
+      else router.refresh();
     });
   }
 
   function handleDelete(task: TaskWithAssignees) {
     if (!confirm(`Xóa công việc "${task.title}"?`)) return;
-    startTransition(async () => {
-      await deleteTaskAction(task.id, task.project_id);
-      router.refresh();
+    setLocalTasks((prev) => prev.filter((t) => t.id !== task.id));
+    deleteTaskAction(task.id, task.project_id).then((res) => {
+      if (!res.ok) setLocalTasks(tasks);
+      else router.refresh();
     });
   }
 
-  if (tasks.length === 0) {
+  if (localTasks.length === 0) {
     return (
       <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
         Không có công việc nào.
@@ -72,14 +86,16 @@ export function TaskTable({
           </tr>
         </thead>
         <tbody>
-          {tasks.map((t) => {
+          {localTasks.map((t) => {
             const overdue = isOverdue(t);
+            const startLate = needsToStart(t);
+            const attention = needsAttention(t);
             const done = t.status === "hoan_thanh" || !!t.completed_at;
             return (
               <tr
                 key={t.id}
                 className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${
-                  overdue ? "bg-red-50 dark:bg-red-950/30" : ""
+                  attention ? "bg-red-50 dark:bg-red-950/30" : ""
                 }`}
               >
                 <td className="p-3 align-top">
@@ -140,11 +156,12 @@ export function TaskTable({
                   )}
                 </td>
                 <td className="p-3 align-top">
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col items-start gap-1">
                     <span className={overdue ? "font-medium text-red-600" : ""}>
-                      {formatDate(t.due_date)}
+                      {formatFriendlyDate(t.due_date)}
                     </span>
                     {overdue && <OverdueBadge />}
+                    {startLate && !overdue && <NeedStartBadge />}
                   </div>
                 </td>
                 <td className="p-3 align-top">

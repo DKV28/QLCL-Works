@@ -60,3 +60,7 @@ export function ProjectStatusBadge({ value }: { value: ProjectStatus }) {
 export function OverdueBadge() {
   return <Pill className="bg-red-600 text-white">Quá hạn</Pill>;
 }
+
+export function NeedStartBadge() {
+  return <Pill className="bg-orange-500 text-white">Cần bắt đầu</Pill>;
+}
