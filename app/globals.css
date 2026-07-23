@@ -32,3 +32,18 @@ body {
 .card {
   @apply rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900;
 }
+
+/* Khi in (Xuất PDF): ẩn thanh điều hướng và các phần .no-print */
+@media print {
+  .no-print,
+  aside,
+  header {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  body {
+    background: white !important;
+  }
+}

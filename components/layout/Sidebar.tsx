@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const NAV = [
   { href: "/cong-viec", label: "Công việc" },
   { href: "/du-an", label: "Dự án" },
+  { href: "/bao-cao", label: "Báo cáo" },
   { href: "/quan-tri/nhan-su", label: "Nhân sự" },
 ];
 
