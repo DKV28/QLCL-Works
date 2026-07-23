@@ -1,15 +1,17 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   TASK_PRIORITY_OPTIONS,
   TASK_STATUS_OPTIONS,
   type MemberLite,
   type Project,
+  type Tag,
   type TaskWithAssignees,
 } from "@/lib/types";
 import type { ActionResult } from "@/lib/actions/tasks";
+import { getTagsAction } from "@/lib/actions/tags";
 
 export function TaskForm({
   task,
@@ -28,6 +30,16 @@ export function TaskForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [primaryId, setPrimaryId] = useState(task?.primary?.id ?? "");
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+
+  useEffect(() => {
+    getTagsAction().then(setAllTags);
+  }, []);
+
+  const initialTagIds = useMemo(
+    () => new Set((task?.tags ?? []).map((t) => t.id)),
+    [task],
+  );
 
   const initialSupporters = useMemo(
     () => new Set((task?.supporters ?? []).map((s) => s.id)),
@@ -179,6 +191,31 @@ export function TaskForm({
           ))}
         </div>
       </div>
+
+      {allTags.length > 0 && (
+        <div>
+          <label className="label">Nhãn</label>
+          <div className="flex flex-wrap gap-2">
+            {allTags.map((tag) => (
+              <label
+                key={tag.id}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
+                style={{ borderColor: tag.color, color: tag.color }}
+              >
+                <input
+                  type="checkbox"
+                  name="tag_ids"
+                  value={tag.id}
+                  defaultChecked={initialTagIds.has(tag.id)}
+                  className="h-3 w-3"
+                  style={{ accentColor: tag.color }}
+                />
+                {tag.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>

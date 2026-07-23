@@ -32,6 +32,8 @@ Kiến trúc tách lớp:
    - `0004_attachments.sql` — tệp đính kèm + bucket Storage `task-attachments` (private).
    - `0005_comments_activity.sql` — bình luận + lịch sử hoạt động.
    - `0006_notifications.sql` — thông báo in-app + bật Realtime cho tasks/subtasks/notifications.
+   - `0007_tags.sql` — nhãn (tags) cho công việc.
+   - `0008_templates.sql` — thư viện mẫu (đánh dấu dự án là mẫu).
    Khi có migration mới về sau, chạy tiếp theo số thứ tự.
 
 ### 2. Cấu hình biến môi trường

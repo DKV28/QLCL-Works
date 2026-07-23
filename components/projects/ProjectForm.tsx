@@ -6,10 +6,12 @@ import type { ActionResult } from "@/lib/actions/projects";
 
 export function ProjectForm({
   project,
+  defaultTemplate,
   onSubmit,
   onDone,
 }: {
   project?: Project;
+  defaultTemplate?: boolean;
   onSubmit: (formData: FormData) => Promise<ActionResult>;
   onDone: () => void;
 }) {
@@ -71,6 +73,16 @@ export function ProjectForm({
           ))}
         </select>
       </div>
+
+      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+        <input
+          type="checkbox"
+          name="is_template"
+          defaultChecked={project?.is_template ?? defaultTemplate ?? false}
+          className="h-4 w-4 accent-brand"
+        />
+        Đây là dự án mẫu (checklist dùng lại, không hiện ở danh sách vận hành)
+      </label>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

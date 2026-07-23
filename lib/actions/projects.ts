@@ -27,6 +27,7 @@ export async function createProjectAction(
       description: String(formData.get("description") ?? "").trim() || null,
       status: (formData.get("status") as ProjectStatus) || "dang_thuc_hien",
       owner_id: profile?.id ?? null,
+      is_template: formData.get("is_template") === "on",
     });
   } catch (e) {
     return { ok: false, error: "Không tạo được dự án. Vui lòng thử lại." };
@@ -48,6 +49,7 @@ export async function updateProjectAction(
       name,
       description: String(formData.get("description") ?? "").trim() || null,
       status: (formData.get("status") as ProjectStatus) || "dang_thuc_hien",
+      is_template: formData.get("is_template") === "on",
     });
   } catch (e) {
     return { ok: false, error: "Không cập nhật được dự án." };
@@ -70,6 +72,27 @@ export async function duplicateProjectAction(
     });
   } catch (e) {
     return { ok: false, error: "Không nhân bản được dự án." };
+  }
+  revalidatePath("/du-an");
+  revalidatePath("/cong-viec");
+  return { ok: true };
+}
+
+/** Tạo dự án vận hành mới từ một dự án mẫu (nhân bản). */
+export async function createFromTemplateAction(
+  templateId: string,
+): Promise<ActionResult> {
+  try {
+    const created = await duplicateProject(templateId);
+    // Bản tạo ra là dự án vận hành, không phải mẫu.
+    await updateProject(created.id, { is_template: false });
+    await recordActivity({
+      project_id: created.id,
+      action: "tao_tu_mau",
+      detail: created.name,
+    });
+  } catch (e) {
+    return { ok: false, error: "Không tạo được dự án từ mẫu." };
   }
   revalidatePath("/du-an");
   revalidatePath("/cong-viec");

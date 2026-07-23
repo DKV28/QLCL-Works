@@ -10,8 +10,9 @@ import { GanttChart } from "./GanttChart";
 import { TaskForm } from "./TaskForm";
 import { Modal } from "@/components/ui/Modal";
 import { createTaskFromListAction } from "@/lib/actions/tasks";
+import { getTagsAction } from "@/lib/actions/tags";
 import { filterTasks, sortTasks, type TaskFilters } from "@/lib/logic/filters";
-import type { MemberLite, Project, TaskWithAssignees } from "@/lib/types";
+import type { MemberLite, Project, Tag, TaskWithAssignees } from "@/lib/types";
 
 type ViewMode = "list" | "kanban" | "gantt";
 
@@ -34,6 +35,11 @@ export function TasksView({
   const [creating, setCreating] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
   const [filters, setFilters] = useState<TaskFilters>({});
+  const [tags, setTags] = useState<Tag[]>([]);
+
+  useEffect(() => {
+    getTagsAction().then(setTags);
+  }, []);
 
   // Realtime: khi có người khác thay đổi công việc/nhiệm vụ con -> tự làm mới.
   useEffect(() => {
@@ -173,6 +179,23 @@ export function TasksView({
               ))}
             </select>
           </div>
+          {tags.length > 0 && (
+            <div>
+              <label className="label">Nhãn</label>
+              <select
+                className="input"
+                value={filters.tagId ?? ""}
+                onChange={(e) => update({ tagId: e.target.value })}
+              >
+                <option value="">Tất cả</option>
+                {tags.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="label">Deadline từ</label>
             <input

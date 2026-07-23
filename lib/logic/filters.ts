@@ -6,6 +6,7 @@ export interface TaskFilters {
   projectId?: string; // "" = tất cả dự án
   assigneeId?: string; // "" = tất cả (khớp cả phụ trách chính lẫn hỗ trợ)
   teamId?: string; // "" = tất cả (khớp team của bất kỳ người phụ trách nào)
+  tagId?: string; // "" = tất cả (khớp công việc có nhãn này)
   fromDate?: string; // lọc theo due_date >= fromDate
   toDate?: string; // lọc theo due_date <= toDate
   keyword?: string; // tìm trong tên + mô tả
@@ -30,6 +31,9 @@ export function filterTasks(
       return false;
     }
     if (f.teamId && !people.some((a) => a.team_id === f.teamId)) {
+      return false;
+    }
+    if (f.tagId && !t.tags.some((tg) => tg.id === f.tagId)) {
       return false;
     }
     if (f.fromDate && (!t.due_date || t.due_date < f.fromDate)) return false;

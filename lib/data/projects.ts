@@ -3,16 +3,43 @@ import { createClient } from "@/lib/supabase/server";
 import { duplicateTask } from "./tasks";
 import type { Project, ProjectStatus } from "@/lib/types";
 
+/** Dự án vận hành (không gồm dự án mẫu). */
 export async function listProjects(): Promise<Project[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("projects")
     .select("*")
     .is("deleted_at", null)
+    .eq("is_template", false)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
   return (data as Project[]) ?? [];
+}
+
+/** Danh sách dự án mẫu (Thư viện mẫu). */
+export async function listTemplates(): Promise<Project[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .is("deleted_at", null)
+    .eq("is_template", true)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data as Project[]) ?? [];
+}
+
+/** ID các dự án mẫu — để loại công việc của chúng khỏi màn hình vận hành. */
+export async function listTemplateProjectIds(): Promise<string[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("is_template", true)
+    .is("deleted_at", null);
+  return ((data as { id: string }[]) ?? []).map((r) => r.id);
 }
 
 export async function getProject(id: string): Promise<Project | null> {
@@ -32,6 +59,7 @@ export interface ProjectInput {
   description?: string | null;
   status?: ProjectStatus;
   owner_id?: string | null;
+  is_template?: boolean;
 }
 
 export async function createProject(input: ProjectInput): Promise<Project> {

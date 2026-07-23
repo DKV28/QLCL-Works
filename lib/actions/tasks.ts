@@ -30,6 +30,10 @@ function parseTaskForm(formData: FormData) {
       .getAll("support_member_ids")
       .map((v) => String(v))
       .filter(Boolean),
+    tag_ids: formData
+      .getAll("tag_ids")
+      .map((v) => String(v))
+      .filter(Boolean),
   };
 }
 

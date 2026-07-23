@@ -16,6 +16,7 @@ import {
   OverdueBadge,
   PriorityBadge,
 } from "@/components/ui/Badges";
+import { TagChips } from "@/components/ui/TagChips";
 import { TaskEditModal } from "./TaskEditModal";
 import { updateTaskStatusAction } from "@/lib/actions/tasks";
 import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
@@ -70,6 +71,11 @@ function KanbanCard({
       <div className="mb-1 font-medium text-gray-900 dark:text-gray-100">
         {task.title}
       </div>
+      {task.tags.length > 0 && (
+        <div className="mb-1">
+          <TagChips tags={task.tags} />
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-1.5">
         <PriorityBadge value={task.priority} />
         {overdue && <OverdueBadge />}

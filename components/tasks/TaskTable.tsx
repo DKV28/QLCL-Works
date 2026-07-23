@@ -14,6 +14,7 @@ import {
   duplicateTaskAction,
   toggleCompleteAction,
 } from "@/lib/actions/tasks";
+import { TagChips } from "@/components/ui/TagChips";
 import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
 import type { MemberLite, TaskWithAssignees } from "@/lib/types";
@@ -125,6 +126,11 @@ export function TaskTable({
                   {t.description && (
                     <div className="mt-0.5 text-xs text-gray-500 line-clamp-2 dark:text-gray-400">
                       {t.description}
+                    </div>
+                  )}
+                  {t.tags.length > 0 && (
+                    <div className="mt-1">
+                      <TagChips tags={t.tags} />
                     </div>
                   )}
                   <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">

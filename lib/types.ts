@@ -47,6 +47,7 @@ export interface Project {
   description: string | null;
   owner_id: string | null;
   status: ProjectStatus;
+  is_template: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -96,9 +97,24 @@ export interface TaskWithAssignees extends Task {
   supporters: MemberLite[];
   subtasks: Subtask[];
   attachments: Attachment[];
+  tags: Pick<Tag, "id" | "name" | "color">[];
 }
 
 export const ATTACHMENTS_BUCKET = "task-attachments";
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  created_at: string;
+}
+
+// Bảng màu gợi ý khi tạo nhãn
+export const TAG_COLORS = [
+  "#ef4444", "#f97316", "#f59e0b", "#22c55e",
+  "#14b8a6", "#3b82f6", "#6366f1", "#a855f7",
+  "#ec4899", "#64748b",
+];
 
 export interface Comment {
   id: string;

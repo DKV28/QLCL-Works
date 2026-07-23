@@ -2,10 +2,12 @@
 // Chỉ chứa query Supabase, không JSX.
 import { createClient } from "@/lib/supabase/server";
 import { listTeams, teamDisplayName } from "./teams";
+import { setTaskTags } from "./tags";
 import type {
   Attachment,
   MemberLite,
   Subtask,
+  Tag,
   Task,
   TaskPriority,
   TaskStatus,
@@ -27,6 +29,7 @@ interface TaskRow extends Task {
     | null;
   subtasks: Subtask[] | null;
   attachments: Attachment[] | null;
+  task_tags: { tags: Pick<Tag, "id" | "name" | "color"> | null }[] | null;
 }
 
 const SELECT_WITH_ASSIGNEES = `
@@ -36,11 +39,12 @@ const SELECT_WITH_ASSIGNEES = `
     members ( id, full_name, team_id )
   ),
   subtasks ( id, task_id, title, is_done, sort_order, created_at, updated_at ),
-  attachments ( id, task_id, file_name, storage_path, mime_type, size_bytes, created_at )
+  attachments ( id, task_id, file_name, storage_path, mime_type, size_bytes, created_at ),
+  task_tags ( tags ( id, name, color ) )
 `;
 
 function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
-  const { task_assignees, subtasks, attachments, ...task } = row;
+  const { task_assignees, subtasks, attachments, task_tags, ...task } = row;
 
   let primary: MemberLite | null = null;
   const supporters: MemberLite[] = [];
@@ -67,12 +71,17 @@ function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
     a.created_at.localeCompare(b.created_at),
   );
 
+  const tags = (task_tags ?? [])
+    .map((tt) => tt.tags)
+    .filter((t): t is NonNullable<typeof t> => t !== null);
+
   return {
     ...(task as Task),
     primary,
     supporters,
     subtasks: sortedSubtasks,
     attachments: sortedAttachments,
+    tags,
   };
 }
 
@@ -95,17 +104,28 @@ export async function listTasksByProject(
   return ((res.data as unknown as TaskRow[]) ?? []).map((r) => mapRow(r, teams));
 }
 
-/** Toàn bộ công việc (view Danh sách tổng, có lọc phía client). */
+/** Toàn bộ công việc vận hành (loại công việc thuộc dự án mẫu). */
 export async function listAllTasks(): Promise<TaskWithAssignees[]> {
   const supabase = createClient();
-  const [teams, res] = await Promise.all([
-    listTeams(),
-    supabase
-      .from("tasks")
-      .select(SELECT_WITH_ASSIGNEES)
-      .is("deleted_at", null)
-      .order("due_date", { ascending: true, nullsFirst: false }),
-  ]);
+
+  // Lấy id dự án mẫu để loại khỏi màn hình vận hành.
+  const { data: tpl } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("is_template", true)
+    .is("deleted_at", null);
+  const templateIds = ((tpl as { id: string }[]) ?? []).map((r) => r.id);
+
+  let query = supabase
+    .from("tasks")
+    .select(SELECT_WITH_ASSIGNEES)
+    .is("deleted_at", null)
+    .order("due_date", { ascending: true, nullsFirst: false });
+  if (templateIds.length) {
+    query = query.not("project_id", "in", `(${templateIds.join(",")})`);
+  }
+
+  const [teams, res] = await Promise.all([listTeams(), query]);
 
   if (res.error) throw res.error;
   return ((res.data as unknown as TaskRow[]) ?? []).map((r) => mapRow(r, teams));
@@ -121,11 +141,13 @@ export interface TaskInput {
   status?: TaskStatus;
   primary_member_id?: string | null; // người phụ trách chính (bắt buộc khi tạo)
   support_member_ids?: string[]; // người hỗ trợ (tùy chọn)
+  tag_ids?: string[]; // nhãn (tùy chọn)
 }
 
 export async function createTask(input: TaskInput): Promise<Task> {
   const supabase = createClient();
-  const { primary_member_id, support_member_ids, ...taskFields } = input;
+  const { primary_member_id, support_member_ids, tag_ids, ...taskFields } =
+    input;
 
   const { data, error } = await supabase
     .from("tasks")
@@ -136,6 +158,7 @@ export async function createTask(input: TaskInput): Promise<Task> {
 
   const task = data as Task;
   await setAssignees(task.id, primary_member_id ?? null, support_member_ids ?? []);
+  await setTaskTags(task.id, tag_ids ?? []);
   return task;
 }
 
@@ -144,7 +167,8 @@ export async function updateTask(
   input: Partial<TaskInput>,
 ): Promise<Task> {
   const supabase = createClient();
-  const { primary_member_id, support_member_ids, ...taskFields } = input;
+  const { primary_member_id, support_member_ids, tag_ids, ...taskFields } =
+    input;
 
   const { data, error } = await supabase
     .from("tasks")
@@ -157,6 +181,9 @@ export async function updateTask(
   // Chỉ cập nhật người phụ trách khi form có gửi lên.
   if (primary_member_id !== undefined || support_member_ids !== undefined) {
     await setAssignees(id, primary_member_id ?? null, support_member_ids ?? []);
+  }
+  if (tag_ids !== undefined) {
+    await setTaskTags(id, tag_ids);
   }
   return data as Task;
 }
@@ -216,6 +243,7 @@ export async function softDeleteTask(id: string): Promise<void> {
 interface DuplicateSrc extends Task {
   task_assignees: { member_id: string; is_primary: boolean }[] | null;
   subtasks: { title: string; sort_order: number }[] | null;
+  task_tags: { tag_id: string }[] | null;
 }
 
 /**
@@ -232,7 +260,9 @@ export async function duplicateTask(
 
   const { data, error } = await supabase
     .from("tasks")
-    .select("*, task_assignees ( member_id, is_primary ), subtasks ( title, sort_order )")
+    .select(
+      "*, task_assignees ( member_id, is_primary ), subtasks ( title, sort_order ), task_tags ( tag_id )",
+    )
     .eq("id", taskId)
     .single();
   if (error) throw error;
@@ -269,6 +299,12 @@ export async function duplicateTask(
     is_done: false,
   }));
   if (subs.length) await supabase.from("subtasks").insert(subs);
+
+  const tagRows = (src.task_tags ?? []).map((tt) => ({
+    task_id: newTask.id,
+    tag_id: tt.tag_id,
+  }));
+  if (tagRows.length) await supabase.from("task_tags").insert(tagRows);
 
   return newTask;
 }
