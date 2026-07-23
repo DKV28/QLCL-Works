@@ -1,13 +1,15 @@
 import { TasksView } from "@/components/tasks/TasksView";
 import { listAllTasks } from "@/lib/data/tasks";
 import { listProfiles } from "@/lib/data/profiles";
+import { listProjects } from "@/lib/data/projects";
 
 export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
-  const [tasks, profiles] = await Promise.all([
+  const [tasks, profiles, projects] = await Promise.all([
     listAllTasks(),
     listProfiles(),
+    listProjects(),
   ]);
 
   const assignees = profiles.map((p) => ({
@@ -16,5 +18,13 @@ export default async function TasksPage() {
     email: p.email,
   }));
 
-  return <TasksView tasks={tasks} assignees={assignees} />;
+  const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }));
+
+  return (
+    <TasksView
+      tasks={tasks}
+      assignees={assignees}
+      projects={projectOptions}
+    />
+  );
 }

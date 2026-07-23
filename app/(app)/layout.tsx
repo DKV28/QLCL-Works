@@ -14,8 +14,8 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-60 shrink-0 border-r border-gray-200 bg-white md:block">
-        <div className="border-b border-gray-200 px-5 py-4">
+      <aside className="hidden w-60 shrink-0 border-r border-gray-200 bg-white md:block dark:border-gray-800 dark:bg-gray-900">
+        <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
           <Link href="/" className="text-lg font-bold text-brand">
             QLCL Works
           </Link>

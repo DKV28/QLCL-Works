@@ -43,14 +43,14 @@ export function UsersClient({ users }: { users: Profile[] }) {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Người dùng</h1>
         <button className="btn-primary" onClick={() => setCreating(true)}>
-          + Tạo tài khoản
+          Tạo tài khoản
         </button>
       </div>
 
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
               <th className="p-3">Họ tên</th>
               <th className="p-3">Email</th>
               <th className="p-3">Vai trò</th>
@@ -58,9 +58,14 @@ export function UsersClient({ users }: { users: Profile[] }) {
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-b border-gray-100 last:border-0">
+              <tr
+                key={u.id}
+                className="border-b border-gray-100 last:border-0 dark:border-gray-800"
+              >
                 <td className="p-3 font-medium">{u.full_name || "—"}</td>
-                <td className="p-3 text-gray-600">{u.email}</td>
+                <td className="p-3 text-gray-600 dark:text-gray-400">
+                  {u.email}
+                </td>
                 <td className="p-3">
                   <select
                     className="input max-w-[160px]"
@@ -83,7 +88,7 @@ export function UsersClient({ users }: { users: Profile[] }) {
         </table>
       </div>
 
-      <p className="mt-3 text-xs text-gray-400">
+      <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
         Đổi vai trò áp dụng ngay. Vai trò hiện chưa giới hạn quyền xem dữ liệu
         (sẽ bật ở phiên bản sau).
       </p>

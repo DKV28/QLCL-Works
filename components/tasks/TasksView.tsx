@@ -1,17 +1,26 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TaskTable } from "./TaskTable";
+import { TaskForm } from "./TaskForm";
+import { Modal } from "@/components/ui/Modal";
+import { createTaskFromListAction } from "@/lib/actions/tasks";
 import { filterTasks, sortTasks, type TaskFilters } from "@/lib/logic/filters";
-import type { Profile, TaskWithAssignees } from "@/lib/types";
+import type { Profile, Project, TaskWithAssignees } from "@/lib/types";
 
 export function TasksView({
   tasks,
   assignees,
+  projects,
 }: {
   tasks: TaskWithAssignees[];
   assignees: Pick<Profile, "id" | "full_name" | "email">[];
+  projects: Pick<Project, "id" | "name">[];
 }) {
+  const router = useRouter();
+  const [creating, setCreating] = useState(false);
   const [filters, setFilters] = useState<TaskFilters>({});
 
   const visible = useMemo(
@@ -29,11 +38,16 @@ export function TasksView({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Công việc</h1>
-        <span className="text-sm text-gray-500">
-          {visible.length}/{tasks.length} công việc
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {visible.length}/{tasks.length} công việc
+          </span>
+          <button className="btn-primary" onClick={() => setCreating(true)}>
+            Thêm công việc
+          </button>
+        </div>
       </div>
 
       <div className="card mb-4 p-4">
@@ -83,7 +97,7 @@ export function TasksView({
         </div>
 
         <div className="mt-3 flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input
               type="checkbox"
               className="h-4 w-4 accent-brand"
@@ -99,6 +113,35 @@ export function TasksView({
       </div>
 
       <TaskTable tasks={visible} assignees={assignees} />
+
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="Thêm công việc"
+      >
+        {projects.length === 0 ? (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Chưa có dự án nào. Hãy tạo một dự án trước khi thêm công việc.
+            </p>
+            <div className="flex justify-end">
+              <Link href="/du-an" className="btn-primary">
+                Tới trang Dự án
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <TaskForm
+            assignees={assignees}
+            projects={projects}
+            onSubmit={createTaskFromListAction}
+            onDone={() => {
+              setCreating(false);
+              router.refresh();
+            }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

@@ -44,6 +44,15 @@ export async function createTaskAction(
   return { ok: true };
 }
 
+/** Tạo công việc từ trang Danh sách tổng — dự án lấy từ form (project_id). */
+export async function createTaskFromListAction(
+  formData: FormData,
+): Promise<ActionResult> {
+  const projectId = String(formData.get("project_id") ?? "");
+  if (!projectId) return { ok: false, error: "Vui lòng chọn dự án." };
+  return createTaskAction(projectId, formData);
+}
+
 export async function updateTaskAction(
   id: string,
   projectId: string,

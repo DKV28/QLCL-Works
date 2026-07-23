@@ -37,10 +37,10 @@ export function Modal({
           <h2 className="text-lg font-semibold">{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100"
             aria-label="Đóng"
           >
-            ✕
+            Đóng
           </button>
         </div>
         {children}

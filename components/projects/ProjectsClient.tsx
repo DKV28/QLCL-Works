@@ -39,12 +39,12 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dự án</h1>
         <button className="btn-primary" onClick={() => setCreating(true)}>
-          + Tạo dự án
+          Tạo dự án
         </button>
       </div>
 
       {projects.length === 0 ? (
-        <div className="card p-10 text-center text-gray-500">
+        <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
           Chưa có dự án nào. Bấm &quot;Tạo dự án&quot; để bắt đầu.
         </div>
       ) : (
@@ -60,7 +60,7 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
                 </Link>
                 <ProjectStatusBadge value={p.status} />
               </div>
-              <p className="mb-4 flex-1 text-sm text-gray-600 line-clamp-3">
+              <p className="mb-4 flex-1 text-sm text-gray-600 line-clamp-3 dark:text-gray-400">
                 {p.description || "—"}
               </p>
               <div className="flex justify-end gap-2">

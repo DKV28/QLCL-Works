@@ -51,7 +51,7 @@ export function TaskTable({
 
   if (tasks.length === 0) {
     return (
-      <div className="card p-10 text-center text-gray-500">
+      <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
         Không có công việc nào.
       </div>
     );
@@ -61,7 +61,7 @@ export function TaskTable({
     <div className="card overflow-x-auto">
       <table className="w-full min-w-[720px] text-sm">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
+          <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
             <th className="w-10 p-3"></th>
             <th className="p-3">Công việc</th>
             <th className="p-3">Người phụ trách</th>
@@ -78,8 +78,8 @@ export function TaskTable({
             return (
               <tr
                 key={t.id}
-                className={`border-b border-gray-100 last:border-0 ${
-                  overdue ? "bg-red-50" : ""
+                className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${
+                  overdue ? "bg-red-50 dark:bg-red-950/30" : ""
                 }`}
               >
                 <td className="p-3 align-top">
@@ -94,18 +94,20 @@ export function TaskTable({
                 <td className="p-3 align-top">
                   <div
                     className={`font-medium ${
-                      done ? "text-gray-400 line-through" : "text-gray-900"
+                      done
+                        ? "text-gray-400 line-through dark:text-gray-500"
+                        : "text-gray-900 dark:text-gray-100"
                     }`}
                   >
                     {t.title}
                   </div>
                   {t.description && (
-                    <div className="mt-0.5 text-xs text-gray-500 line-clamp-2">
+                    <div className="mt-0.5 text-xs text-gray-500 line-clamp-2 dark:text-gray-400">
                       {t.description}
                     </div>
                   )}
                 </td>
-                <td className="p-3 align-top text-gray-700">
+                <td className="p-3 align-top text-gray-700 dark:text-gray-300">
                   {t.assignees.length > 0
                     ? t.assignees
                         .map((a) => a.full_name || a.email)

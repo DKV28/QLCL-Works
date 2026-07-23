@@ -5,6 +5,7 @@ import {
   TASK_PRIORITY_OPTIONS,
   TASK_STATUS_OPTIONS,
   type Profile,
+  type Project,
   type TaskWithAssignees,
 } from "@/lib/types";
 import type { ActionResult } from "@/lib/actions/tasks";
@@ -12,11 +13,14 @@ import type { ActionResult } from "@/lib/actions/tasks";
 export function TaskForm({
   task,
   assignees,
+  projects,
   onSubmit,
   onDone,
 }: {
   task?: TaskWithAssignees;
   assignees: Pick<Profile, "id" | "full_name" | "email">[];
+  // Khi truyền vào (từ trang Danh sách tổng), form hiện ô chọn dự án.
+  projects?: Pick<Project, "id" | "name">[];
   onSubmit: (formData: FormData) => Promise<ActionResult>;
   onDone: () => void;
 }) {
@@ -36,6 +40,28 @@ export function TaskForm({
 
   return (
     <form action={handleAction} className="space-y-4">
+      {projects && (
+        <div>
+          <label className="label" htmlFor="project_id">
+            Dự án <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="project_id"
+            name="project_id"
+            required
+            defaultValue={task?.project_id ?? ""}
+            className="input"
+          >
+            <option value="">— Chọn dự án —</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div>
         <label className="label" htmlFor="title">
           Tên công việc <span className="text-red-500">*</span>
