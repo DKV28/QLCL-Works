@@ -1,5 +1,6 @@
 import { signOut } from "@/lib/actions/auth";
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificationBell } from "./NotificationBell";
 import type { Profile } from "@/lib/types";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -21,6 +22,7 @@ export function TopBar({ profile }: { profile: Profile }) {
         </span>
       </div>
       <div className="flex items-center gap-2">
+        <NotificationBell />
         <ThemeToggle />
         <form action={signOut}>
           <button type="submit" className="btn-secondary text-sm">

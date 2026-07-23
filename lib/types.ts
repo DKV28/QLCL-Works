@@ -109,6 +109,15 @@ export interface Comment {
   created_at: string;
 }
 
+export interface Notification {
+  id: string;
+  type: string;
+  task_id: string | null;
+  project_id: string | null;
+  message: string;
+  created_at: string;
+}
+
 export interface ActivityEntry {
   id: string;
   task_id: string | null;

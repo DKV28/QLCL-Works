@@ -177,6 +177,16 @@ export async function toggleComplete(
   if (error) throw error;
 }
 
+export async function getTaskTitle(id: string): Promise<string | null> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("tasks")
+    .select("title")
+    .eq("id", id)
+    .single();
+  return (data as { title: string } | null)?.title ?? null;
+}
+
 /** Đặt trạng thái + đồng bộ completed_at (dùng cho kéo thả Kanban). */
 export async function setStatus(
   id: string,

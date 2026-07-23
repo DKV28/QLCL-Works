@@ -10,6 +10,7 @@ import {
   updateTask,
 } from "@/lib/data/tasks";
 import { recordActivity } from "@/lib/data/activity";
+import { createNotification } from "@/lib/data/notifications";
 import { TASK_STATUS_LABEL, type TaskPriority, type TaskStatus } from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -49,6 +50,12 @@ export async function createTaskAction(
       project_id: projectId,
       action: "tao_cong_viec",
       detail: fields.title,
+    });
+    await createNotification({
+      type: "cong_viec_moi",
+      task_id: task.id,
+      project_id: projectId,
+      message: `Công việc mới: ${fields.title}`,
     });
   } catch (e) {
     return { ok: false, error: "Không tạo được công việc." };

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { TaskTable } from "./TaskTable";
 import { KanbanBoard } from "./KanbanBoard";
 import { GanttChart } from "./GanttChart";
@@ -33,6 +34,33 @@ export function TasksView({
   const [creating, setCreating] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
   const [filters, setFilters] = useState<TaskFilters>({});
+
+  // Realtime: khi có người khác thay đổi công việc/nhiệm vụ con -> tự làm mới.
+  useEffect(() => {
+    const supabase = createClient();
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => router.refresh(), 400);
+    };
+    const channel = supabase
+      .channel("tasks-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "subtasks" },
+        refresh,
+      )
+      .subscribe();
+    return () => {
+      clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [router]);
 
   const visible = useMemo(
     () => sortTasks(filterTasks(tasks, filters)),

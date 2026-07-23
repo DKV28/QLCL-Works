@@ -7,6 +7,8 @@ import {
   listCommentsByTask,
 } from "@/lib/data/comments";
 import { listActivityByTask, recordActivity } from "@/lib/data/activity";
+import { createNotification } from "@/lib/data/notifications";
+import { getTaskTitle } from "@/lib/data/tasks";
 import type { ActivityEntry, Comment } from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -35,6 +37,12 @@ export async function addCommentAction(
       task_id: taskId,
       action: "binh_luan",
       detail: clean.length > 80 ? clean.slice(0, 80) + "…" : clean,
+    });
+    const title = await getTaskTitle(taskId);
+    await createNotification({
+      type: "binh_luan_moi",
+      task_id: taskId,
+      message: `Bình luận mới${title ? `: ${title}` : ""}`,
     });
   } catch (e) {
     return { ok: false, error: "Không gửi được bình luận." };

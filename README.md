@@ -30,6 +30,8 @@ Kiến trúc tách lớp:
      người phụ trách chính/hỗ trợ.
    - `0003_subtasks.sql` — nhiệm vụ con.
    - `0004_attachments.sql` — tệp đính kèm + bucket Storage `task-attachments` (private).
+   - `0005_comments_activity.sql` — bình luận + lịch sử hoạt động.
+   - `0006_notifications.sql` — thông báo in-app + bật Realtime cho tasks/subtasks/notifications.
    Khi có migration mới về sau, chạy tiếp theo số thứ tự.
 
 ### 2. Cấu hình biến môi trường
