@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { listTeams, teamDisplayName } from "./teams";
 import type {
   MemberLite,
+  Subtask,
   Task,
   TaskPriority,
   TaskStatus,
@@ -23,6 +24,7 @@ interface TaskRow extends Task {
         } | null;
       }[]
     | null;
+  subtasks: Subtask[] | null;
 }
 
 const SELECT_WITH_ASSIGNEES = `
@@ -30,11 +32,12 @@ const SELECT_WITH_ASSIGNEES = `
   task_assignees (
     is_primary,
     members ( id, full_name, team_id )
-  )
+  ),
+  subtasks ( id, task_id, title, is_done, sort_order, created_at, updated_at )
 `;
 
 function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
-  const { task_assignees, ...task } = row;
+  const { task_assignees, subtasks, ...task } = row;
 
   let primary: MemberLite | null = null;
   const supporters: MemberLite[] = [];
@@ -52,7 +55,12 @@ function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
   }
 
   supporters.sort((a, b) => a.full_name.localeCompare(b.full_name, "vi"));
-  return { ...(task as Task), primary, supporters };
+
+  const sortedSubtasks = [...(subtasks ?? [])].sort(
+    (a, b) => a.sort_order - b.sort_order,
+  );
+
+  return { ...(task as Task), primary, supporters, subtasks: sortedSubtasks };
 }
 
 /** Danh sách công việc của 1 dự án. */
@@ -151,6 +159,23 @@ export async function toggleComplete(
     .update({
       completed_at: completed ? new Date().toISOString() : null,
       status: completed ? "hoan_thanh" : "dang_lam",
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+/** Đặt trạng thái + đồng bộ completed_at (dùng cho kéo thả Kanban). */
+export async function setStatus(
+  id: string,
+  status: TaskStatus,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      status,
+      completed_at:
+        status === "hoan_thanh" ? new Date().toISOString() : null,
     })
     .eq("id", id);
   if (error) throw error;

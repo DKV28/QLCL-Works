@@ -68,11 +68,23 @@ export interface Task {
   deleted_at: string | null;
 }
 
+export interface Subtask {
+  id: string;
+  task_id: string;
+  title: string;
+  is_done: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Task kèm người phụ trách (join task_assignees -> members):
-// 1 người phụ trách chính (primary) + nhiều người hỗ trợ (supporters).
+// 1 người phụ trách chính (primary) + nhiều người hỗ trợ (supporters),
+// và danh sách nhiệm vụ con (subtasks).
 export interface TaskWithAssignees extends Task {
   primary: MemberLite | null;
   supporters: MemberLite[];
+  subtasks: Subtask[];
 }
 
 // --- Nhãn hiển thị tiếng Việt ---

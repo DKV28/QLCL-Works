@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   createTask,
+  setStatus,
   softDeleteTask,
   toggleComplete,
   updateTask,
@@ -78,6 +79,21 @@ export async function updateTaskAction(
 
   revalidatePath(`/du-an/${projectId}`);
   revalidatePath("/cong-viec");
+  return { ok: true };
+}
+
+/** Đổi trạng thái công việc (dùng khi kéo thả Kanban). */
+export async function updateTaskStatusAction(
+  id: string,
+  status: TaskStatus,
+): Promise<ActionResult> {
+  try {
+    await setStatus(id, status);
+  } catch (e) {
+    return { ok: false, error: "Không đổi được trạng thái." };
+  }
+  revalidatePath("/cong-viec");
+  revalidatePath("/du-an", "layout");
   return { ok: true };
 }
 

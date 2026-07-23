@@ -4,11 +4,14 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TaskTable } from "./TaskTable";
+import { KanbanBoard } from "./KanbanBoard";
 import { TaskForm } from "./TaskForm";
 import { Modal } from "@/components/ui/Modal";
 import { createTaskFromListAction } from "@/lib/actions/tasks";
 import { filterTasks, sortTasks, type TaskFilters } from "@/lib/logic/filters";
 import type { MemberLite, Project, TaskWithAssignees } from "@/lib/types";
+
+type ViewMode = "list" | "kanban";
 
 export function TasksView({
   tasks,
@@ -21,6 +24,7 @@ export function TasksView({
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const [view, setView] = useState<ViewMode>("list");
   const [filters, setFilters] = useState<TaskFilters>({});
 
   const visible = useMemo(
@@ -49,8 +53,32 @@ export function TasksView({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Công việc</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">Công việc</h1>
+          <div className="inline-flex rounded-md border border-gray-300 p-0.5 dark:border-gray-700">
+            <button
+              onClick={() => setView("list")}
+              className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                view === "list"
+                  ? "bg-brand text-white"
+                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+              }`}
+            >
+              Danh sách
+            </button>
+            <button
+              onClick={() => setView("kanban")}
+              className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                view === "kanban"
+                  ? "bg-brand text-white"
+                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+              }`}
+            >
+              Kanban
+            </button>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {visible.length}/{tasks.length} công việc
@@ -138,7 +166,11 @@ export function TasksView({
         </div>
       </div>
 
-      <TaskTable tasks={visible} members={members} />
+      {view === "list" ? (
+        <TaskTable tasks={visible} members={members} />
+      ) : (
+        <KanbanBoard tasks={visible} members={members} />
+      )}
 
       <Modal
         open={creating}

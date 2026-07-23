@@ -2,17 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Modal } from "@/components/ui/Modal";
 import {
   OverdueBadge,
   PriorityBadge,
   StatusBadge,
 } from "@/components/ui/Badges";
-import { TaskForm } from "./TaskForm";
+import { TaskEditModal } from "./TaskEditModal";
 import {
   deleteTaskAction,
   toggleCompleteAction,
-  updateTaskAction,
 } from "@/lib/actions/tasks";
 import { isOverdue } from "@/lib/logic/overdue";
 import type { MemberLite, TaskWithAssignees } from "@/lib/types";
@@ -31,7 +29,9 @@ export function TaskTable({
   members: MemberLite[];
 }) {
   const router = useRouter();
-  const [editing, setEditing] = useState<TaskWithAssignees | null>(null);
+  // Lưu id để lấy bản mới nhất từ props sau mỗi refresh (vd: thêm nhiệm vụ con).
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editing = tasks.find((t) => t.id === editingId) ?? null;
   const [, startTransition] = useTransition();
 
   function handleToggle(task: TaskWithAssignees, checked: boolean) {
@@ -106,6 +106,13 @@ export function TaskTable({
                       {t.description}
                     </div>
                   )}
+                  {t.subtasks.length > 0 && (
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Nhiệm vụ con:{" "}
+                      {t.subtasks.filter((s) => s.is_done).length}/
+                      {t.subtasks.length}
+                    </div>
+                  )}
                 </td>
                 <td className="p-3 align-top text-gray-700 dark:text-gray-300">
                   {t.primary ? (
@@ -145,7 +152,7 @@ export function TaskTable({
                   <div className="flex justify-end gap-2">
                     <button
                       className="btn-secondary text-xs"
-                      onClick={() => setEditing(t)}
+                      onClick={() => setEditingId(t.id)}
                     >
                       Sửa
                     </button>
@@ -163,23 +170,11 @@ export function TaskTable({
         </tbody>
       </table>
 
-      <Modal
-        open={editing !== null}
-        onClose={() => setEditing(null)}
-        title="Sửa công việc"
-      >
-        {editing && (
-          <TaskForm
-            task={editing}
-            members={members}
-            onSubmit={(fd) => updateTaskAction(editing.id, editing.project_id, fd)}
-            onDone={() => {
-              setEditing(null);
-              router.refresh();
-            }}
-          />
-        )}
-      </Modal>
+      <TaskEditModal
+        task={editing}
+        members={members}
+        onClose={() => setEditingId(null)}
+      />
     </div>
   );
 }
