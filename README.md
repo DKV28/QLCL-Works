@@ -63,8 +63,16 @@ Mở http://localhost:3000 → chuyển tới `/login`.
 ## Triển khai (Vercel)
 
 1. Đẩy repo lên GitHub, import vào Vercel.
-2. Thêm 3 biến môi trường ở trên vào **Vercel → Settings → Environment Variables**.
+2. Thêm 3 biến môi trường ở trên vào **Vercel → Settings → Environment Variables**
+   (chọn môi trường **Production**, và **Preview** nếu cần).
 3. Deploy.
+
+> ⚠️ **Bắt buộc:** phải thêm đủ biến môi trường **trước** khi build. Biến `NEXT_PUBLIC_*`
+> được nhúng vào bundle lúc build, nên nếu thêm/sửa biến sau khi đã deploy thì phải
+> **Redeploy** (Deployments → … → Redeploy) mới có hiệu lực.
+>
+> Nếu thiếu biến môi trường, app sẽ báo lỗi `500 — MIDDLEWARE_INVOCATION_FAILED` ở mọi
+> trang. Khắc phục: thêm đủ 3 biến rồi redeploy.
 
 ## Chống Supabase Free tự pause
 
