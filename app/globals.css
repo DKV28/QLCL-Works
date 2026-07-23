@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+/* Nút cơ bản */
+.btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-primary {
+  @apply btn bg-brand text-white hover:bg-brand-dark;
+}
+.btn-secondary {
+  @apply btn border border-gray-300 bg-white text-gray-700 hover:bg-gray-100;
+}
+.btn-danger {
+  @apply btn border border-red-300 bg-white text-red-600 hover:bg-red-50;
+}
+
+/* Ô nhập */
+.input {
+  @apply w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand;
+}
+.label {
+  @apply mb-1 block text-sm font-medium text-gray-700;
+}
+
+/* Thẻ */
+.card {
+  @apply rounded-lg border border-gray-200 bg-white shadow-sm;
+}
