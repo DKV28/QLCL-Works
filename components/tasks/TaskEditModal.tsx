@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { TaskForm } from "./TaskForm";
 import { SubtaskList } from "./SubtaskList";
+import { AttachmentList } from "./AttachmentList";
 import { updateTaskAction } from "@/lib/actions/tasks";
 import type { MemberLite, TaskWithAssignees } from "@/lib/types";
 
@@ -34,6 +35,9 @@ export function TaskEditModal({
           />
           <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
             <SubtaskList taskId={task.id} subtasks={task.subtasks} />
+          </div>
+          <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
+            <AttachmentList taskId={task.id} attachments={task.attachments} />
           </div>
         </div>
       )}

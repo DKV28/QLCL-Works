@@ -106,13 +106,18 @@ export function TaskTable({
                       {t.description}
                     </div>
                   )}
-                  {t.subtasks.length > 0 && (
-                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Nhiệm vụ con:{" "}
-                      {t.subtasks.filter((s) => s.is_done).length}/
-                      {t.subtasks.length}
-                    </div>
-                  )}
+                  <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">
+                    {t.subtasks.length > 0 && (
+                      <span>
+                        Nhiệm vụ con:{" "}
+                        {t.subtasks.filter((s) => s.is_done).length}/
+                        {t.subtasks.length}
+                      </span>
+                    )}
+                    {t.attachments.length > 0 && (
+                      <span>{t.attachments.length} tệp đính kèm</span>
+                    )}
+                  </div>
                 </td>
                 <td className="p-3 align-top text-gray-700 dark:text-gray-300">
                   {t.primary ? (

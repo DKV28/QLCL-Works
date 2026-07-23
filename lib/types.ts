@@ -78,14 +78,27 @@ export interface Subtask {
   updated_at: string;
 }
 
+export interface Attachment {
+  id: string;
+  task_id: string;
+  file_name: string;
+  storage_path: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  created_at: string;
+}
+
 // Task kèm người phụ trách (join task_assignees -> members):
 // 1 người phụ trách chính (primary) + nhiều người hỗ trợ (supporters),
-// và danh sách nhiệm vụ con (subtasks).
+// nhiệm vụ con (subtasks) và tệp đính kèm (attachments).
 export interface TaskWithAssignees extends Task {
   primary: MemberLite | null;
   supporters: MemberLite[];
   subtasks: Subtask[];
+  attachments: Attachment[];
 }
+
+export const ATTACHMENTS_BUCKET = "task-attachments";
 
 // --- Nhãn hiển thị tiếng Việt ---
 

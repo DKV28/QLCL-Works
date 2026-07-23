@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { listTeams, teamDisplayName } from "./teams";
 import type {
+  Attachment,
   MemberLite,
   Subtask,
   Task,
@@ -25,6 +26,7 @@ interface TaskRow extends Task {
       }[]
     | null;
   subtasks: Subtask[] | null;
+  attachments: Attachment[] | null;
 }
 
 const SELECT_WITH_ASSIGNEES = `
@@ -33,11 +35,12 @@ const SELECT_WITH_ASSIGNEES = `
     is_primary,
     members ( id, full_name, team_id )
   ),
-  subtasks ( id, task_id, title, is_done, sort_order, created_at, updated_at )
+  subtasks ( id, task_id, title, is_done, sort_order, created_at, updated_at ),
+  attachments ( id, task_id, file_name, storage_path, mime_type, size_bytes, created_at )
 `;
 
 function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
-  const { task_assignees, subtasks, ...task } = row;
+  const { task_assignees, subtasks, attachments, ...task } = row;
 
   let primary: MemberLite | null = null;
   const supporters: MemberLite[] = [];
@@ -60,7 +63,17 @@ function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
     (a, b) => a.sort_order - b.sort_order,
   );
 
-  return { ...(task as Task), primary, supporters, subtasks: sortedSubtasks };
+  const sortedAttachments = [...(attachments ?? [])].sort((a, b) =>
+    a.created_at.localeCompare(b.created_at),
+  );
+
+  return {
+    ...(task as Task),
+    primary,
+    supporters,
+    subtasks: sortedSubtasks,
+    attachments: sortedAttachments,
+  };
 }
 
 /** Danh sách công việc của 1 dự án. */
