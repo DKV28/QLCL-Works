@@ -5,13 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TaskTable } from "./TaskTable";
 import { KanbanBoard } from "./KanbanBoard";
+import { GanttChart } from "./GanttChart";
 import { TaskForm } from "./TaskForm";
 import { Modal } from "@/components/ui/Modal";
 import { createTaskFromListAction } from "@/lib/actions/tasks";
 import { filterTasks, sortTasks, type TaskFilters } from "@/lib/logic/filters";
 import type { MemberLite, Project, TaskWithAssignees } from "@/lib/types";
 
-type ViewMode = "list" | "kanban";
+type ViewMode = "list" | "kanban" | "gantt";
+
+const VIEW_LABELS: [ViewMode, string][] = [
+  ["list", "Danh sách"],
+  ["kanban", "Kanban"],
+  ["gantt", "Gantt"],
+];
 
 export function TasksView({
   tasks,
@@ -57,26 +64,19 @@ export function TasksView({
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold">Công việc</h1>
           <div className="inline-flex rounded-md border border-gray-300 p-0.5 dark:border-gray-700">
-            <button
-              onClick={() => setView("list")}
-              className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
-                view === "list"
-                  ? "bg-brand text-white"
-                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-              }`}
-            >
-              Danh sách
-            </button>
-            <button
-              onClick={() => setView("kanban")}
-              className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
-                view === "kanban"
-                  ? "bg-brand text-white"
-                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-              }`}
-            >
-              Kanban
-            </button>
+            {VIEW_LABELS.map(([mode, label]) => (
+              <button
+                key={mode}
+                onClick={() => setView(mode)}
+                className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                  view === mode
+                    ? "bg-brand text-white"
+                    : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -166,11 +166,9 @@ export function TasksView({
         </div>
       </div>
 
-      {view === "list" ? (
-        <TaskTable tasks={visible} members={members} />
-      ) : (
-        <KanbanBoard tasks={visible} members={members} />
-      )}
+      {view === "list" && <TaskTable tasks={visible} members={members} />}
+      {view === "kanban" && <KanbanBoard tasks={visible} members={members} />}
+      {view === "gantt" && <GanttChart tasks={visible} members={members} />}
 
       <Modal
         open={creating}

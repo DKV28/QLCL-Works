@@ -28,6 +28,8 @@ Kiến trúc tách lớp:
    - `0001_init.sql` — bảng lõi (dự án, công việc), trigger, RLS.
    - `0002_members.sql` — danh sách Nhân sự, cơ cấu team/tổ (seed sẵn 4 team + 2 tổ),
      người phụ trách chính/hỗ trợ.
+   - `0003_subtasks.sql` — nhiệm vụ con.
+   - `0004_attachments.sql` — tệp đính kèm + bucket Storage `task-attachments` (private).
    Khi có migration mới về sau, chạy tiếp theo số thứ tự.
 
 ### 2. Cấu hình biến môi trường
