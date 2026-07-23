@@ -1,10 +1,13 @@
-// Data access: tasks (kèm join task_assignees -> profiles).
+// Data access: tasks (kèm join task_assignees -> members).
 // Chỉ chứa query Supabase, không JSX.
 import { createClient } from "@/lib/supabase/server";
+import { listTeams, teamDisplayName } from "./teams";
 import type {
+  MemberLite,
   Task,
   TaskPriority,
   TaskStatus,
+  Team,
   TaskWithAssignees,
 } from "@/lib/types";
 
@@ -12,7 +15,12 @@ import type {
 interface TaskRow extends Task {
   task_assignees:
     | {
-        profiles: { id: string; full_name: string | null; email: string | null } | null;
+        is_primary: boolean;
+        members: {
+          id: string;
+          full_name: string;
+          team_id: string | null;
+        } | null;
       }[]
     | null;
 }
@@ -20,16 +28,31 @@ interface TaskRow extends Task {
 const SELECT_WITH_ASSIGNEES = `
   *,
   task_assignees (
-    profiles ( id, full_name, email )
+    is_primary,
+    members ( id, full_name, team_id )
   )
 `;
 
-function mapRow(row: TaskRow): TaskWithAssignees {
+function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
   const { task_assignees, ...task } = row;
-  const assignees = (task_assignees ?? [])
-    .map((ta) => ta.profiles)
-    .filter((p): p is NonNullable<typeof p> => p !== null);
-  return { ...(task as Task), assignees };
+
+  let primary: MemberLite | null = null;
+  const supporters: MemberLite[] = [];
+
+  for (const ta of task_assignees ?? []) {
+    if (!ta.members) continue;
+    const lite: MemberLite = {
+      id: ta.members.id,
+      full_name: ta.members.full_name,
+      team_id: ta.members.team_id,
+      team_name: teamDisplayName(ta.members.team_id, teams),
+    };
+    if (ta.is_primary) primary = lite;
+    else supporters.push(lite);
+  }
+
+  supporters.sort((a, b) => a.full_name.localeCompare(b.full_name, "vi"));
+  return { ...(task as Task), primary, supporters };
 }
 
 /** Danh sách công việc của 1 dự án. */
@@ -37,28 +60,34 @@ export async function listTasksByProject(
   projectId: string,
 ): Promise<TaskWithAssignees[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("tasks")
-    .select(SELECT_WITH_ASSIGNEES)
-    .eq("project_id", projectId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+  const [teams, res] = await Promise.all([
+    listTeams(),
+    supabase
+      .from("tasks")
+      .select(SELECT_WITH_ASSIGNEES)
+      .eq("project_id", projectId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+  ]);
 
-  if (error) throw error;
-  return ((data as unknown as TaskRow[]) ?? []).map(mapRow);
+  if (res.error) throw res.error;
+  return ((res.data as unknown as TaskRow[]) ?? []).map((r) => mapRow(r, teams));
 }
 
 /** Toàn bộ công việc (view Danh sách tổng, có lọc phía client). */
 export async function listAllTasks(): Promise<TaskWithAssignees[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("tasks")
-    .select(SELECT_WITH_ASSIGNEES)
-    .is("deleted_at", null)
-    .order("due_date", { ascending: true, nullsFirst: false });
+  const [teams, res] = await Promise.all([
+    listTeams(),
+    supabase
+      .from("tasks")
+      .select(SELECT_WITH_ASSIGNEES)
+      .is("deleted_at", null)
+      .order("due_date", { ascending: true, nullsFirst: false }),
+  ]);
 
-  if (error) throw error;
-  return ((data as unknown as TaskRow[]) ?? []).map(mapRow);
+  if (res.error) throw res.error;
+  return ((res.data as unknown as TaskRow[]) ?? []).map((r) => mapRow(r, teams));
 }
 
 export interface TaskInput {
@@ -69,12 +98,13 @@ export interface TaskInput {
   due_date?: string | null;
   priority?: TaskPriority;
   status?: TaskStatus;
-  assignee_id?: string | null; // V1: 1 người phụ trách
+  primary_member_id?: string | null; // người phụ trách chính (bắt buộc khi tạo)
+  support_member_ids?: string[]; // người hỗ trợ (tùy chọn)
 }
 
 export async function createTask(input: TaskInput): Promise<Task> {
   const supabase = createClient();
-  const { assignee_id, ...taskFields } = input;
+  const { primary_member_id, support_member_ids, ...taskFields } = input;
 
   const { data, error } = await supabase
     .from("tasks")
@@ -84,7 +114,7 @@ export async function createTask(input: TaskInput): Promise<Task> {
   if (error) throw error;
 
   const task = data as Task;
-  await setAssignee(task.id, assignee_id ?? null);
+  await setAssignees(task.id, primary_member_id ?? null, support_member_ids ?? []);
   return task;
 }
 
@@ -93,7 +123,7 @@ export async function updateTask(
   input: Partial<TaskInput>,
 ): Promise<Task> {
   const supabase = createClient();
-  const { assignee_id, ...taskFields } = input;
+  const { primary_member_id, support_member_ids, ...taskFields } = input;
 
   const { data, error } = await supabase
     .from("tasks")
@@ -103,8 +133,9 @@ export async function updateTask(
     .single();
   if (error) throw error;
 
-  if (assignee_id !== undefined) {
-    await setAssignee(id, assignee_id);
+  // Chỉ cập nhật người phụ trách khi form có gửi lên.
+  if (primary_member_id !== undefined || support_member_ids !== undefined) {
+    await setAssignees(id, primary_member_id ?? null, support_member_ids ?? []);
   }
   return data as Task;
 }
@@ -135,16 +166,29 @@ export async function softDeleteTask(id: string): Promise<void> {
 }
 
 /**
- * V1: mỗi công việc 1 người phụ trách. Xóa hết bản ghi cũ rồi thêm mới.
- * Cấu trúc này giữ nguyên khi V2 cho phép nhiều người (chỉ bỏ giới hạn UI).
+ * Gán người phụ trách: xóa hết bản ghi cũ rồi thêm mới —
+ * 1 dòng phụ trách chính (is_primary) + N dòng hỗ trợ (loại trùng primary).
  */
-async function setAssignee(taskId: string, userId: string | null): Promise<void> {
+async function setAssignees(
+  taskId: string,
+  primaryId: string | null,
+  supportIds: string[],
+): Promise<void> {
   const supabase = createClient();
   await supabase.from("task_assignees").delete().eq("task_id", taskId);
-  if (userId) {
-    const { error } = await supabase
-      .from("task_assignees")
-      .insert({ task_id: taskId, user_id: userId });
+
+  const rows: { task_id: string; member_id: string; is_primary: boolean }[] = [];
+  if (primaryId) {
+    rows.push({ task_id: taskId, member_id: primaryId, is_primary: true });
+  }
+  for (const sid of supportIds) {
+    if (sid && sid !== primaryId) {
+      rows.push({ task_id: taskId, member_id: sid, is_primary: false });
+    }
+  }
+
+  if (rows.length > 0) {
+    const { error } = await supabase.from("task_assignees").insert(rows);
     if (error) throw error;
   }
 }

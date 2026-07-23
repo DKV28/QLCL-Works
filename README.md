@@ -24,8 +24,11 @@ Kiến trúc tách lớp:
 ### 1. Tạo Supabase project
 
 1. Tạo project mới trên [supabase.com](https://supabase.com).
-2. Vào **SQL Editor**, dán toàn bộ nội dung `supabase/migrations/0001_init.sql` và chạy.
-   Lệnh này tạo bảng, trigger tự tạo hồ sơ người dùng, và bật RLS.
+2. Vào **SQL Editor**, chạy **lần lượt theo thứ tự** các file trong `supabase/migrations/`:
+   - `0001_init.sql` — bảng lõi (dự án, công việc), trigger, RLS.
+   - `0002_members.sql` — danh sách Nhân sự, cơ cấu team/tổ (seed sẵn 4 team + 2 tổ),
+     người phụ trách chính/hỗ trợ.
+   Khi có migration mới về sau, chạy tiếp theo số thứ tự.
 
 ### 2. Cấu hình biến môi trường
 

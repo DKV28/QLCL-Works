@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import {
   TASK_PRIORITY_OPTIONS,
   TASK_STATUS_OPTIONS,
-  type Profile,
+  type MemberLite,
   type Project,
   type TaskWithAssignees,
 } from "@/lib/types";
@@ -12,13 +13,13 @@ import type { ActionResult } from "@/lib/actions/tasks";
 
 export function TaskForm({
   task,
-  assignees,
+  members,
   projects,
   onSubmit,
   onDone,
 }: {
   task?: TaskWithAssignees;
-  assignees: Pick<Profile, "id" | "full_name" | "email">[];
+  members: MemberLite[];
   // Khi truyền vào (từ trang Danh sách tổng), form hiện ô chọn dự án.
   projects?: Pick<Project, "id" | "name">[];
   onSubmit: (formData: FormData) => Promise<ActionResult>;
@@ -26,6 +27,23 @@ export function TaskForm({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [primaryId, setPrimaryId] = useState(task?.primary?.id ?? "");
+
+  const initialSupporters = useMemo(
+    () => new Set((task?.supporters ?? []).map((s) => s.id)),
+    [task],
+  );
+
+  // Nhóm nhân sự theo team (members đã được sắp theo team rồi tên).
+  const groups = useMemo(() => {
+    const map = new Map<string, MemberLite[]>();
+    for (const m of members) {
+      const key = m.team_name ?? "Chưa phân nhóm";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(m);
+    }
+    return Array.from(map.entries());
+  }, [members]);
 
   function handleAction(formData: FormData) {
     setError(null);
@@ -36,7 +54,20 @@ export function TaskForm({
     });
   }
 
-  const currentAssignee = task?.assignees[0]?.id ?? "";
+  if (members.length === 0) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          Chưa có nhân sự nào trong danh sách. Hãy thêm nhân sự trước khi giao việc.
+        </p>
+        <div className="flex justify-end">
+          <Link href="/quan-tri/nhan-su" className="btn-primary">
+            Tới trang Nhân sự
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form action={handleAction} className="space-y-4">
@@ -89,22 +120,64 @@ export function TaskForm({
       </div>
 
       <div>
-        <label className="label" htmlFor="assignee_id">
-          Người phụ trách
+        <label className="label" htmlFor="primary_member_id">
+          Người phụ trách chính <span className="text-red-500">*</span>
         </label>
         <select
-          id="assignee_id"
-          name="assignee_id"
-          defaultValue={currentAssignee}
+          id="primary_member_id"
+          name="primary_member_id"
+          required
+          value={primaryId}
+          onChange={(e) => setPrimaryId(e.target.value)}
           className="input"
         >
-          <option value="">— Chưa giao —</option>
-          {assignees.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.full_name || a.email}
-            </option>
+          <option value="">— Chọn người phụ trách chính —</option>
+          {groups.map(([team, ms]) => (
+            <optgroup key={team} label={team}>
+              {ms.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.full_name}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label className="label">Người hỗ trợ</label>
+        <div className="max-h-52 overflow-y-auto rounded-md border border-gray-300 p-2 dark:border-gray-700">
+          {groups.map(([team, ms]) => (
+            <div key={team} className="mb-2 last:mb-0">
+              <div className="px-1 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                {team}
+              </div>
+              {ms.map((m) => (
+                <label
+                  key={m.id}
+                  className={`flex items-center gap-2 rounded px-1 py-1 text-sm ${
+                    m.id === primaryId
+                      ? "text-gray-400 dark:text-gray-600"
+                      : "text-gray-700 dark:text-gray-200"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    name="support_member_ids"
+                    value={m.id}
+                    defaultChecked={initialSupporters.has(m.id)}
+                    disabled={m.id === primaryId}
+                    className="h-4 w-4 accent-brand"
+                  />
+                  {m.full_name}
+                  {m.id === primaryId && (
+                    <span className="text-xs">(phụ trách chính)</span>
+                  )}
+                </label>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

@@ -8,15 +8,15 @@ import { TaskForm } from "./TaskForm";
 import { Modal } from "@/components/ui/Modal";
 import { createTaskFromListAction } from "@/lib/actions/tasks";
 import { filterTasks, sortTasks, type TaskFilters } from "@/lib/logic/filters";
-import type { Profile, Project, TaskWithAssignees } from "@/lib/types";
+import type { MemberLite, Project, TaskWithAssignees } from "@/lib/types";
 
 export function TasksView({
   tasks,
-  assignees,
+  members,
   projects,
 }: {
   tasks: TaskWithAssignees[];
-  assignees: Pick<Profile, "id" | "full_name" | "email">[];
+  members: MemberLite[];
   projects: Pick<Project, "id" | "name">[];
 }) {
   const router = useRouter();
@@ -27,6 +27,17 @@ export function TasksView({
     () => sortTasks(filterTasks(tasks, filters)),
     [tasks, filters],
   );
+
+  // Danh sách team duy nhất (từ nhân sự) cho bộ lọc theo team.
+  const teamOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of members) {
+      if (m.team_id && m.team_name) map.set(m.team_id, m.team_name);
+    }
+    return Array.from(map.entries()).sort((a, b) =>
+      a[1].localeCompare(b[1], "vi"),
+    );
+  }, [members]);
 
   function update(patch: Partial<TaskFilters>) {
     setFilters((f) => ({ ...f, ...patch }));
@@ -51,7 +62,7 @@ export function TasksView({
       </div>
 
       <div className="card mb-4 p-4">
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <div>
             <label className="label">Từ khóa</label>
             <input
@@ -69,9 +80,24 @@ export function TasksView({
               onChange={(e) => update({ assigneeId: e.target.value })}
             >
               <option value="">Tất cả</option>
-              {assignees.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.full_name || a.email}
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Team</label>
+            <select
+              className="input"
+              value={filters.teamId ?? ""}
+              onChange={(e) => update({ teamId: e.target.value })}
+            >
+              <option value="">Tất cả</option>
+              {teamOptions.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
                 </option>
               ))}
             </select>
@@ -112,7 +138,7 @@ export function TasksView({
         </div>
       </div>
 
-      <TaskTable tasks={visible} assignees={assignees} />
+      <TaskTable tasks={visible} members={members} />
 
       <Modal
         open={creating}
@@ -132,7 +158,7 @@ export function TasksView({
           </div>
         ) : (
           <TaskForm
-            assignees={assignees}
+            members={members}
             projects={projects}
             onSubmit={createTaskFromListAction}
             onDone={() => {

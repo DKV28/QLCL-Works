@@ -3,11 +3,17 @@ import type { TaskWithAssignees } from "@/lib/types";
 import { isOverdue } from "./overdue";
 
 export interface TaskFilters {
-  assigneeId?: string; // "" = tất cả
+  assigneeId?: string; // "" = tất cả (khớp cả phụ trách chính lẫn hỗ trợ)
+  teamId?: string; // "" = tất cả (khớp team của bất kỳ người phụ trách nào)
   fromDate?: string; // lọc theo due_date >= fromDate
   toDate?: string; // lọc theo due_date <= toDate
   keyword?: string; // tìm trong tên + mô tả
   onlyOverdue?: boolean;
+}
+
+/** Tất cả người phụ trách (chính + hỗ trợ) của một công việc. */
+function allAssignees(t: TaskWithAssignees) {
+  return t.primary ? [t.primary, ...t.supporters] : t.supporters;
 }
 
 export function filterTasks(
@@ -17,7 +23,11 @@ export function filterTasks(
   const kw = f.keyword?.trim().toLowerCase();
 
   return tasks.filter((t) => {
-    if (f.assigneeId && !t.assignees.some((a) => a.id === f.assigneeId)) {
+    const people = allAssignees(t);
+    if (f.assigneeId && !people.some((a) => a.id === f.assigneeId)) {
+      return false;
+    }
+    if (f.teamId && !people.some((a) => a.team_id === f.teamId)) {
       return false;
     }
     if (f.fromDate && (!t.due_date || t.due_date < f.fromDate)) return false;

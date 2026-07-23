@@ -15,7 +15,7 @@ import {
   updateTaskAction,
 } from "@/lib/actions/tasks";
 import { isOverdue } from "@/lib/logic/overdue";
-import type { Profile, TaskWithAssignees } from "@/lib/types";
+import type { MemberLite, TaskWithAssignees } from "@/lib/types";
 
 function formatDate(d: string | null): string {
   if (!d) return "—";
@@ -25,10 +25,10 @@ function formatDate(d: string | null): string {
 
 export function TaskTable({
   tasks,
-  assignees,
+  members,
 }: {
   tasks: TaskWithAssignees[];
-  assignees: Pick<Profile, "id" | "full_name" | "email">[];
+  members: MemberLite[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<TaskWithAssignees | null>(null);
@@ -108,11 +108,24 @@ export function TaskTable({
                   )}
                 </td>
                 <td className="p-3 align-top text-gray-700 dark:text-gray-300">
-                  {t.assignees.length > 0
-                    ? t.assignees
-                        .map((a) => a.full_name || a.email)
-                        .join(", ")
-                    : "—"}
+                  {t.primary ? (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {t.primary.full_name}
+                        <span className="ml-1 text-xs font-normal text-gray-400 dark:text-gray-500">
+                          (chính)
+                        </span>
+                      </span>
+                      {t.supporters.length > 0 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          Hỗ trợ:{" "}
+                          {t.supporters.map((s) => s.full_name).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td className="p-3 align-top">
                   <div className="flex flex-col gap-1">
@@ -158,7 +171,7 @@ export function TaskTable({
         {editing && (
           <TaskForm
             task={editing}
-            assignees={assignees}
+            members={members}
             onSubmit={(fd) => updateTaskAction(editing.id, editing.project_id, fd)}
             onDone={() => {
               setEditing(null);

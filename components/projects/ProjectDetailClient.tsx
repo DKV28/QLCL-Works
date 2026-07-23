@@ -8,16 +8,16 @@ import { ProjectStatusBadge } from "@/components/ui/Badges";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskTable } from "@/components/tasks/TaskTable";
 import { createTaskAction } from "@/lib/actions/tasks";
-import type { Profile, Project, TaskWithAssignees } from "@/lib/types";
+import type { MemberLite, Project, TaskWithAssignees } from "@/lib/types";
 
 export function ProjectDetailClient({
   project,
   tasks,
-  assignees,
+  members,
 }: {
   project: Project;
   tasks: TaskWithAssignees[];
-  assignees: Pick<Profile, "id" | "full_name" | "email">[];
+  members: MemberLite[];
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
@@ -47,7 +47,7 @@ export function ProjectDetailClient({
         </button>
       </div>
 
-      <TaskTable tasks={tasks} assignees={assignees} />
+      <TaskTable tasks={tasks} members={members} />
 
       <Modal
         open={creating}
@@ -55,7 +55,7 @@ export function ProjectDetailClient({
         title="Thêm công việc"
       >
         <TaskForm
-          assignees={assignees}
+          members={members}
           onSubmit={(fd) => createTaskAction(project.id, fd)}
           onDone={() => {
             setCreating(false);

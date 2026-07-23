@@ -21,7 +21,11 @@ function parseTaskForm(formData: FormData) {
       "trung_binh") as TaskPriority,
     status: (String(formData.get("status") ?? "chua_bat_dau") ||
       "chua_bat_dau") as TaskStatus,
-    assignee_id: String(formData.get("assignee_id") ?? "") || null,
+    primary_member_id: String(formData.get("primary_member_id") ?? "") || null,
+    support_member_ids: formData
+      .getAll("support_member_ids")
+      .map((v) => String(v))
+      .filter(Boolean),
   };
 }
 
@@ -32,6 +36,8 @@ export async function createTaskAction(
   const fields = parseTaskForm(formData);
   if (!fields.title)
     return { ok: false, error: "Tên công việc không được để trống." };
+  if (!fields.primary_member_id)
+    return { ok: false, error: "Vui lòng chọn người phụ trách chính." };
 
   try {
     await createTask({ project_id: projectId, ...fields });
@@ -61,6 +67,8 @@ export async function updateTaskAction(
   const fields = parseTaskForm(formData);
   if (!fields.title)
     return { ok: false, error: "Tên công việc không được để trống." };
+  if (!fields.primary_member_id)
+    return { ok: false, error: "Vui lòng chọn người phụ trách chính." };
 
   try {
     await updateTask(id, fields);

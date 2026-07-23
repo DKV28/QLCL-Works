@@ -16,6 +16,31 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  created_at: string;
+}
+
+export interface Member {
+  id: string;
+  full_name: string;
+  team_id: string | null;
+  is_active: boolean;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Nhân sự rút gọn để hiển thị/chọn (kèm tên team đã tính đường dẫn)
+export interface MemberLite {
+  id: string;
+  full_name: string;
+  team_id: string | null;
+  team_name: string | null; // "Tân Bình / Ngoại trú" hoặc "Quận 7"
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -43,9 +68,11 @@ export interface Task {
   deleted_at: string | null;
 }
 
-// Task kèm danh sách người phụ trách (join task_assignees -> profiles)
+// Task kèm người phụ trách (join task_assignees -> members):
+// 1 người phụ trách chính (primary) + nhiều người hỗ trợ (supporters).
 export interface TaskWithAssignees extends Task {
-  assignees: Pick<Profile, "id" | "full_name" | "email">[];
+  primary: MemberLite | null;
+  supporters: MemberLite[];
 }
 
 // --- Nhãn hiển thị tiếng Việt ---
