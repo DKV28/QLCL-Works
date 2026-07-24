@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  createNextRecurrence,
   createTask,
   duplicateTask,
   setStatus,
@@ -11,7 +12,12 @@ import {
 } from "@/lib/data/tasks";
 import { recordActivity } from "@/lib/data/activity";
 import { createNotification } from "@/lib/data/notifications";
-import { TASK_STATUS_LABEL, type TaskPriority, type TaskStatus } from "@/lib/types";
+import {
+  TASK_STATUS_LABEL,
+  type TaskPriority,
+  type TaskRepeat,
+  type TaskStatus,
+} from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -25,6 +31,7 @@ function parseTaskForm(formData: FormData) {
       "trung_binh") as TaskPriority,
     status: (String(formData.get("status") ?? "chua_bat_dau") ||
       "chua_bat_dau") as TaskStatus,
+    repeat: (String(formData.get("repeat") ?? "none") || "none") as TaskRepeat,
     primary_member_id: String(formData.get("primary_member_id") ?? "") || null,
     support_member_ids: formData
       .getAll("support_member_ids")
@@ -38,7 +45,7 @@ function parseTaskForm(formData: FormData) {
 }
 
 export async function createTaskAction(
-  projectId: string,
+  projectId: string | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const fields = parseTaskForm(formData);
@@ -65,23 +72,22 @@ export async function createTaskAction(
     return { ok: false, error: "Không tạo được công việc." };
   }
 
-  revalidatePath(`/du-an/${projectId}`);
+  if (projectId) revalidatePath(`/du-an/${projectId}`);
   revalidatePath("/cong-viec");
   return { ok: true };
 }
 
-/** Tạo công việc từ trang Danh sách tổng — dự án lấy từ form (project_id). */
+/** Tạo công việc từ trang Danh sách tổng — dự án là tùy chọn. */
 export async function createTaskFromListAction(
   formData: FormData,
 ): Promise<ActionResult> {
-  const projectId = String(formData.get("project_id") ?? "");
-  if (!projectId) return { ok: false, error: "Vui lòng chọn dự án." };
+  const projectId = String(formData.get("project_id") ?? "") || null;
   return createTaskAction(projectId, formData);
 }
 
 export async function updateTaskAction(
   id: string,
-  projectId: string,
+  projectId: string | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const fields = parseTaskForm(formData);
@@ -102,14 +108,14 @@ export async function updateTaskAction(
     return { ok: false, error: "Không cập nhật được công việc." };
   }
 
-  revalidatePath(`/du-an/${projectId}`);
+  if (projectId) revalidatePath(`/du-an/${projectId}`);
   revalidatePath("/cong-viec");
   return { ok: true };
 }
 
 export async function duplicateTaskAction(
   taskId: string,
-  projectId: string,
+  projectId: string | null,
 ): Promise<ActionResult> {
   try {
     const created = await duplicateTask(taskId);
@@ -122,7 +128,7 @@ export async function duplicateTaskAction(
   } catch (e) {
     return { ok: false, error: "Không nhân bản được công việc." };
   }
-  revalidatePath(`/du-an/${projectId}`);
+  if (projectId) revalidatePath(`/du-an/${projectId}`);
   revalidatePath("/cong-viec");
   return { ok: true };
 }
@@ -139,6 +145,8 @@ export async function updateTaskStatusAction(
       action: "doi_trang_thai",
       detail: TASK_STATUS_LABEL[status],
     });
+    // Kéo sang "Hoàn thành" -> sinh lần lặp kế tiếp nếu có.
+    if (status === "hoan_thanh") await createNextRecurrence(id);
   } catch (e) {
     return { ok: false, error: "Không đổi được trạng thái." };
   }
@@ -157,6 +165,8 @@ export async function toggleCompleteAction(
       task_id: id,
       action: completed ? "danh_dau_hoan_thanh" : "mo_lai",
     });
+    // Đánh dấu hoàn thành -> sinh lần lặp kế tiếp nếu có.
+    if (completed) await createNextRecurrence(id);
   } catch (e) {
     return { ok: false, error: "Không cập nhật được trạng thái." };
   }
@@ -167,14 +177,14 @@ export async function toggleCompleteAction(
 
 export async function deleteTaskAction(
   id: string,
-  projectId: string,
+  projectId: string | null,
 ): Promise<ActionResult> {
   try {
     await softDeleteTask(id);
   } catch (e) {
     return { ok: false, error: "Không xóa được công việc." };
   }
-  revalidatePath(`/du-an/${projectId}`);
+  if (projectId) revalidatePath(`/du-an/${projectId}`);
   revalidatePath("/cong-viec");
   return { ok: true };
 }

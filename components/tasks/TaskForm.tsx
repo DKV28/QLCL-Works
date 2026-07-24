@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   TASK_PRIORITY_OPTIONS,
+  TASK_REPEAT_OPTIONS,
   TASK_STATUS_OPTIONS,
   type MemberLite,
   type Project,
@@ -83,28 +84,6 @@ export function TaskForm({
 
   return (
     <form action={handleAction} className="space-y-4">
-      {projects && (
-        <div>
-          <label className="label" htmlFor="project_id">
-            Dự án <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="project_id"
-            name="project_id"
-            required
-            defaultValue={task?.project_id ?? ""}
-            className="input"
-          >
-            <option value="">— Chọn dự án —</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
       <div>
         <label className="label" htmlFor="title">
           Tên công việc <span className="text-red-500">*</span>
@@ -279,6 +258,46 @@ export function TaskForm({
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="label" htmlFor="repeat">
+            Lặp lại
+          </label>
+          <select
+            id="repeat"
+            name="repeat"
+            defaultValue={task?.repeat ?? "none"}
+            className="input"
+          >
+            {TASK_REPEAT_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {projects && (
+          <div>
+            <label className="label" htmlFor="project_id">
+              Dự án <span className="text-gray-400">(tùy chọn)</span>
+            </label>
+            <select
+              id="project_id"
+              name="project_id"
+              defaultValue={task?.project_id ?? ""}
+              className="input"
+            >
+              <option value="">— Không thuộc dự án —</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

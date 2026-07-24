@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { listTeams, teamDisplayName } from "./teams";
 import { setTaskTags } from "./tags";
+import { todayISO } from "@/lib/logic/overdue";
 import type {
   Attachment,
   MemberLite,
@@ -10,6 +11,7 @@ import type {
   Tag,
   Task,
   TaskPriority,
+  TaskRepeat,
   TaskStatus,
   Team,
   TaskWithAssignees,
@@ -132,13 +134,14 @@ export async function listAllTasks(): Promise<TaskWithAssignees[]> {
 }
 
 export interface TaskInput {
-  project_id: string;
+  project_id: string | null; // dự án là tùy chọn
   title: string;
   description?: string | null;
   start_date?: string | null;
   due_date?: string | null;
   priority?: TaskPriority;
   status?: TaskStatus;
+  repeat?: TaskRepeat;
   primary_member_id?: string | null; // người phụ trách chính (bắt buộc khi tạo)
   support_member_ids?: string[]; // người hỗ trợ (tùy chọn)
   tag_ids?: string[]; // nhãn (tùy chọn)
@@ -202,6 +205,83 @@ export async function toggleComplete(
     })
     .eq("id", id);
   if (error) throw error;
+}
+
+function shiftISODate(iso: string, repeat: TaskRepeat): string {
+  const d = new Date(iso + "T00:00:00Z");
+  if (repeat === "daily") d.setUTCDate(d.getUTCDate() + 1);
+  else if (repeat === "weekly") d.setUTCDate(d.getUTCDate() + 7);
+  else if (repeat === "monthly") d.setUTCMonth(d.getUTCMonth() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+interface RecurSrc extends Task {
+  task_assignees: { member_id: string; is_primary: boolean }[] | null;
+  subtasks: { title: string; sort_order: number }[] | null;
+  task_tags: { tag_id: string }[] | null;
+}
+
+/**
+ * Khi hoàn thành một công việc có lặp lại (giống Microsoft To Do): tự tạo
+ * lần kế tiếp với mốc ngày dời theo chu kỳ, giữ người phụ trách/nhãn/nhiệm vụ con.
+ */
+export async function createNextRecurrence(taskId: string): Promise<void> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("tasks")
+    .select(
+      "*, task_assignees ( member_id, is_primary ), subtasks ( title, sort_order ), task_tags ( tag_id )",
+    )
+    .eq("id", taskId)
+    .single();
+  if (!data) return;
+  const src = data as unknown as RecurSrc;
+  if (!src.repeat || src.repeat === "none") return;
+
+  const anchor = src.due_date ?? src.start_date ?? todayISO();
+  const nextDue = shiftISODate(anchor, src.repeat);
+  const nextStart = src.start_date
+    ? shiftISODate(src.start_date, src.repeat)
+    : null;
+
+  const { data: created, error } = await supabase
+    .from("tasks")
+    .insert({
+      project_id: src.project_id,
+      title: src.title,
+      description: src.description,
+      start_date: nextStart,
+      due_date: src.due_date ? nextDue : null,
+      priority: src.priority,
+      status: "chua_bat_dau",
+      repeat: src.repeat,
+      completed_at: null,
+    })
+    .select("id")
+    .single();
+  if (error || !created) return;
+  const newId = (created as { id: string }).id;
+
+  const assignees = (src.task_assignees ?? []).map((a) => ({
+    task_id: newId,
+    member_id: a.member_id,
+    is_primary: a.is_primary,
+  }));
+  if (assignees.length) await supabase.from("task_assignees").insert(assignees);
+
+  const subs = (src.subtasks ?? []).map((st) => ({
+    task_id: newId,
+    title: st.title,
+    sort_order: st.sort_order,
+    is_done: false,
+  }));
+  if (subs.length) await supabase.from("subtasks").insert(subs);
+
+  const tagRows = (src.task_tags ?? []).map((tt) => ({
+    task_id: newId,
+    tag_id: tt.tag_id,
+  }));
+  if (tagRows.length) await supabase.from("task_tags").insert(tagRows);
 }
 
 export async function getTaskTitle(id: string): Promise<string | null> {

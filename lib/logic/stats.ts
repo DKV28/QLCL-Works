@@ -92,8 +92,10 @@ export function completionByProject(
   projectName: (id: string) => string | undefined,
 ): GroupStat[] {
   return groupCompletion(tasks, (t) => ({
-    key: t.project_id,
-    label: projectName(t.project_id) ?? "Dự án khác",
+    key: t.project_id ?? "none",
+    label: t.project_id
+      ? (projectName(t.project_id) ?? "Dự án khác")
+      : "Không thuộc dự án",
   }));
 }
 

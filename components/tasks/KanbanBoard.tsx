@@ -133,7 +133,7 @@ function KanbanColumn({
           <KanbanCard
             key={t.id}
             task={t}
-            projectName={projectNameOf(t.project_id)}
+            projectName={t.project_id ? projectNameOf(t.project_id) : undefined}
             onEdit={onEdit}
           />
         ))}

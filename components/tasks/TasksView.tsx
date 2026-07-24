@@ -243,28 +243,15 @@ export function TasksView({
         onClose={() => setCreating(false)}
         title="Thêm công việc"
       >
-        {projects.length === 0 ? (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Chưa có dự án nào. Hãy tạo một dự án trước khi thêm công việc.
-            </p>
-            <div className="flex justify-end">
-              <Link href="/du-an" className="btn-primary">
-                Tới trang Dự án
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <TaskForm
-            members={members}
-            projects={projects}
-            onSubmit={createTaskFromListAction}
-            onDone={() => {
-              setCreating(false);
-              router.refresh();
-            }}
-          />
-        )}
+        <TaskForm
+          members={members}
+          projects={projects}
+          onSubmit={createTaskFromListAction}
+          onDone={() => {
+            setCreating(false);
+            router.refresh();
+          }}
+        />
       </Modal>
     </div>
   );

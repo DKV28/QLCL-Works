@@ -5,6 +5,7 @@ export type Role = "admin" | "manager" | "staff";
 export type ProjectStatus = "dang_thuc_hien" | "hoan_thanh" | "tam_dung";
 export type TaskPriority = "cao" | "trung_binh" | "thap";
 export type TaskStatus = "chua_bat_dau" | "dang_lam" | "hoan_thanh";
+export type TaskRepeat = "none" | "daily" | "weekly" | "monthly";
 
 export interface Profile {
   id: string;
@@ -55,13 +56,14 @@ export interface Project {
 
 export interface Task {
   id: string;
-  project_id: string;
+  project_id: string | null;
   title: string;
   description: string | null;
   start_date: string | null;
   due_date: string | null;
   priority: TaskPriority;
   status: TaskStatus;
+  repeat: TaskRepeat;
   completed_at: string | null;
   created_by: string | null;
   created_at: string;
@@ -164,6 +166,18 @@ export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   dang_lam: "Đang làm",
   hoan_thanh: "Hoàn thành",
 };
+
+export const TASK_REPEAT_LABEL: Record<TaskRepeat, string> = {
+  none: "Không lặp",
+  daily: "Hằng ngày",
+  weekly: "Hằng tuần",
+  monthly: "Hằng tháng",
+};
+
+export const TASK_REPEAT_OPTIONS = Object.entries(TASK_REPEAT_LABEL) as [
+  TaskRepeat,
+  string,
+][];
 
 export const PROJECT_STATUS_OPTIONS = Object.entries(PROJECT_STATUS_LABEL) as [
   ProjectStatus,
