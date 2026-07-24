@@ -32,6 +32,7 @@ function parseTaskForm(formData: FormData) {
     status: (String(formData.get("status") ?? "chua_bat_dau") ||
       "chua_bat_dau") as TaskStatus,
     repeat: (String(formData.get("repeat") ?? "none") || "none") as TaskRepeat,
+    is_arising: formData.get("is_arising") === "on",
     primary_member_id: String(formData.get("primary_member_id") ?? "") || null,
     support_member_ids: formData
       .getAll("support_member_ids")

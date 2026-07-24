@@ -64,6 +64,7 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   repeat: TaskRepeat;
+  is_arising: boolean;
   completed_at: string | null;
   created_by: string | null;
   created_at: string;

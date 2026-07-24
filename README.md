@@ -34,6 +34,8 @@ Kiến trúc tách lớp:
    - `0006_notifications.sql` — thông báo in-app + bật Realtime cho tasks/subtasks/notifications.
    - `0007_tags.sql` — nhãn (tags) cho công việc.
    - `0008_templates.sql` — thư viện mẫu (đánh dấu dự án là mẫu).
+   - `0009_recurring_optional_project.sql` — dự án tùy chọn + công việc lặp lại.
+   - `0010_arising.sql` — đánh dấu công việc "phát sinh" (cho báo cáo tuần).
    Khi có migration mới về sau, chạy tiếp theo số thứ tự.
 
 ### 2. Cấu hình biến môi trường

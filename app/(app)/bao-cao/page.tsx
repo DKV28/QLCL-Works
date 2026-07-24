@@ -1,4 +1,4 @@
-import { DashboardClient } from "@/components/reports/DashboardClient";
+import { ReportsClient } from "@/components/reports/ReportsClient";
 import { listAllTasks } from "@/lib/data/tasks";
 import { listActiveMemberLites } from "@/lib/data/members";
 import { listProjects } from "@/lib/data/projects";
@@ -15,10 +15,6 @@ export default async function ReportPage() {
   const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }));
 
   return (
-    <DashboardClient
-      tasks={tasks}
-      members={members}
-      projects={projectOptions}
-    />
+    <ReportsClient tasks={tasks} members={members} projects={projectOptions} />
   );
 }

@@ -142,6 +142,7 @@ export interface TaskInput {
   priority?: TaskPriority;
   status?: TaskStatus;
   repeat?: TaskRepeat;
+  is_arising?: boolean; // công việc phát sinh (ngoài kế hoạch)
   primary_member_id?: string | null; // người phụ trách chính (bắt buộc khi tạo)
   support_member_ids?: string[]; // người hỗ trợ (tùy chọn)
   tag_ids?: string[]; // nhãn (tùy chọn)

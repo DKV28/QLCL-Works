@@ -300,6 +300,16 @@ export function TaskForm({
         )}
       </div>
 
+      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+        <input
+          type="checkbox"
+          name="is_arising"
+          defaultChecked={task?.is_arising ?? false}
+          className="h-4 w-4 accent-brand"
+        />
+        Công việc phát sinh (ngoài kế hoạch)
+      </label>
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex justify-end gap-2 pt-2">
