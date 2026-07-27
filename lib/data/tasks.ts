@@ -164,8 +164,10 @@ export async function createTask(input: TaskInput): Promise<Task> {
   if (error) throw error;
 
   const task = data as Task;
-  await setAssignees(task.id, primary_member_id ?? null, support_member_ids ?? []);
-  await setTaskTags(task.id, tag_ids ?? []);
+  await Promise.all([
+    setAssignees(task.id, primary_member_id ?? null, support_member_ids ?? []),
+    setTaskTags(task.id, tag_ids ?? []),
+  ]);
   return task;
 }
 
@@ -186,12 +188,14 @@ export async function updateTask(
   if (error) throw error;
 
   // Chỉ cập nhật người phụ trách khi form có gửi lên.
+  const relatedUpdates: Promise<void>[] = [];
   if (primary_member_id !== undefined || support_member_ids !== undefined) {
-    await setAssignees(id, primary_member_id ?? null, support_member_ids ?? []);
+    relatedUpdates.push(
+      setAssignees(id, primary_member_id ?? null, support_member_ids ?? []),
+    );
   }
-  if (tag_ids !== undefined) {
-    await setTaskTags(id, tag_ids);
-  }
+  if (tag_ids !== undefined) relatedUpdates.push(setTaskTags(id, tag_ids));
+  await Promise.all(relatedUpdates);
   return data as Task;
 }
 

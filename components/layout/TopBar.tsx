@@ -6,7 +6,7 @@ import type { Profile } from "@/lib/types";
 const ROLE_LABEL: Record<string, string> = {
   admin: "Quản trị viên",
   manager: "Quản lý",
-  staff: "Nhân viên",
+  staff: "Thành viên",
 };
 
 export function TopBar({ profile }: { profile: Profile }) {

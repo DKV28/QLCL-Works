@@ -35,7 +35,7 @@ export async function createUserAction(
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.auth.admin.createUser({
+  const { data, error } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
@@ -49,6 +49,19 @@ export async function createUserAction(
         ? "Email này đã tồn tại."
         : "Không tạo được tài khoản. Vui lòng thử lại.",
     };
+  }
+
+  if (data.user && role !== "staff") {
+    const { error: roleError } = await admin
+      .from("profiles")
+      .update({ role })
+      .eq("id", data.user.id);
+    if (roleError) {
+      return {
+        ok: false,
+        error: "Đã tạo tài khoản nhưng chưa cập nhật được quyền. Vui lòng chỉnh quyền trong danh sách.",
+      };
+    }
   }
 
   revalidatePath("/quan-tri/nguoi-dung");

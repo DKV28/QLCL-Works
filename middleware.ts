@@ -48,6 +48,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublic =
     path === "/login" ||
+    path === "/dang-ky" ||
     path.startsWith("/api/health") ||
     path.startsWith("/_next") ||
     path.startsWith("/favicon");
@@ -60,7 +61,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Đã đăng nhập mà vào /login -> đẩy về trang chủ
-  if (user && path === "/login") {
+  if (user && (path === "/login" || path === "/dang-ky")) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/";
     return NextResponse.redirect(redirectUrl);

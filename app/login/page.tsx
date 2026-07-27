@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/auth/LoginForm";
+import Link from "next/link";
 
 export default function LoginPage() {
   return (
@@ -13,8 +14,11 @@ export default function LoginPage() {
         <div className="card p-6">
           <LoginForm />
         </div>
-        <p className="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
-          Chưa có tài khoản? Liên hệ quản trị viên để được cấp.
+        <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          Chưa có tài khoản?{" "}
+          <Link href="/dang-ky" className="font-medium text-brand hover:underline">
+            Đăng ký Thành viên
+          </Link>
         </p>
       </div>
     </main>

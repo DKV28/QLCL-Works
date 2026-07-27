@@ -3,7 +3,13 @@
 import { useMemo, useState } from "react";
 import { TaskEditModal } from "./TaskEditModal";
 import { isOverdue, todayISO } from "@/lib/logic/overdue";
-import type { MemberLite, TaskWithAssignees } from "@/lib/types";
+import type {
+  MemberLite,
+  Tag,
+  TaskPrioritySetting,
+  TaskStatusSetting,
+  TaskWithAssignees,
+} from "@/lib/types";
 
 const LABEL_W = 200;
 const DAY_W = 32;
@@ -27,9 +33,15 @@ const MONTHS = [
 export function GanttChart({
   tasks,
   members,
+  tags,
+  prioritySettings,
+  statusSettings,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
+  tags: Tag[];
+  prioritySettings: TaskPrioritySetting[];
+  statusSettings: TaskStatusSetting[];
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const editing = tasks.find((t) => t.id === editingId) ?? null;
@@ -206,6 +218,9 @@ export function GanttChart({
       <TaskEditModal
         task={editing}
         members={members}
+        tags={tags}
+        prioritySettings={prioritySettings}
+        statusSettings={statusSettings}
         onClose={() => setEditingId(null)}
       />
     </>

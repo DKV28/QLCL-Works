@@ -7,10 +7,16 @@ import { createUserAction, updateUserRoleAction } from "@/lib/actions/admin";
 import type { Profile, Role } from "@/lib/types";
 
 const ROLE_OPTIONS: [Role, string][] = [
-  ["staff", "Nhân viên"],
+  ["staff", "Thành viên"],
   ["manager", "Quản lý"],
   ["admin", "Quản trị viên"],
 ];
+
+function displayIdentity(email: string | null): string {
+  if (!email) return "—";
+  const suffix = "@users.qlcl.local";
+  return email.endsWith(suffix) ? email.slice(0, -suffix.length) : email;
+}
 
 export function UsersClient({ users }: { users: Profile[] }) {
   const router = useRouter();
@@ -52,7 +58,7 @@ export function UsersClient({ users }: { users: Profile[] }) {
           <thead>
             <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
               <th className="p-3">Họ tên</th>
-              <th className="p-3">Email</th>
+              <th className="p-3">Tên đăng nhập / Email</th>
               <th className="p-3">Vai trò</th>
             </tr>
           </thead>
@@ -64,7 +70,7 @@ export function UsersClient({ users }: { users: Profile[] }) {
               >
                 <td className="p-3 font-medium">{u.full_name || "—"}</td>
                 <td className="p-3 text-gray-600 dark:text-gray-400">
-                  {u.email}
+                  {displayIdentity(u.email)}
                 </td>
                 <td className="p-3">
                   <select

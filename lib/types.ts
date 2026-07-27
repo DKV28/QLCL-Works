@@ -3,9 +3,32 @@
 export type Role = "admin" | "manager" | "staff";
 
 export type ProjectStatus = "dang_thuc_hien" | "hoan_thanh" | "tam_dung";
-export type TaskPriority = "cao" | "trung_binh" | "thap";
-export type TaskStatus = "chua_bat_dau" | "dang_lam" | "hoan_thanh";
+export type TaskPriority = string;
+export type TaskStatus = string;
 export type TaskRepeat = "none" | "daily" | "weekly" | "monthly";
+
+export interface TaskPrioritySetting {
+  code: TaskPriority;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+  is_default: boolean;
+  is_system: boolean;
+  updated_at: string;
+}
+
+export interface TaskStatusSetting {
+  code: TaskStatus;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+  is_default: boolean;
+  is_terminal: boolean;
+  is_system: boolean;
+  updated_at: string;
+}
 
 export interface Profile {
   id: string;
@@ -103,6 +126,15 @@ export interface TaskWithAssignees extends Task {
   tags: Pick<Tag, "id" | "name" | "color">[];
 }
 
+export interface TaskWorkLog {
+  id: string;
+  task_id: string;
+  member_id: string;
+  work_date: string;
+  created_by: string;
+  created_at: string;
+}
+
 export const ATTACHMENTS_BUCKET = "task-attachments";
 
 export interface Tag {
@@ -156,13 +188,13 @@ export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
   tam_dung: "Tạm dừng",
 };
 
-export const TASK_PRIORITY_LABEL: Record<TaskPriority, string> = {
+export const TASK_PRIORITY_LABEL: Record<string, string> = {
   cao: "Cao",
   trung_binh: "Trung bình",
   thap: "Thấp",
 };
 
-export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
+export const TASK_STATUS_LABEL: Record<string, string> = {
   chua_bat_dau: "Chưa bắt đầu",
   dang_lam: "Đang làm",
   hoan_thanh: "Hoàn thành",

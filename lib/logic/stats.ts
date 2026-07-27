@@ -47,14 +47,14 @@ export function summarize(tasks: TaskWithAssignees[]): Summary {
 export function statusDistribution(
   tasks: TaskWithAssignees[],
 ): Record<TaskStatus, number> {
-  const out: Record<TaskStatus, number> = {
+  const out: Record<string, number> = {
     chua_bat_dau: 0,
     dang_lam: 0,
     hoan_thanh: 0,
   };
   for (const t of tasks) {
     if (isDone(t)) out.hoan_thanh += 1;
-    else out[t.status] += 1;
+    else out[t.status] = (out[t.status] ?? 0) + 1;
   }
   return out;
 }

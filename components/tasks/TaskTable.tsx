@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   NeedStartBadge,
@@ -17,51 +17,134 @@ import {
 import { TagChips } from "@/components/ui/TagChips";
 import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
-import type { MemberLite, TaskWithAssignees } from "@/lib/types";
+import type {
+  MemberLite,
+  Tag,
+  TaskPrioritySetting,
+  TaskStatusSetting,
+  TaskWithAssignees,
+} from "@/lib/types";
+
+type SortKey = "title" | "assignee" | "due_date" | "priority" | "status";
+type SortDirection = "asc" | "desc";
 
 export function TaskTable({
   tasks,
   members,
+  tags,
+  prioritySettings,
+  statusSettings,
+  onTaskChange,
+  onTaskRemove,
+  workMemberId = "",
+  workTaskIds = new Set<string>(),
+  onToggleWorkLog = () => {},
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
+  tags: Tag[];
+  prioritySettings: TaskPrioritySetting[];
+  statusSettings: TaskStatusSetting[];
+  onTaskChange: (task: TaskWithAssignees) => void;
+  onTaskRemove: (id: string) => void;
+  workMemberId?: string;
+  workTaskIds?: Set<string>;
+  onToggleWorkLog?: (taskId: string, enabled: boolean) => void;
 }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
-  // Bản sao cục bộ để cập nhật lạc quan (tick/xóa phản hồi tức thì).
-  const [localTasks, setLocalTasks] = useState(tasks);
-  useEffect(() => setLocalTasks(tasks), [tasks]);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const editing = localTasks.find((t) => t.id === editingId) ?? null;
+  const editing = tasks.find((t) => t.id === editingId) ?? null;
+  const priorityOrder = useMemo(
+    () => new Map(prioritySettings.map((item) => [item.code, item.sort_order])),
+    [prioritySettings],
+  );
+  const statusOrder = useMemo(
+    () => new Map(statusSettings.map((item) => [item.code, item.sort_order])),
+    [statusSettings],
+  );
+  const sortedTasks = useMemo(() => {
+    if (!sortKey) return tasks;
+    const direction = sortDirection === "asc" ? 1 : -1;
+    return [...tasks].sort((a, b) => {
+      let comparison = 0;
+      if (sortKey === "title") {
+        comparison = a.title.localeCompare(b.title, "vi");
+      } else if (sortKey === "assignee") {
+        comparison = (a.primary?.full_name ?? "").localeCompare(
+          b.primary?.full_name ?? "",
+          "vi",
+        );
+      } else if (sortKey === "due_date") {
+        comparison = (a.due_date ?? "9999-12-31").localeCompare(
+          b.due_date ?? "9999-12-31",
+        );
+      } else if (sortKey === "priority") {
+        comparison =
+          (priorityOrder.get(a.priority) ?? Number.MAX_SAFE_INTEGER) -
+          (priorityOrder.get(b.priority) ?? Number.MAX_SAFE_INTEGER);
+      } else {
+        comparison =
+          (statusOrder.get(a.status) ?? Number.MAX_SAFE_INTEGER) -
+          (statusOrder.get(b.status) ?? Number.MAX_SAFE_INTEGER);
+      }
+      return comparison * direction;
+    });
+  }, [tasks, sortKey, sortDirection, priorityOrder, statusOrder]);
+
+  function changeSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  }
+
+  function SortHeader({
+    column,
+    children,
+  }: {
+    column: SortKey;
+    children: React.ReactNode;
+  }) {
+    const marker =
+      sortKey === column ? (sortDirection === "asc" ? " ↑" : " ↓") : "";
+    return (
+      <button
+        type="button"
+        onClick={() => changeSort(column)}
+        className="font-semibold uppercase tracking-wide hover:text-brand"
+      >
+        {children}
+        {marker}
+      </button>
+    );
+  }
 
   function handleToggle(task: TaskWithAssignees, checked: boolean) {
-    setLocalTasks((prev) =>
-      prev.map((t) =>
-        t.id === task.id
-          ? {
-              ...t,
-              completed_at: checked ? new Date().toISOString() : null,
-              status: checked
-                ? "hoan_thanh"
-                : t.status === "hoan_thanh"
-                  ? "dang_lam"
-                  : t.status,
-            }
-          : t,
-      ),
-    );
+    const next: TaskWithAssignees = {
+      ...task,
+      completed_at: checked ? new Date().toISOString() : null,
+      status: checked
+        ? "hoan_thanh"
+        : task.status === "hoan_thanh"
+          ? "dang_lam"
+          : task.status,
+    };
+    onTaskChange(next);
     toggleCompleteAction(task.id, checked).then((res) => {
-      if (!res.ok) setLocalTasks(tasks);
-      else router.refresh();
+      if (!res.ok) onTaskChange(task);
     });
   }
 
   function handleDelete(task: TaskWithAssignees) {
     if (!confirm(`Xóa công việc "${task.title}"?`)) return;
-    setLocalTasks((prev) => prev.filter((t) => t.id !== task.id));
+    onTaskRemove(task.id);
     deleteTaskAction(task.id, task.project_id).then((res) => {
-      if (!res.ok) setLocalTasks(tasks);
-      else router.refresh();
+      if (!res.ok) onTaskChange(task);
     });
   }
 
@@ -69,7 +152,7 @@ export function TaskTable({
     duplicateTaskAction(task.id, task.project_id).then(() => router.refresh());
   }
 
-  if (localTasks.length === 0) {
+  if (tasks.length === 0) {
     return (
       <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
         Không có công việc nào.
@@ -83,25 +166,34 @@ export function TaskTable({
         <thead>
           <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
             <th className="w-10 p-3"></th>
-            <th className="p-3">Công việc</th>
-            <th className="p-3">Người phụ trách</th>
-            <th className="p-3">Deadline</th>
-            <th className="p-3">Ưu tiên</th>
-            <th className="p-3">Trạng thái</th>
+            {workMemberId && <th className="w-16 p-3 text-center">Đã làm</th>}
+            <th className="p-3"><SortHeader column="title">Công việc</SortHeader></th>
+            <th className="p-3"><SortHeader column="assignee">Người phụ trách</SortHeader></th>
+            <th className="p-3"><SortHeader column="due_date">Deadline</SortHeader></th>
+            <th className="p-3"><SortHeader column="priority">Ưu tiên</SortHeader></th>
+            <th className="p-3"><SortHeader column="status">Trạng thái</SortHeader></th>
             <th className="p-3 text-right">Thao tác</th>
           </tr>
         </thead>
         <tbody>
-          {localTasks.map((t) => {
+          {sortedTasks.map((t) => {
             const overdue = isOverdue(t);
             const startLate = needsToStart(t);
             const attention = needsAttention(t);
             const done = t.status === "hoan_thanh" || !!t.completed_at;
+            const canLog =
+              !!workMemberId &&
+              (t.primary?.id === workMemberId ||
+                t.supporters.some((member) => member.id === workMemberId));
             return (
               <tr
                 key={t.id}
                 className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${
-                  attention ? "bg-red-50 dark:bg-red-950/30" : ""
+                  done
+                    ? "bg-green-50 dark:bg-green-950/30"
+                    : attention
+                      ? "bg-red-50 dark:bg-red-950/30"
+                      : ""
                 }`}
               >
                 <td className="p-3 align-top">
@@ -113,11 +205,26 @@ export function TaskTable({
                     aria-label="Đánh dấu hoàn thành"
                   />
                 </td>
+                {workMemberId && (
+                  <td className="p-3 text-center align-top">
+                    {canLog ? (
+                      <input
+                        type="checkbox"
+                        checked={workTaskIds.has(t.id)}
+                        onChange={(e) => onToggleWorkLog(t.id, e.target.checked)}
+                        className="h-4 w-4 cursor-pointer accent-brand"
+                        aria-label="Ghi nhận đã thực hiện trong ngày"
+                      />
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </td>
+                )}
                 <td className="p-3 align-top">
                   <div
                     className={`font-medium ${
                       done
-                        ? "text-gray-400 line-through dark:text-gray-500"
+                        ? "text-green-700 dark:text-green-300"
                         : "text-gray-900 dark:text-gray-100"
                     }`}
                   >
@@ -176,10 +283,16 @@ export function TaskTable({
                   </div>
                 </td>
                 <td className="p-3 align-top">
-                  <PriorityBadge value={t.priority} />
+                  <PriorityBadge
+                    value={t.priority}
+                    setting={prioritySettings.find((item) => item.code === t.priority)}
+                  />
                 </td>
                 <td className="p-3 align-top">
-                  <StatusBadge value={t.status} />
+                  <StatusBadge
+                    value={t.status}
+                    setting={statusSettings.find((item) => item.code === t.status)}
+                  />
                 </td>
                 <td className="p-3 align-top text-right">
                   <div className="flex justify-end gap-2">
@@ -212,6 +325,9 @@ export function TaskTable({
       <TaskEditModal
         task={editing}
         members={members}
+        tags={tags}
+        prioritySettings={prioritySettings}
+        statusSettings={statusSettings}
         onClose={() => setEditingId(null)}
       />
     </div>
