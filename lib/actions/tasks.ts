@@ -13,6 +13,7 @@ import {
 } from "@/lib/data/tasks";
 import { recordActivity } from "@/lib/data/activity";
 import { createNotification } from "@/lib/data/notifications";
+import { canWriteTask } from "@/lib/data/permissions";
 import {
   TASK_STATUS_LABEL,
   type TaskPriority,
@@ -99,6 +100,8 @@ export async function updateTaskAction(
     return { ok: false, error: "Tên công việc không được để trống." };
   if (!fields.primary_member_id)
     return { ok: false, error: "Vui lòng chọn người phụ trách chính." };
+  if (!(await canWriteTask(id)))
+    return { ok: false, error: "Bạn chỉ sửa được công việc do mình tạo." };
 
   try {
     await updateTask(id, fields);
@@ -142,6 +145,8 @@ export async function updateTaskStatusAction(
   id: string,
   status: TaskStatus,
 ): Promise<ActionResult> {
+  if (!(await canWriteTask(id)))
+    return { ok: false, error: "Bạn chỉ đổi được trạng thái công việc do mình tạo." };
   try {
     // Chỉ sinh việc lặp khi CHUYỂN sang hoàn thành (tránh nhân đôi).
     const wasDone = status === "hoan_thanh" ? await isTaskCompleted(id) : false;
@@ -169,6 +174,8 @@ export async function toggleCompleteAction(
   id: string,
   completed: boolean,
 ): Promise<ActionResult> {
+  if (!(await canWriteTask(id)))
+    return { ok: false, error: "Bạn chỉ cập nhật được công việc do mình tạo." };
   try {
     // Chỉ sinh việc lặp khi CHUYỂN sang hoàn thành (tránh nhân đôi).
     const wasDone = completed ? await isTaskCompleted(id) : false;
@@ -193,6 +200,8 @@ export async function deleteTaskAction(
   id: string,
   projectId: string | null,
 ): Promise<ActionResult> {
+  if (!(await canWriteTask(id)))
+    return { ok: false, error: "Bạn chỉ xóa được công việc do mình tạo." };
   try {
     await softDeleteTask(id);
   } catch (e) {

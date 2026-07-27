@@ -37,6 +37,9 @@ Kiến trúc tách lớp:
    - `0009_recurring_optional_project.sql` — dự án tùy chọn + công việc lặp lại.
    - `0010_arising.sql` — đánh dấu công việc "phát sinh" (cho báo cáo tuần).
    - `0011_workflow_settings.sql` — cấu hình mức độ quan trọng, trạng thái và siết quyền quản lý nhãn cho Quản trị.
+   - `0012_dynamic_workflow_and_work_logs.sql` — cấu hình quy trình động + nhật ký công việc theo ngày.
+   - `0013_public_staff_signup.sql` — tự đăng ký công khai luôn tạo tài khoản Thành viên; chặn tự nâng quyền.
+   - `0014_role_permissions.sql` — phân quyền 3 cấp trên dữ liệu vận hành: đọc dùng chung; Quản trị/Quản lý sửa mọi thứ; Thành viên chỉ sửa dự án mình sở hữu và công việc mình tạo.
    Khi có migration mới về sau, chạy tiếp theo số thứ tự.
 
 ### 2. Cấu hình biến môi trường
