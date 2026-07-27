@@ -52,6 +52,7 @@ export function TasksView({
   const [creating, setCreating] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
   const [filters, setFilters] = useState<TaskFilters>({});
+  const [teamTab, setTeamTab] = useState("");
   const [workMemberId, setWorkMemberId] = useState("");
   const [workDate, setWorkDate] = useState(todayISO());
   const [workTaskIds, setWorkTaskIds] = useState<Set<string>>(new Set());
@@ -173,6 +174,7 @@ export function TasksView({
 
   function reset() {
     setFilters({});
+    setTeamTab("");
   }
 
   return (
@@ -204,6 +206,40 @@ export function TasksView({
             Thêm công việc
           </button>
         </div>
+      </div>
+
+      <div className="mb-4 flex gap-2 overflow-x-auto border-b border-gray-200 pb-2 dark:border-gray-800">
+        <button
+          type="button"
+          onClick={() => {
+            setTeamTab("");
+            update({ teamId: "" });
+          }}
+          className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium ${
+            teamTab === ""
+              ? "bg-brand text-white"
+              : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+          }`}
+        >
+          Tất cả team
+        </button>
+        {teamOptions.map(([id, name]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => {
+              setTeamTab(id);
+              update({ teamId: id });
+            }}
+            className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium ${
+              teamTab === id
+                ? "bg-brand text-white"
+                : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+            }`}
+          >
+            {name}
+          </button>
+        ))}
       </div>
 
       <div className="card mb-4 p-4">
@@ -254,7 +290,10 @@ export function TasksView({
             <select
               className="input"
               value={filters.teamId ?? ""}
-              onChange={(e) => update({ teamId: e.target.value })}
+              onChange={(e) => {
+                setTeamTab(e.target.value);
+                update({ teamId: e.target.value });
+              }}
             >
               <option value="">Tất cả</option>
               {teamOptions.map(([id, name]) => (

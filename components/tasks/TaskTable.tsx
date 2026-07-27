@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   NeedStartBadge,
@@ -24,6 +24,9 @@ import type {
   TaskStatusSetting,
   TaskWithAssignees,
 } from "@/lib/types";
+
+type SortKey = "title" | "assignee" | "due_date" | "priority" | "status";
+type SortDirection = "asc" | "desc";
 
 export function TaskTable({
   tasks,
@@ -50,8 +53,76 @@ export function TaskTable({
 }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const editing = tasks.find((t) => t.id === editingId) ?? null;
+  const priorityOrder = useMemo(
+    () => new Map(prioritySettings.map((item) => [item.code, item.sort_order])),
+    [prioritySettings],
+  );
+  const statusOrder = useMemo(
+    () => new Map(statusSettings.map((item) => [item.code, item.sort_order])),
+    [statusSettings],
+  );
+  const sortedTasks = useMemo(() => {
+    if (!sortKey) return tasks;
+    const direction = sortDirection === "asc" ? 1 : -1;
+    return [...tasks].sort((a, b) => {
+      let comparison = 0;
+      if (sortKey === "title") {
+        comparison = a.title.localeCompare(b.title, "vi");
+      } else if (sortKey === "assignee") {
+        comparison = (a.primary?.full_name ?? "").localeCompare(
+          b.primary?.full_name ?? "",
+          "vi",
+        );
+      } else if (sortKey === "due_date") {
+        comparison = (a.due_date ?? "9999-12-31").localeCompare(
+          b.due_date ?? "9999-12-31",
+        );
+      } else if (sortKey === "priority") {
+        comparison =
+          (priorityOrder.get(a.priority) ?? Number.MAX_SAFE_INTEGER) -
+          (priorityOrder.get(b.priority) ?? Number.MAX_SAFE_INTEGER);
+      } else {
+        comparison =
+          (statusOrder.get(a.status) ?? Number.MAX_SAFE_INTEGER) -
+          (statusOrder.get(b.status) ?? Number.MAX_SAFE_INTEGER);
+      }
+      return comparison * direction;
+    });
+  }, [tasks, sortKey, sortDirection, priorityOrder, statusOrder]);
+
+  function changeSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  }
+
+  function SortHeader({
+    column,
+    children,
+  }: {
+    column: SortKey;
+    children: React.ReactNode;
+  }) {
+    const marker =
+      sortKey === column ? (sortDirection === "asc" ? " ↑" : " ↓") : "";
+    return (
+      <button
+        type="button"
+        onClick={() => changeSort(column)}
+        className="font-semibold uppercase tracking-wide hover:text-brand"
+      >
+        {children}
+        {marker}
+      </button>
+    );
+  }
 
   function handleToggle(task: TaskWithAssignees, checked: boolean) {
     const next: TaskWithAssignees = {
@@ -96,16 +167,16 @@ export function TaskTable({
           <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
             <th className="w-10 p-3"></th>
             {workMemberId && <th className="w-16 p-3 text-center">Đã làm</th>}
-            <th className="p-3">Công việc</th>
-            <th className="p-3">Người phụ trách</th>
-            <th className="p-3">Deadline</th>
-            <th className="p-3">Ưu tiên</th>
-            <th className="p-3">Trạng thái</th>
+            <th className="p-3"><SortHeader column="title">Công việc</SortHeader></th>
+            <th className="p-3"><SortHeader column="assignee">Người phụ trách</SortHeader></th>
+            <th className="p-3"><SortHeader column="due_date">Deadline</SortHeader></th>
+            <th className="p-3"><SortHeader column="priority">Ưu tiên</SortHeader></th>
+            <th className="p-3"><SortHeader column="status">Trạng thái</SortHeader></th>
             <th className="p-3 text-right">Thao tác</th>
           </tr>
         </thead>
         <tbody>
-          {tasks.map((t) => {
+          {sortedTasks.map((t) => {
             const overdue = isOverdue(t);
             const startLate = needsToStart(t);
             const attention = needsAttention(t);
@@ -118,7 +189,11 @@ export function TaskTable({
               <tr
                 key={t.id}
                 className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${
-                  attention ? "bg-red-50 dark:bg-red-950/30" : ""
+                  done
+                    ? "bg-green-50 dark:bg-green-950/30"
+                    : attention
+                      ? "bg-red-50 dark:bg-red-950/30"
+                      : ""
                 }`}
               >
                 <td className="p-3 align-top">
@@ -149,7 +224,7 @@ export function TaskTable({
                   <div
                     className={`font-medium ${
                       done
-                        ? "text-gray-400 line-through dark:text-gray-500"
+                        ? "text-green-700 dark:text-green-300"
                         : "text-gray-900 dark:text-gray-100"
                     }`}
                   >

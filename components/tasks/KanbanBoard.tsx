@@ -52,6 +52,7 @@ function KanbanCard({
   const overdue = isOverdue(task);
   const startLate = needsToStart(task);
   const attention = needsAttention(task);
+  const done = task.status === "hoan_thanh" || !!task.completed_at;
   const canLog =
     !!workMemberId &&
     (task.primary?.id === workMemberId ||
@@ -69,10 +70,12 @@ function KanbanCard({
           : undefined,
         opacity: isDragging ? 0.5 : 1,
       }}
-      className={`cursor-grab touch-none rounded-md border bg-white p-3 text-sm shadow-sm active:cursor-grabbing dark:bg-gray-900 ${
-        attention
-          ? "border-red-400 dark:border-red-800"
-          : "border-gray-200 dark:border-gray-800"
+      className={`cursor-grab touch-none rounded-md border p-3 text-sm shadow-sm active:cursor-grabbing ${
+        done
+          ? "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/30"
+          : attention
+            ? "border-red-400 bg-white dark:border-red-800 dark:bg-gray-900"
+            : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
       }`}
     >
       {projectName && (
