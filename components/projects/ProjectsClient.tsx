@@ -45,11 +45,16 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Dự án</h1>
-        <button className="btn-primary" onClick={() => setCreating(true)}>
-          Tạo dự án
-        </button>
+        <div className="flex gap-2">
+          <Link href="/thu-vien-mau" className="btn-secondary">
+            Thư viện mẫu
+          </Link>
+          <button className="btn-primary" onClick={() => setCreating(true)}>
+            Tạo dự án
+          </button>
+        </div>
       </div>
 
       {projects.length === 0 ? (

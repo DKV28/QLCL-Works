@@ -130,108 +130,52 @@ export function WorkflowSettingsClient({
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Quy trình công việc</h2>
-        …24414 tokens truncated…eteTask(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("tasks")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
-}
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Tùy chỉnh tên, màu, thứ tự hiển thị và giá trị mặc định. Mã hệ thống
+          được giữ cố định để bảo toàn dữ liệu và hành vi Kanban.
+        </p>
+      </div>
 
-interface DuplicateSrc extends Task {
-  task_assignees: { member_id: string; is_primary: boolean }[] | null;
-  subtasks: { title: string; sort_order: number }[] | null;
-  task_tags: { tag_id: string }[] | null;
-}
+      <section>
+        <h3 className="mb-2 font-semibold">Mức độ quan trọng</h3>
+        <div className="card">
+          {priorities.map((item) => (
+            <SettingRow
+              key={item.code}
+              code={item.code}
+              label={item.label}
+              color={item.color}
+              sortOrder={item.sort_order}
+              active={item.is_active}
+              isDefault={item.is_default}
+              onSubmit={(formData) =>
+                updatePrioritySettingAction(item.code, formData)
+              }
+            />
+          ))}
+        </div>
+      </section>
 
-/**
- * Nhân bản công việc: sao chép trường + người phụ trách + nhiệm vụ con
- * (KHÔNG sao chép tệp đính kèm). Trạng thái đặt lại "chưa bắt đầu".
- * targetProjectId: nếu truyền (nhân bản dự án) thì đưa vào dự án mới và
- * giữ nguyên tên; nếu không thì thêm hậu tố "(bản sao)".
- */
-export async function duplicateTask(
-  taskId: string,
-  targetProjectId?: string,
-): Promise<Task> {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from("tasks")
-    .select(
-      "*, task_assignees ( member_id, is_primary ), subtasks ( title, sort_order ), task_tags ( tag_id )",
-    )
-    .eq("id", taskId)
-    .single();
-  if (error) throw error;
-  const src = data as unknown as DuplicateSrc;
-
-  const { data: created, error: e2 } = await supabase
-    .from("tasks")
-    .insert({
-      project_id: targetProjectId ?? src.project_id,
-      title: targetProjectId ? src.title : `${src.title} (bản sao)`,
-      description: src.description,
-      start_date: src.start_date,
-      due_date: src.due_date,
-      priority: src.priority,
-      status: "chua_bat_dau",
-      completed_at: null,
-    })
-    .select("*")
-    .single();
-  if (e2) throw e2;
-  const newTask = created as Task;
-
-  const assignees = (src.task_assignees ?? []).map((a) => ({
-    task_id: newTask.id,
-    member_id: a.member_id,
-    is_primary: a.is_primary,
-  }));
-  if (assignees.length) await supabase.from("task_assignees").insert(assignees);
-
-  const subs = (src.subtasks ?? []).map((st) => ({
-    task_id: newTask.id,
-    title: st.title,
-    sort_order: st.sort_order,
-    is_done: false,
-  }));
-  if (subs.length) await supabase.from("subtasks").insert(subs);
-
-  const tagRows = (src.task_tags ?? []).map((tt) => ({
-    task_id: newTask.id,
-    tag_id: tt.tag_id,
-  }));
-  if (tagRows.length) await supabase.from("task_tags").insert(tagRows);
-
-  return newTask;
-}
-
-/**
- * Gán người phụ trách: xóa hết bản ghi cũ rồi thêm mới —
- * 1 dòng phụ trách chính (is_primary) + N dòng hỗ trợ (loại trùng primary).
- */
-async function setAssignees(
-  taskId: string,
-  primaryId: string | null,
-  supportIds: string[],
-): Promise<void> {
-  const supabase = createClient();
-  await supabase.from("task_assignees").delete().eq("task_id", taskId);
-
-  const rows: { task_id: string; member_id: string; is_primary: boolean }[] = [];
-  if (primaryId) {
-    rows.push({ task_id: taskId, member_id: primaryId, is_primary: true });
-  }
-  for (const sid of supportIds) {
-    if (sid && sid !== primaryId) {
-      rows.push({ task_id: taskId, member_id: sid, is_primary: false });
-    }
-  }
-
-  if (rows.length > 0) {
-    const { error } = await supabase.from("task_assignees").insert(rows);
-    if (error) throw error;
-  }
+      <section>
+        <h3 className="mb-2 font-semibold">Trạng thái</h3>
+        <div className="card">
+          {statuses.map((item) => (
+            <SettingRow
+              key={item.code}
+              code={item.code}
+              label={item.label}
+              color={item.color}
+              sortOrder={item.sort_order}
+              active={item.is_active}
+              isDefault={item.is_default}
+              lockedNote={item.is_terminal ? "Trạng thái hoàn tất" : undefined}
+              onSubmit={(formData) =>
+                updateStatusSettingAction(item.code, formData)
+              }
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
 }
