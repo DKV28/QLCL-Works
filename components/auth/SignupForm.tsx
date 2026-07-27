@@ -29,15 +29,22 @@ export function SignupForm() {
         />
       </div>
       <div>
-        <label className="label" htmlFor="email">Email</label>
+        <label className="label" htmlFor="username">Tên đăng nhập</label>
         <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
+          id="username"
+          name="username"
+          type="text"
+          minLength={3}
+          maxLength={32}
+          pattern="[a-z0-9._-]+"
+          autoComplete="username"
           required
           className="input"
+          placeholder="vi-du: nguyen.van.a"
         />
+        <p className="mt-1 text-xs text-gray-400">
+          Dùng chữ thường không dấu, số, dấu chấm, gạch dưới hoặc gạch ngang.
+        </p>
       </div>
       <div>
         <label className="label" htmlFor="password">Mật khẩu</label>

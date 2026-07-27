@@ -18,17 +18,17 @@ export function LoginForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label className="label" htmlFor="email">
-          Email
+        <label className="label" htmlFor="identifier">
+          Tên đăng nhập hoặc email
         </label>
         <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
+          id="identifier"
+          name="identifier"
+          type="text"
+          autoComplete="username"
           required
           className="input"
-          placeholder="ten@benhvien.vn"
+          placeholder="ten.dang.nhap"
         />
       </div>
       <div>
