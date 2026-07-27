@@ -25,7 +25,12 @@ export default async function AppLayout({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar profile={profile} />
-        <main className="flex-1 overflow-x-hidden p-6">{children}</main>
+        <div className="border-b border-gray-200 bg-white md:hidden dark:border-gray-800 dark:bg-gray-900">
+          <Sidebar isAdmin={profile.role === "admin"} compact />
+        </div>
+        <main className="flex-1 overflow-x-hidden p-3 sm:p-4 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

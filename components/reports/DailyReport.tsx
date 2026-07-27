@@ -8,12 +8,16 @@ import {
   type DailyReport as DR,
 } from "@/lib/logic/reports";
 import {
+  getTaskDailyNotesAction,
   getTaskWorkLogsAction,
+  saveTaskDailyNoteAction,
   toggleTaskWorkLogAction,
 } from "@/lib/actions/work-logs";
 import { todayISO } from "@/lib/logic/overdue";
+import { formatFriendlyDate } from "@/lib/logic/dates";
 import type {
   MemberLite,
+  TaskDailyNote,
   TaskWithAssignees,
   TaskWorkLog,
 } from "@/lib/types";
@@ -48,15 +52,21 @@ export function DailyReport({
   const [memberId, setMemberId] = useState("");
   const [reportDate, setReportDate] = useState(todayISO());
   const [workLogs, setWorkLogs] = useState<TaskWorkLog[]>([]);
+  const [dailyNotes, setDailyNotes] = useState<TaskDailyNote[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    getTaskWorkLogsAction(reportDate).then((result) => {
+    Promise.all([
+      getTaskWorkLogsAction(reportDate),
+      getTaskDailyNotesAction(reportDate),
+    ]).then(([logResult, noteResult]) => {
       if (cancelled) return;
-      if (result.ok) setWorkLogs(result.logs ?? []);
-      else setError(result.error);
+      if (logResult.ok) setWorkLogs(logResult.logs ?? []);
+      else setError(logResult.error);
+      if (noteResult.ok) setDailyNotes(noteResult.notes ?? []);
+      else setError(noteResult.error);
     });
     return () => {
       cancelled = true;
@@ -82,6 +92,52 @@ export function DailyReport({
       .filter((log) => log.member_id === memberId)
       .map((log) => log.task_id),
   );
+  const noteByTaskId = Object.fromEntries(
+    dailyNotes
+      .filter((note) => note.member_id === memberId)
+      .map((note) => [note.task_id, note.note]),
+  );
+
+  function changeNote(taskId: string, note: string) {
+    if (!memberId) return;
+    setDailyNotes((current) => {
+      const others = current.filter(
+        (item) =>
+          !(
+            item.task_id === taskId &&
+            item.member_id === memberId &&
+            item.note_date === reportDate
+          ),
+      );
+      if (!note) return others;
+      return [
+        ...others,
+        {
+          id: `draft-${taskId}-${memberId}-${reportDate}`,
+          task_id: taskId,
+          member_id: memberId,
+          note_date: reportDate,
+          note,
+          created_by: "",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ];
+    });
+  }
+
+  function saveNote(taskId: string) {
+    if (!memberId) return;
+    setError(null);
+    saveTaskDailyNoteAction({
+      taskId,
+      memberId,
+      noteDate: reportDate,
+      note: noteByTaskId[taskId] ?? "",
+    }).then((result) => {
+      if (!result.ok) setError(result.error);
+    });
+  }
 
   function toggleLog(taskId: string, enabled: boolean) {
     if (!memberId) return;
@@ -174,10 +230,10 @@ export function DailyReport({
           <div className="card mb-4 p-4">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Nội dung báo cáo</h3>
-              <CopyButton text={dailyReportText(selected)} />
+              <CopyButton text={dailyReportText(selected, noteByTaskId)} />
             </div>
             <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
-              {dailyReportText(selected)}
+              {dailyReportText(selected, noteByTaskId)}
             </pre>
           </div>
 
@@ -185,21 +241,48 @@ export function DailyReport({
             <h3 className="mb-2 text-sm font-semibold">
               Việc trong ngày ({selected.todayTasks.length})
             </h3>
-            <ul className="space-y-1 text-sm">
+            <p className="mb-2 text-xs text-gray-400">
+              Ghi chú được tự động lưu khi bạn rời khỏi ô nhập.
+            </p>
+            <ul className="space-y-2 text-sm">
               {selected.todayTasks.map((t) => (
-                <li key={t.id} className="flex items-center gap-2">
-                  <span
-                    className={
-                      t.completed_at?.slice(0, 10) === reportDate
-                        ? "text-green-600"
-                        : "text-gray-400"
+                <li
+                  key={t.id}
+                  className="grid gap-2 rounded-md border border-gray-100 p-2 sm:grid-cols-[minmax(0,1fr)_minmax(240px,40%)] sm:items-center dark:border-gray-800"
+                >
+                  <div className="flex min-w-0 items-start gap-2">
+                    <span
+                      className={
+                        t.completed_at?.slice(0, 10) === reportDate
+                          ? "text-green-600"
+                          : "text-gray-400"
+                      }
+                    >
+                      {t.completed_at?.slice(0, 10) === reportDate ? "✓" : "○"}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="break-words text-gray-800 dark:text-gray-200">
+                        {t.title}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        Deadline: {formatFriendlyDate(t.due_date)}
+                      </div>
+                    </div>
+                  </div>
+                  <textarea
+                    className="input min-h-16 w-full resize-y text-sm"
+                    rows={2}
+                    value={noteByTaskId[t.id] ?? ""}
+                    maxLength={2000}
+                    placeholder={
+                      t.completed_at
+                        ? "Ghi chú thêm..."
+                        : "Lý do chưa hoàn thành hoặc ghi chú..."
                     }
-                  >
-                    {t.completed_at?.slice(0, 10) === reportDate ? "✓" : "○"}
-                  </span>
-                  <span className="text-gray-800 dark:text-gray-200">
-                    {t.title}
-                  </span>
+                    onChange={(event) => changeNote(t.id, event.target.value)}
+                    onBlur={() => saveNote(t.id)}
+                    aria-label={`Ghi chú cho ${t.title}`}
+                  />
                 </li>
               ))}
               {selected.todayTasks.length === 0 && (
@@ -216,23 +299,32 @@ export function DailyReport({
               Chọn công việc đã thực hiện trong ngày. Báo cáo cũng tự động tính
               các công việc có deadline đúng ngày báo cáo.
             </p>
-            <div className="max-h-72 space-y-2 overflow-y-auto">
+            <div className="mb-1 hidden grid-cols-[40px_minmax(0,1fr)_140px] gap-2 px-2 text-xs font-semibold uppercase tracking-wide text-gray-400 sm:grid">
+              <span />
+              <span>Công việc</span>
+              <span>Deadline</span>
+            </div>
+            <div className="max-h-80 space-y-2 overflow-y-auto">
               {assignedTasks.map((task) => (
                 <label
                   key={task.id}
-                  className="flex items-start gap-2 rounded border border-gray-100 p-2 text-sm dark:border-gray-800"
+                  className="grid cursor-pointer gap-2 rounded border border-gray-100 p-3 text-sm sm:grid-cols-[40px_minmax(0,1fr)_140px] sm:items-center dark:border-gray-800"
                 >
                   <input
                     type="checkbox"
                     checked={loggedTaskIds.has(task.id)}
                     onChange={(event) => toggleLog(task.id, event.target.checked)}
-                    className="mt-0.5 h-4 w-4 accent-brand"
+                    className="h-5 w-5 accent-brand"
                   />
-                  <span>
-                    {task.title}
+                  <span className="min-w-0 break-words">
+                    <span className="font-medium">{task.title}</span>
                     <span className="ml-2 text-xs text-gray-400">
                       {task.primary?.id === memberId ? "Phụ trách chính" : "Hỗ trợ"}
                     </span>
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="sm:hidden">Deadline: </span>
+                    {formatFriendlyDate(task.due_date)}
                   </span>
                 </label>
               ))}

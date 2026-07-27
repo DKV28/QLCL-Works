@@ -81,13 +81,25 @@ export function dailyReportFor(
   };
 }
 
-export function dailyReportText(r: DailyReport): string {
-  return [
+export function dailyReportText(
+  r: DailyReport,
+  notes: Record<string, string> = {},
+): string {
+  const lines = [
     `A = Công việc My day hoặc có deadline trong ngày = ${r.a}`,
     `B = Tổng số công việc trong ngày đã hoàn thành = ${r.b}`,
     `C = Tổng số công việc trong ngày chưa hoàn thành = ${r.c}`,
     `D = Số công việc mới (ngày mai) + chưa hoàn thành hôm nay = ${r.d}`,
-  ].join("\n");
+  ];
+  const notedTasks = r.todayTasks.filter((task) => notes[task.id]);
+  if (notedTasks.length) {
+    lines.push(
+      "",
+      "Ghi chú:",
+      ...notedTasks.map((task) => `- ${task.title}: ${notes[task.id]}`),
+    );
+  }
+  return lines.join("\n");
 }
 
 // ---------- Báo cáo tuần ----------

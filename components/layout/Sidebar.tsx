@@ -12,18 +12,36 @@ const NAV = [
 
 const ADMIN_NAV = [{ href: "/cai-dat", label: "Cài đặt" }];
 
-export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
+export function Sidebar({
+  isAdmin,
+  compact = false,
+}: {
+  isAdmin: boolean;
+  compact?: boolean;
+}) {
   const pathname = usePathname();
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
 
   const linkClass = (href: string) =>
-    `block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+    `block whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
       isActive(href)
         ? "bg-brand text-white"
         : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
     }`;
+
+  if (compact) {
+    return (
+      <nav className="flex gap-1 overflow-x-auto px-3 py-2">
+        {[...NAV, ...(isAdmin ? ADMIN_NAV : [])].map((item) => (
+          <Link key={item.href} href={item.href} className={linkClass(item.href)}>
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+    );
+  }
 
   return (
     <nav className="flex flex-col gap-1 p-3">
