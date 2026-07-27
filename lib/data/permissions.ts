@@ -1,21 +1,60 @@
-// Kiểm tra quyền sửa/xóa ở tầng server action — phản ánh đúng RLS (migration
-// 0014) để trả về thông báo rõ ràng thay vì lỗi/không-làm-gì âm thầm.
-//   - admin, manager: sửa được mọi dự án/công việc vận hành.
-//   - staff: chỉ sửa dự án mình sở hữu (owner_id) và công việc mình tạo (created_by).
+// Đọc phân quyền cấu hình được (bảng role_permissions) và kiểm tra quyền
+// sửa/xóa ở tầng server action — phản ánh đúng RLS (migration 0015) để trả
+// về thông báo rõ ràng thay vì lỗi/không-làm-gì âm thầm.
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "./profiles";
+import type {
+  EditScope,
+  PermissionResource,
+  Role,
+  RolePermission,
+} from "@/lib/types";
 
-/** Vai trò quản lý trở lên (được ghi mọi dữ liệu vận hành). */
-export async function canManageAll(): Promise<boolean> {
-  const me = await getCurrentProfile();
-  return !!me && (me.role === "admin" || me.role === "manager");
+/** Toàn bộ cấu hình phân quyền (để hiển thị/chỉnh trong Cài đặt). */
+export async function listRolePermissions(): Promise<RolePermission[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.from("role_permissions").select("*");
+  if (error) throw error;
+  return (data as RolePermission[]) ?? [];
+}
+
+/** Cập nhật một ô cấu hình (admin). RLS yêu cầu is_admin(). */
+export async function updateRolePermission(
+  resource: PermissionResource,
+  role: Role,
+  input: { edit_scope: EditScope; can_create: boolean },
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("role_permissions")
+    .update({ edit_scope: input.edit_scope, can_create: input.can_create })
+    .eq("resource", resource)
+    .eq("role", role);
+  if (error) throw error;
+}
+
+/** Phạm vi sửa của người dùng hiện tại cho một loại đối tượng. */
+async function editScope(
+  role: Role,
+  resource: PermissionResource,
+): Promise<EditScope> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("role_permissions")
+    .select("edit_scope")
+    .eq("resource", resource)
+    .eq("role", role)
+    .single();
+  return (data as { edit_scope: EditScope } | null)?.edit_scope ?? "none";
 }
 
 /** Có quyền sửa/xóa một công việc cụ thể không. */
 export async function canWriteTask(taskId: string): Promise<boolean> {
   const me = await getCurrentProfile();
   if (!me) return false;
-  if (me.role === "admin" || me.role === "manager") return true;
+  const scope = await editScope(me.role, "task");
+  if (scope === "all") return true;
+  if (scope === "none") return false;
 
   const supabase = createClient();
   const { data } = await supabase
@@ -30,7 +69,9 @@ export async function canWriteTask(taskId: string): Promise<boolean> {
 export async function canWriteProject(projectId: string): Promise<boolean> {
   const me = await getCurrentProfile();
   if (!me) return false;
-  if (me.role === "admin" || me.role === "manager") return true;
+  const scope = await editScope(me.role, "project");
+  if (scope === "all") return true;
+  if (scope === "none") return false;
 
   const supabase = createClient();
   const { data } = await supabase

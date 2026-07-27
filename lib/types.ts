@@ -2,6 +2,35 @@
 
 export type Role = "admin" | "manager" | "staff";
 
+// Phân quyền cấu hình được (lưu ở bảng role_permissions, admin chỉnh trong Cài đặt)
+export type PermissionResource = "project" | "task";
+export type EditScope = "all" | "own" | "none";
+
+export interface RolePermission {
+  resource: PermissionResource;
+  role: Role;
+  edit_scope: EditScope;
+  can_create: boolean;
+  updated_at: string;
+}
+
+export const EDIT_SCOPE_LABEL: Record<EditScope, string> = {
+  all: "Tất cả",
+  own: "Chỉ mục của mình",
+  none: "Không được sửa",
+};
+
+export const PERMISSION_RESOURCE_LABEL: Record<PermissionResource, string> = {
+  project: "Dự án",
+  task: "Công việc",
+};
+
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: "Quản trị viên",
+  manager: "Quản lý",
+  staff: "Thành viên",
+};
+
 export type ProjectStatus = "dang_thuc_hien" | "hoan_thanh" | "tam_dung";
 export type TaskPriority = string;
 export type TaskStatus = string;
