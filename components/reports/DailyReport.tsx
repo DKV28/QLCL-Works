@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StatCard } from "./StatCard";
 import {
   dailyReportFor,
@@ -13,6 +13,7 @@ import {
   saveTaskDailyNoteAction,
   toggleTaskWorkLogAction,
 } from "@/lib/actions/work-logs";
+import { Modal } from "@/components/ui/Modal";
 import { todayISO } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
 import type {
@@ -54,6 +55,28 @@ export function DailyReport({
   const [workLogs, setWorkLogs] = useState<TaskWorkLog[]>([]);
   const [dailyNotes, setDailyNotes] = useState<TaskDailyNote[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<"today" | "tomorrow">("today");
+  const [myDayOpen, setMyDayOpen] = useState(false);
+  const currentDateRef = useRef(todayISO());
+
+  useEffect(() => {
+    const syncReportDate = () => {
+      const nextDate = todayISO();
+      if (nextDate === currentDateRef.current) return;
+      const previousDate = currentDateRef.current;
+      currentDateRef.current = nextDate;
+      setReportDate((selectedDate) =>
+        selectedDate === previousDate ? nextDate : selectedDate,
+      );
+    };
+    const timer = window.setInterval(syncReportDate, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    setDetailTab("today");
+    setMyDayOpen(false);
+  }, [memberId, reportDate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -238,77 +261,145 @@ export function DailyReport({
           </div>
 
           <div className="card p-4">
-            <h3 className="mb-2 text-sm font-semibold">
-              Việc trong ngày ({selected.todayTasks.length})
-            </h3>
-            <p className="mb-2 text-xs text-gray-400">
-              Ghi chú được tự động lưu khi bạn rời khỏi ô nhập.
-            </p>
-            <ul className="space-y-2 text-sm">
-              {selected.todayTasks.map((t) => (
-                <li
-                  key={t.id}
-                  className="grid gap-2 rounded-md border border-gray-100 p-2 sm:grid-cols-[minmax(0,1fr)_minmax(240px,40%)] sm:items-center dark:border-gray-800"
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div
+                className="flex min-w-0 gap-1 overflow-x-auto"
+                role="tablist"
+                aria-label="Chi tiết báo cáo ngày"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={detailTab === "today"}
+                  onClick={() => setDetailTab("today")}
+                  className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold ${
+                    detailTab === "today"
+                      ? "bg-brand text-white"
+                      : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                  }`}
                 >
-                  <div className="flex min-w-0 items-start gap-2">
-                    <span
-                      className={
-                        t.completed_at?.slice(0, 10) === reportDate
-                          ? "text-green-600"
-                          : "text-gray-400"
-                      }
+                  Việc trong ngày ({selected.todayTasks.length})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={detailTab === "tomorrow"}
+                  onClick={() => setDetailTab("tomorrow")}
+                  className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold ${
+                    detailTab === "tomorrow"
+                      ? "bg-brand text-white"
+                      : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  Việc ngày mai ({selected.tomorrowNew.length})
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMyDayOpen(true)}
+                className="no-print flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-xl font-medium leading-none text-white hover:opacity-90"
+                aria-label="Mở My day"
+                title="My day"
+              >
+                +
+              </button>
+            </div>
+
+            {detailTab === "today" ? (
+              <>
+                <p className="mb-2 text-xs text-gray-400">
+                  Ghi chú được tự động lưu khi bạn rời khỏi ô nhập.
+                </p>
+                <ul className="space-y-2 text-sm">
+                  {selected.todayTasks.map((t) => (
+                    <li
+                      key={t.id}
+                      className="grid gap-2 rounded-md border border-gray-100 p-2 sm:grid-cols-[minmax(0,1fr)_minmax(240px,40%)] sm:items-center dark:border-gray-800"
                     >
-                      {t.completed_at?.slice(0, 10) === reportDate ? "✓" : "○"}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="break-words text-gray-800 dark:text-gray-200">
-                        {t.title}
+                      <div className="flex min-w-0 items-start gap-2">
+                        <span
+                          className={
+                            t.completed_at?.slice(0, 10) === reportDate
+                              ? "text-green-600"
+                              : "text-gray-400"
+                          }
+                        >
+                          {t.completed_at?.slice(0, 10) === reportDate ? "✓" : "○"}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="break-words text-gray-800 dark:text-gray-200">
+                            {t.title}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Deadline: {formatFriendlyDate(t.due_date)}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-400">
-                        Deadline: {formatFriendlyDate(t.due_date)}
-                      </div>
+                      <textarea
+                        className="input min-h-16 w-full resize-y text-sm"
+                        rows={2}
+                        value={noteByTaskId[t.id] ?? ""}
+                        maxLength={2000}
+                        placeholder={
+                          t.completed_at
+                            ? "Ghi chú thêm..."
+                            : "Lý do chưa hoàn thành hoặc ghi chú..."
+                        }
+                        onChange={(event) => changeNote(t.id, event.target.value)}
+                        onBlur={() => saveNote(t.id)}
+                        aria-label={`Ghi chú cho ${t.title}`}
+                      />
+                    </li>
+                  ))}
+                  {selected.todayTasks.length === 0 && (
+                    <li className="text-gray-400">Không có việc nào.</li>
+                  )}
+                </ul>
+              </>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {selected.tomorrowNew.map((task) => (
+                  <li
+                    key={task.id}
+                    className="rounded-md border border-gray-100 p-3 dark:border-gray-800"
+                  >
+                    <div className="break-words font-medium text-gray-800 dark:text-gray-200">
+                      {task.title}
                     </div>
-                  </div>
-                  <textarea
-                    className="input min-h-16 w-full resize-y text-sm"
-                    rows={2}
-                    value={noteByTaskId[t.id] ?? ""}
-                    maxLength={2000}
-                    placeholder={
-                      t.completed_at
-                        ? "Ghi chú thêm..."
-                        : "Lý do chưa hoàn thành hoặc ghi chú..."
-                    }
-                    onChange={(event) => changeNote(t.id, event.target.value)}
-                    onBlur={() => saveNote(t.id)}
-                    aria-label={`Ghi chú cho ${t.title}`}
-                  />
-                </li>
-              ))}
-              {selected.todayTasks.length === 0 && (
-                <li className="text-gray-400">Không có việc nào.</li>
-              )}
-            </ul>
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+                      <span>
+                        {task.primary?.id === memberId ? "Phụ trách chính" : "Hỗ trợ"}
+                      </span>
+                      <span>Deadline: {formatFriendlyDate(task.due_date)}</span>
+                    </div>
+                  </li>
+                ))}
+                {selected.tomorrowNew.length === 0 && (
+                  <li className="text-gray-400">Không có việc nào.</li>
+                )}
+              </ul>
+            )}
           </div>
 
-          <div className="card no-print mt-4 p-4">
-            <h3 className="mb-1 text-sm font-semibold">
-              My day
-            </h3>
+          <Modal
+            open={myDayOpen}
+            onClose={() => setMyDayOpen(false)}
+            title={`My day · ${selected.memberName}`}
+          >
             <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
               Chọn công việc đã thực hiện trong ngày. Báo cáo cũng tự động tính
               các công việc có deadline đúng ngày báo cáo.
             </p>
-            <div className="mb-1 hidden grid-cols-[40px_minmax(0,1fr)_140px] gap-2 px-2 text-xs font-semibold uppercase tracking-wide text-gray-400 sm:grid">
+            <div className="mb-1 hidden grid-cols-[40px_minmax(0,1fr)_120px] gap-2 px-2 text-xs font-semibold uppercase tracking-wide text-gray-400 sm:grid">
               <span />
               <span>Công việc</span>
               <span>Deadline</span>
             </div>
-            <div className="max-h-80 space-y-2 overflow-y-auto">
+            <div className="max-h-[60vh] space-y-2 overflow-y-auto">
               {assignedTasks.map((task) => (
                 <label
                   key={task.id}
-                  className="grid cursor-pointer gap-2 rounded border border-gray-100 p-3 text-sm sm:grid-cols-[40px_minmax(0,1fr)_140px] sm:items-center dark:border-gray-800"
+                  className="grid cursor-pointer gap-2 rounded border border-gray-100 p-3 text-sm sm:grid-cols-[40px_minmax(0,1fr)_120px] sm:items-center dark:border-gray-800"
                 >
                   <input
                     type="checkbox"
@@ -332,7 +423,7 @@ export function DailyReport({
                 <p className="text-sm text-gray-400">Không có công việc được phân công.</p>
               )}
             </div>
-          </div>
+          </Modal>
         </div>
       ) : (
         <div className="card overflow-x-auto">
