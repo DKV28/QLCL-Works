@@ -104,12 +104,15 @@ export function dailyReportText(
 
 // ---------- Báo cáo tuần ----------
 
-/** Thứ Hai của tuần chứa ngày iso. */
+/**
+ * Ngày bắt đầu của kỳ báo cáo tuần đã đóng gần nhất.
+ * Kỳ chạy từ Thứ Bảy đến Thứ Sáu; báo cáo được chốt vào Thứ Bảy.
+ */
 export function weekStartOf(iso: string): string {
   const d = new Date(iso + "T00:00:00Z");
-  const dow = d.getUTCDay(); // 0=CN..6=T7
-  const diff = dow === 0 ? -6 : 1 - dow; // về thứ Hai
-  d.setUTCDate(d.getUTCDate() + diff);
+  const dow = d.getUTCDay(); // 0=CN..5=T6..6=T7
+  const daysSinceFriday = (dow - 5 + 7) % 7;
+  d.setUTCDate(d.getUTCDate() - daysSinceFriday - 6);
   return d.toISOString().slice(0, 10);
 }
 
