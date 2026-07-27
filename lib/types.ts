@@ -7,6 +7,27 @@ export type TaskPriority = "cao" | "trung_binh" | "thap";
 export type TaskStatus = "chua_bat_dau" | "dang_lam" | "hoan_thanh";
 export type TaskRepeat = "none" | "daily" | "weekly" | "monthly";
 
+export interface TaskPrioritySetting {
+  code: TaskPriority;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+  is_default: boolean;
+  updated_at: string;
+}
+
+export interface TaskStatusSetting {
+  code: TaskStatus;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+  is_default: boolean;
+  is_terminal: boolean;
+  updated_at: string;
+}
+
 export interface Profile {
   id: string;
   full_name: string | null;

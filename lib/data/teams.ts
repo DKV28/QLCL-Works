@@ -13,6 +13,24 @@ export async function listTeams(): Promise<Team[]> {
   return (data as Team[]) ?? [];
 }
 
+export async function createTeam(input: {
+  name: string;
+  parent_id: string | null;
+}): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("teams").insert(input);
+  if (error) throw error;
+}
+
+export async function updateTeam(
+  id: string,
+  input: { name: string; parent_id: string | null },
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("teams").update(input).eq("id", id);
+  if (error) throw error;
+}
+
 /**
  * Đường dẫn hiển thị của team: "Tân Bình / Ngoại trú" (nếu là tổ con) hoặc
  * "Quận 7" (nếu là team cấp trên). Bỏ tiền tố "Team " cho gọn.

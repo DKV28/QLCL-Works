@@ -36,6 +36,7 @@ Kiến trúc tách lớp:
    - `0008_templates.sql` — thư viện mẫu (đánh dấu dự án là mẫu).
    - `0009_recurring_optional_project.sql` — dự án tùy chọn + công việc lặp lại.
    - `0010_arising.sql` — đánh dấu công việc "phát sinh" (cho báo cáo tuần).
+   - `0011_workflow_settings.sql` — cấu hình mức độ quan trọng, trạng thái và siết quyền quản lý nhãn cho Quản trị.
    Khi có migration mới về sau, chạy tiếp theo số thứ tự.
 
 ### 2. Cấu hình biến môi trường
