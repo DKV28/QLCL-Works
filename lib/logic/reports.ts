@@ -1,5 +1,5 @@
 // Logic báo cáo ngày (A/B/C/D) và báo cáo tuần — hàm thuần.
-import type { MemberLite, TaskWithAssignees } from "@/lib/types";
+import type { MemberLite, TaskWithAssignees, TaskWorkLog } from "@/lib/types";
 import { isDone } from "./stats";
 import { todayISO } from "./overdue";
 
@@ -34,22 +34,36 @@ export interface DailyReport {
 export function dailyReportFor(
   tasks: TaskWithAssignees[],
   member: MemberLite,
-  today = todayISO(),
+  reportDate = todayISO(),
+  workLogs: TaskWorkLog[] = [],
 ): DailyReport {
-  const tomorrow = addDaysISO(today, 1);
+  const tomorrow = addDaysISO(reportDate, 1);
   const mine = tasks.filter((t) => t.primary?.id === member.id);
+  const loggedIds = new Set(
+    workLogs
+      .filter(
+        (log) =>
+          log.member_id === member.id && log.work_date === reportDate,
+      )
+      .map((log) => log.task_id),
+  );
+  const todayTasks = tasks.filter(
+    (task) =>
+      (task.primary?.id === member.id && task.start_date === reportDate) ||
+      (task.primary?.id === member.id && completedDate(task) === reportDate) ||
+      loggedIds.has(task.id),
+  );
 
-  const todayTasks = mine.filter((t) => {
-    if (isDone(t)) return completedDate(t) === today;
-    return !t.start_date || t.start_date <= today;
-  });
-
-  const b = todayTasks.filter((t) => isDone(t)).length;
+  const b = todayTasks.filter(
+    (task) =>
+      completedDate(task) === reportDate ||
+      (reportDate === todayISO() && isDone(task) && !task.completed_at),
+  ).length;
   const c = todayTasks.length - b;
 
   const tomorrowNew = mine.filter(
     (t) =>
-      !isDone(t) &&
+      (!completedDate(t) || completedDate(t)! > reportDate) &&
       (t.start_date === tomorrow || t.due_date === tomorrow) &&
       !todayTasks.includes(t),
   );

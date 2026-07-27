@@ -34,6 +34,79 @@ interface SettingUpdate {
   is_default: boolean;
 }
 
+interface SettingCreate extends SettingUpdate {
+  code: string;
+}
+
+export async function createTaskPrioritySetting(
+  input: SettingCreate,
+): Promise<void> {
+  const supabase = createClient();
+  if (input.is_default) {
+    await supabase
+      .from("task_priority_settings")
+      .update({ is_default: false })
+      .eq("is_default", true);
+  }
+  const { error } = await supabase.from("task_priority_settings").insert({
+    ...input,
+    is_system: false,
+  });
+  if (error) throw error;
+}
+
+export async function createTaskStatusSetting(
+  input: SettingCreate,
+): Promise<void> {
+  const supabase = createClient();
+  if (input.is_default) {
+    await supabase
+      .from("task_status_settings")
+      .update({ is_default: false })
+      .eq("is_default", true);
+  }
+  const { error } = await supabase.from("task_status_settings").insert({
+    ...input,
+    is_system: false,
+    is_terminal: false,
+  });
+  if (error) throw error;
+}
+
+export async function deleteTaskPrioritySetting(code: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("task_priority_settings")
+    .delete()
+    .eq("code", code)
+    .eq("is_system", false);
+  if (error) throw error;
+}
+
+export async function deleteTaskStatusSetting(code: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("task_status_settings")
+    .delete()
+    .eq("code", code)
+    .eq("is_system", false);
+  if (error) throw error;
+}
+
+export async function countTasksUsingSetting(
+  field: "priority" | "status",
+  code: string,
+): Promise<number> {
+  const supabase = createClient();
+  const { count, error } = await supabase
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq(field, code)
+    .is("deleted_at", null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function updateTaskPrioritySetting(
   code: TaskPriority,
   input: SettingUpdate,

@@ -147,7 +147,7 @@ export async function updateTaskStatusAction(
       recordActivity({
         task_id: id,
         action: "doi_trang_thai",
-        detail: TASK_STATUS_LABEL[status],
+        detail: TASK_STATUS_LABEL[status] ?? status,
       }),
       // Kéo sang "Hoàn thành" -> sinh lần lặp kế tiếp nếu có.
       status === "hoan_thanh" ? createNextRecurrence(id) : Promise.resolve(),

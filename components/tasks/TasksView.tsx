@@ -10,7 +10,12 @@ import { GanttChart } from "./GanttChart";
 import { TaskForm } from "./TaskForm";
 import { Modal } from "@/components/ui/Modal";
 import { createTaskFromListAction } from "@/lib/actions/tasks";
+import {
+  getTaskWorkLogsAction,
+  toggleTaskWorkLogAction,
+} from "@/lib/actions/work-logs";
 import { filterTasks, sortTasks, type TaskFilters } from "@/lib/logic/filters";
+import { todayISO } from "@/lib/logic/overdue";
 import type {
   MemberLite,
   Project,
@@ -47,6 +52,10 @@ export function TasksView({
   const [creating, setCreating] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
   const [filters, setFilters] = useState<TaskFilters>({});
+  const [workMemberId, setWorkMemberId] = useState("");
+  const [workDate, setWorkDate] = useState(todayISO());
+  const [workTaskIds, setWorkTaskIds] = useState<Set<string>>(new Set());
+  const [workLogError, setWorkLogError] = useState<string | null>(null);
   // Một nguồn dữ liệu lạc quan dùng chung cho Danh sách/Kanban/Gantt.
   // Nhờ vậy đổi view không phải chờ router.refresh để thấy thay đổi vừa làm.
   const [localTasks, setLocalTasks] = useState(tasks);
@@ -79,10 +88,61 @@ export function TasksView({
     };
   }, [router]);
 
-  const visible = useMemo(
-    () => sortTasks(filterTasks(localTasks, filters)),
-    [localTasks, filters],
+  const priorityOrder = useMemo(
+    () =>
+      Object.fromEntries(
+        prioritySettings.map((item) => [item.code, item.sort_order]),
+      ),
+    [prioritySettings],
   );
+  const visible = useMemo(
+    () => sortTasks(filterTasks(localTasks, filters), priorityOrder),
+    [localTasks, filters, priorityOrder],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setWorkLogError(null);
+    if (!workMemberId) {
+      setWorkTaskIds(new Set());
+      return;
+    }
+    getTaskWorkLogsAction(workDate, workMemberId).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setWorkTaskIds(new Set((result.logs ?? []).map((log) => log.task_id)));
+      } else {
+        setWorkTaskIds(new Set());
+        setWorkLogError(result.error);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [workMemberId, workDate]);
+
+  function toggleWorkLog(taskId: string, enabled: boolean) {
+    if (!workMemberId) return;
+    const previous = new Set(workTaskIds);
+    setWorkTaskIds((current) => {
+      const next = new Set(current);
+      if (enabled) next.add(taskId);
+      else next.delete(taskId);
+      return next;
+    });
+    setWorkLogError(null);
+    toggleTaskWorkLogAction({
+      taskId,
+      memberId: workMemberId,
+      workDate,
+      enabled,
+    }).then((result) => {
+      if (!result.ok) {
+        setWorkTaskIds(previous);
+        setWorkLogError(result.error);
+      }
+    });
+  }
 
   function replaceTask(next: TaskWithAssignees) {
     setLocalTasks((current) =>
@@ -147,7 +207,7 @@ export function TasksView({
       </div>
 
       <div className="card mb-4 p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5">
           <div>
             <label className="label">Từ khóa</label>
             <input
@@ -173,7 +233,9 @@ export function TasksView({
             </select>
           </div>
           <div>
-            <label className="label">Người phụ trách (chính hoặc hỗ trợ)</label>
+            <label className="label" title="Bao gồm phụ trách chính và người hỗ trợ">
+              Người phụ trách
+            </label>
             <select
               className="input"
               value={filters.assigneeId ?? ""}
@@ -220,6 +282,27 @@ export function TasksView({
             </div>
           )}
           <div>
+            <label className="label">Trạng thái</label>
+            <select
+              className="input"
+              value={filters.statusCode ?? ""}
+              onChange={(e) => update({ statusCode: e.target.value })}
+            >
+              <option value="">Tất cả</option>
+              {statusSettings
+                .filter(
+                  (item) =>
+                    item.is_active ||
+                    localTasks.some((task) => task.status === item.code),
+                )
+                .map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.label}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
             <label className="label">Deadline từ</label>
             <input
               type="date"
@@ -255,6 +338,44 @@ export function TasksView({
         </div>
       </div>
 
+      {(view === "list" || view === "kanban") && (
+        <div className="card mb-4 p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[240px] flex-1">
+              <label className="label">Ghi nhận thực hiện cho</label>
+              <select
+                className="input"
+                value={workMemberId}
+                onChange={(e) => setWorkMemberId(e.target.value)}
+              >
+                <option value="">— Chọn nhân sự để hiện dấu tick —</option>
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="w-48">
+              <label className="label">Ngày thực hiện</label>
+              <input
+                type="date"
+                className="input"
+                max={todayISO()}
+                value={workDate}
+                onChange={(e) => setWorkDate(e.target.value || todayISO())}
+              />
+            </div>
+            <p className="pb-2 text-xs text-gray-500 dark:text-gray-400">
+              Dấu tick ghi nhận đã tham gia thực hiện, không hoàn thành công việc.
+            </p>
+          </div>
+          {workLogError && (
+            <p className="mt-2 text-sm text-red-600">{workLogError}</p>
+          )}
+        </div>
+      )}
+
       {view === "list" && (
         <TaskTable
           tasks={visible}
@@ -264,6 +385,9 @@ export function TasksView({
           statusSettings={statusSettings}
           onTaskChange={replaceTask}
           onTaskRemove={removeTask}
+          workMemberId={workMemberId}
+          workTaskIds={workTaskIds}
+          onToggleWorkLog={toggleWorkLog}
         />
       )}
       {view === "kanban" && (
@@ -275,6 +399,9 @@ export function TasksView({
           prioritySettings={prioritySettings}
           statusSettings={statusSettings}
           onTaskChange={replaceTask}
+          workMemberId={workMemberId}
+          workTaskIds={workTaskIds}
+          onToggleWorkLog={toggleWorkLog}
         />
       )}
       {view === "gantt" && (

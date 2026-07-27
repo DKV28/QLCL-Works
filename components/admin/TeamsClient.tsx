@@ -2,7 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createTeamAction, updateTeamAction } from "@/lib/actions/teams";
+import {
+  createTeamAction,
+  deleteTeamAction,
+  updateTeamAction,
+} from "@/lib/actions/teams";
 import type { Team } from "@/lib/types";
 
 function TeamForm({
@@ -22,6 +26,16 @@ function TeamForm({
       const result = team
         ? await updateTeamAction(team.id, formData)
         : await createTeamAction(formData);
+      if (result.ok) router.refresh();
+      else setError(result.error);
+    });
+  }
+
+  function remove() {
+    if (!team || !confirm(`Xóa team/tổ "${team.name}"?`)) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteTeamAction(team.id);
       if (result.ok) router.refresh();
       else setError(result.error);
     });
@@ -63,9 +77,21 @@ function TeamForm({
               ))}
           </select>
         </div>
-        <button className={team ? "btn-secondary" : "btn-primary"} disabled={pending}>
-          {pending ? "Đang lưu..." : team ? "Lưu" : "Thêm team"}
-        </button>
+        <div className="flex gap-2">
+          {team && (
+            <button
+              type="button"
+              className="btn-danger"
+              disabled={pending}
+              onClick={remove}
+            >
+              Xóa
+            </button>
+          )}
+          <button className={team ? "btn-secondary" : "btn-primary"} disabled={pending}>
+            {pending ? "Đang lưu..." : team ? "Lưu" : "Thêm team"}
+          </button>
+        </div>
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </form>
@@ -78,8 +104,8 @@ export function TeamsClient({ teams }: { teams: Team[] }) {
       <div className="mb-5">
         <h2 className="text-xl font-semibold">Cơ cấu team/tổ</h2>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Quản lý tên và quan hệ trực thuộc. Việc xóa không được cung cấp để
-          tránh làm mất liên kết của nhân sự hiện có.
+          Quản lý tên và quan hệ trực thuộc. Chỉ team không có nhân sự và
+          không có team con mới có thể xóa.
         </p>
       </div>
       <div className="card">

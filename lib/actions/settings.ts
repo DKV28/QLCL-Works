@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/data/profiles";
 import {
+  countTasksUsingSetting,
+  createTaskPrioritySetting,
+  createTaskStatusSetting,
+  deleteTaskPrioritySetting,
+  deleteTaskStatusSetting,
   updateTaskPrioritySetting,
   updateTaskStatusSetting,
 } from "@/lib/data/settings";
@@ -30,6 +35,95 @@ function parse(formData: FormData) {
     is_active: isDefault || formData.get("is_active") === "on",
     is_default: isDefault,
   };
+}
+
+function codeFromLabel(label: string): string {
+  return label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48);
+}
+
+async function createSetting(
+  kind: "priority" | "status",
+  formData: FormData,
+): Promise<ActionResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  const input = parse(formData);
+  const code = codeFromLabel(input.label);
+  if (!input.label || !code) {
+    return { ok: false, error: "Tên hiển thị không hợp lệ." };
+  }
+  if (!/^#[0-9a-f]{6}$/i.test(input.color)) {
+    return { ok: false, error: "Màu phải có định dạng #RRGGBB." };
+  }
+  try {
+    if (kind === "priority") {
+      await createTaskPrioritySetting({ code, ...input });
+    } else {
+      await createTaskStatusSetting({ code, ...input });
+    }
+    revalidate();
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      error: "Không thể tạo mục mới. Tên hoặc mã có thể đã tồn tại.",
+    };
+  }
+}
+
+export async function createPrioritySettingAction(
+  formData: FormData,
+): Promise<ActionResult> {
+  return createSetting("priority", formData);
+}
+
+export async function createStatusSettingAction(
+  formData: FormData,
+): Promise<ActionResult> {
+  return createSetting("status", formData);
+}
+
+async function deleteSetting(
+  kind: "priority" | "status",
+  code: string,
+): Promise<ActionResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  try {
+    const count = await countTasksUsingSetting(kind, code);
+    if (count > 0) {
+      return {
+        ok: false,
+        error: `Không thể xóa vì đang có ${count} công việc sử dụng. Hãy tắt mục này.`,
+      };
+    }
+    if (kind === "priority") await deleteTaskPrioritySetting(code);
+    else await deleteTaskStatusSetting(code);
+    revalidate();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Không thể xóa mục cấu hình hệ thống hoặc mục đang được sử dụng." };
+  }
+}
+
+export async function deletePrioritySettingAction(
+  code: string,
+): Promise<ActionResult> {
+  return deleteSetting("priority", code);
+}
+
+export async function deleteStatusSettingAction(
+  code: string,
+): Promise<ActionResult> {
+  return deleteSetting("status", code);
 }
 
 function revalidate() {

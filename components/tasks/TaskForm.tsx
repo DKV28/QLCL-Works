@@ -56,6 +56,7 @@ export function TaskForm({
           sort_order: index,
           is_active: true,
           is_default: code === "trung_binh",
+          is_system: true,
           updated_at: "",
         }));
   const statusOptions =
@@ -69,6 +70,7 @@ export function TaskForm({
           is_active: true,
           is_default: code === "chua_bat_dau",
           is_terminal: code === "hoan_thanh",
+          is_system: true,
           updated_at: "",
         }));
   const defaultPriority =

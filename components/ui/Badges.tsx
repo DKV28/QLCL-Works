@@ -28,7 +28,7 @@ function Pill({
   );
 }
 
-const PRIORITY_STYLE: Record<TaskPriority, string> = {
+const PRIORITY_STYLE: Record<string, string> = {
   cao: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
   trung_binh: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
   thap: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
@@ -48,10 +48,14 @@ export function PriorityBadge({
       </Pill>
     );
   }
-  return <Pill className={PRIORITY_STYLE[value]}>{TASK_PRIORITY_LABEL[value]}</Pill>;
+  return (
+    <Pill className={PRIORITY_STYLE[value] ?? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}>
+      {TASK_PRIORITY_LABEL[value] ?? value}
+    </Pill>
+  );
 }
 
-const TASK_STATUS_STYLE: Record<TaskStatus, string> = {
+const TASK_STATUS_STYLE: Record<string, string> = {
   chua_bat_dau: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
   dang_lam: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
   hoan_thanh: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
@@ -71,7 +75,11 @@ export function StatusBadge({
       </Pill>
     );
   }
-  return <Pill className={TASK_STATUS_STYLE[value]}>{TASK_STATUS_LABEL[value]}</Pill>;
+  return (
+    <Pill className={TASK_STATUS_STYLE[value] ?? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}>
+      {TASK_STATUS_LABEL[value] ?? value}
+    </Pill>
+  );
 }
 
 const PROJECT_STATUS_STYLE: Record<ProjectStatus, string> = {

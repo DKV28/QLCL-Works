@@ -33,11 +33,17 @@ function KanbanCard({
   task,
   projectName,
   prioritySetting,
+  workMemberId,
+  worked,
+  onToggleWorkLog,
   onEdit,
 }: {
   task: TaskWithAssignees;
   projectName?: string;
   prioritySetting?: TaskPrioritySetting;
+  workMemberId: string;
+  worked: boolean;
+  onToggleWorkLog: (taskId: string, enabled: boolean) => void;
   onEdit: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -46,6 +52,10 @@ function KanbanCard({
   const overdue = isOverdue(task);
   const startLate = needsToStart(task);
   const attention = needsAttention(task);
+  const canLog =
+    !!workMemberId &&
+    (task.primary?.id === workMemberId ||
+      task.supporters.some((member) => member.id === workMemberId));
 
   return (
     <div
@@ -69,6 +79,21 @@ function KanbanCard({
         <div className="mb-1 truncate text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
           {projectName}
         </div>
+      )}
+      {canLog && (
+        <label
+          className="mb-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={worked}
+            onChange={(event) => onToggleWorkLog(task.id, event.target.checked)}
+            className="h-4 w-4 accent-brand"
+          />
+          Đã thực hiện trong ngày
+        </label>
       )}
       <div className="mb-1 font-medium text-gray-900 dark:text-gray-100">
         {task.title}
@@ -110,6 +135,9 @@ function KanbanColumn({
   tasks,
   prioritySettings,
   projectNameOf,
+  workMemberId,
+  workTaskIds,
+  onToggleWorkLog,
   onEdit,
 }: {
   status: TaskStatus;
@@ -117,6 +145,9 @@ function KanbanColumn({
   tasks: TaskWithAssignees[];
   prioritySettings: TaskPrioritySetting[];
   projectNameOf: (id: string) => string | undefined;
+  workMemberId: string;
+  workTaskIds: Set<string>;
+  onToggleWorkLog: (taskId: string, enabled: boolean) => void;
   onEdit: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
@@ -143,6 +174,9 @@ function KanbanColumn({
             prioritySetting={prioritySettings.find(
               (item) => item.code === t.priority,
             )}
+            workMemberId={workMemberId}
+            worked={workTaskIds.has(t.id)}
+            onToggleWorkLog={onToggleWorkLog}
             onEdit={onEdit}
           />
         ))}
@@ -164,6 +198,9 @@ export function KanbanBoard({
   prioritySettings,
   statusSettings,
   onTaskChange,
+  workMemberId,
+  workTaskIds,
+  onToggleWorkLog,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
@@ -172,6 +209,9 @@ export function KanbanBoard({
   prioritySettings: TaskPrioritySetting[];
   statusSettings: TaskStatusSetting[];
   onTaskChange: (task: TaskWithAssignees) => void;
+  workMemberId: string;
+  workTaskIds: Set<string>;
+  onToggleWorkLog: (taskId: string, enabled: boolean) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const editing = tasks.find((t) => t.id === editingId) ?? null;
@@ -224,6 +264,9 @@ export function KanbanBoard({
               tasks={tasks.filter((t) => t.status === statusSetting.code)}
               prioritySettings={prioritySettings}
               projectNameOf={projectNameOf}
+              workMemberId={workMemberId}
+              workTaskIds={workTaskIds}
+              onToggleWorkLog={onToggleWorkLog}
               onEdit={setEditingId}
             />
           ))}

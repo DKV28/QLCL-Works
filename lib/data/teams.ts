@@ -31,6 +31,35 @@ export async function updateTeam(
   if (error) throw error;
 }
 
+export async function teamUsage(id: string): Promise<{
+  memberCount: number;
+  childCount: number;
+}> {
+  const supabase = createClient();
+  const [members, children] = await Promise.all([
+    supabase
+      .from("members")
+      .select("id", { count: "exact", head: true })
+      .eq("team_id", id),
+    supabase
+      .from("teams")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_id", id),
+  ]);
+  if (members.error) throw members.error;
+  if (children.error) throw children.error;
+  return {
+    memberCount: members.count ?? 0,
+    childCount: children.count ?? 0,
+  };
+}
+
+export async function deleteTeam(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("teams").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /**
  * Đường dẫn hiển thị của team: "Tân Bình / Ngoại trú" (nếu là tổ con) hoặc
  * "Quận 7" (nếu là team cấp trên). Bỏ tiền tố "Team " cho gọn.

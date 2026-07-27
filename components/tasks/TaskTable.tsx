@@ -33,6 +33,9 @@ export function TaskTable({
   statusSettings,
   onTaskChange,
   onTaskRemove,
+  workMemberId = "",
+  workTaskIds = new Set<string>(),
+  onToggleWorkLog = () => {},
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
@@ -41,6 +44,9 @@ export function TaskTable({
   statusSettings: TaskStatusSetting[];
   onTaskChange: (task: TaskWithAssignees) => void;
   onTaskRemove: (id: string) => void;
+  workMemberId?: string;
+  workTaskIds?: Set<string>;
+  onToggleWorkLog?: (taskId: string, enabled: boolean) => void;
 }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -89,6 +95,7 @@ export function TaskTable({
         <thead>
           <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
             <th className="w-10 p-3"></th>
+            {workMemberId && <th className="w-16 p-3 text-center">Đã làm</th>}
             <th className="p-3">Công việc</th>
             <th className="p-3">Người phụ trách</th>
             <th className="p-3">Deadline</th>
@@ -103,6 +110,10 @@ export function TaskTable({
             const startLate = needsToStart(t);
             const attention = needsAttention(t);
             const done = t.status === "hoan_thanh" || !!t.completed_at;
+            const canLog =
+              !!workMemberId &&
+              (t.primary?.id === workMemberId ||
+                t.supporters.some((member) => member.id === workMemberId));
             return (
               <tr
                 key={t.id}
@@ -119,6 +130,21 @@ export function TaskTable({
                     aria-label="Đánh dấu hoàn thành"
                   />
                 </td>
+                {workMemberId && (
+                  <td className="p-3 text-center align-top">
+                    {canLog ? (
+                      <input
+                        type="checkbox"
+                        checked={workTaskIds.has(t.id)}
+                        onChange={(e) => onToggleWorkLog(t.id, e.target.checked)}
+                        className="h-4 w-4 cursor-pointer accent-brand"
+                        aria-label="Ghi nhận đã thực hiện trong ngày"
+                      />
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </td>
+                )}
                 <td className="p-3 align-top">
                   <div
                     className={`font-medium ${

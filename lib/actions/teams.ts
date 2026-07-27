@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/data/profiles";
-import { createTeam, listTeams, updateTeam } from "@/lib/data/teams";
+import {
+  createTeam,
+  deleteTeam,
+  listTeams,
+  teamUsage,
+  updateTeam,
+} from "@/lib/data/teams";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -72,5 +78,24 @@ export async function updateTeamAction(
     return { ok: true };
   } catch {
     return { ok: false, error: "Không cập nhật được team/tổ." };
+  }
+}
+
+export async function deleteTeamAction(id: string): Promise<ActionResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  try {
+    const usage = await teamUsage(id);
+    if (usage.memberCount || usage.childCount) {
+      return {
+        ok: false,
+        error: `Không thể xóa: team đang có ${usage.memberCount} nhân sự và ${usage.childCount} team con.`,
+      };
+    }
+    await deleteTeam(id);
+    revalidate();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Không xóa được team/tổ." };
   }
 }
