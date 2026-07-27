@@ -210,11 +210,11 @@ export function DailyReport({
 
           <div className="card no-print mt-4 p-4">
             <h3 className="mb-1 text-sm font-semibold">
-              Ghi nhận công việc đã thực hiện
+              My day
             </h3>
             <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-              Chọn các công việc đã tham gia trong ngày, kể cả công việc kéo dài
-              từ ngày trước.
+              Chọn công việc đã thực hiện trong ngày. Báo cáo cũng tự động tính
+              các công việc có deadline đúng ngày báo cáo.
             </p>
             <div className="max-h-72 space-y-2 overflow-y-auto">
               {assignedTasks.map((task) => (

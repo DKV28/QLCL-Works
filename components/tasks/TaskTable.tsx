@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArisingBadge,
   NeedStartBadge,
   OverdueBadge,
-  PriorityBadge,
   StatusBadge,
 } from "@/components/ui/Badges";
 import { TaskEditModal } from "./TaskEditModal";
@@ -25,7 +25,7 @@ import type {
   TaskWithAssignees,
 } from "@/lib/types";
 
-type SortKey = "title" | "assignee" | "due_date" | "priority" | "status";
+type SortKey = "title" | "assignee" | "due_date" | "arising" | "status";
 type SortDirection = "asc" | "desc";
 
 export function TaskTable({
@@ -57,10 +57,6 @@ export function TaskTable({
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const editing = tasks.find((t) => t.id === editingId) ?? null;
-  const priorityOrder = useMemo(
-    () => new Map(prioritySettings.map((item) => [item.code, item.sort_order])),
-    [prioritySettings],
-  );
   const statusOrder = useMemo(
     () => new Map(statusSettings.map((item) => [item.code, item.sort_order])),
     [statusSettings],
@@ -81,10 +77,8 @@ export function TaskTable({
         comparison = (a.due_date ?? "9999-12-31").localeCompare(
           b.due_date ?? "9999-12-31",
         );
-      } else if (sortKey === "priority") {
-        comparison =
-          (priorityOrder.get(a.priority) ?? Number.MAX_SAFE_INTEGER) -
-          (priorityOrder.get(b.priority) ?? Number.MAX_SAFE_INTEGER);
+      } else if (sortKey === "arising") {
+        comparison = Number(b.is_arising) - Number(a.is_arising);
       } else {
         comparison =
           (statusOrder.get(a.status) ?? Number.MAX_SAFE_INTEGER) -
@@ -92,7 +86,7 @@ export function TaskTable({
       }
       return comparison * direction;
     });
-  }, [tasks, sortKey, sortDirection, priorityOrder, statusOrder]);
+  }, [tasks, sortKey, sortDirection, statusOrder]);
 
   function changeSort(key: SortKey) {
     if (sortKey === key) {
@@ -166,11 +160,11 @@ export function TaskTable({
         <thead>
           <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
             <th className="w-10 p-3"></th>
-            {workMemberId && <th className="w-16 p-3 text-center">Đã làm</th>}
+            {workMemberId && <th className="w-20 p-3 text-center">My day</th>}
             <th className="p-3"><SortHeader column="title">Công việc</SortHeader></th>
             <th className="p-3"><SortHeader column="assignee">Người phụ trách</SortHeader></th>
             <th className="p-3"><SortHeader column="due_date">Deadline</SortHeader></th>
-            <th className="p-3"><SortHeader column="priority">Ưu tiên</SortHeader></th>
+            <th className="p-3"><SortHeader column="arising">Phát sinh</SortHeader></th>
             <th className="p-3"><SortHeader column="status">Trạng thái</SortHeader></th>
             <th className="p-3 text-right">Thao tác</th>
           </tr>
@@ -213,7 +207,7 @@ export function TaskTable({
                         checked={workTaskIds.has(t.id)}
                         onChange={(e) => onToggleWorkLog(t.id, e.target.checked)}
                         className="h-4 w-4 cursor-pointer accent-brand"
-                        aria-label="Ghi nhận đã thực hiện trong ngày"
+                        aria-label="Thêm công việc vào My day"
                       />
                     ) : (
                       <span className="text-gray-300">—</span>
@@ -283,10 +277,7 @@ export function TaskTable({
                   </div>
                 </td>
                 <td className="p-3 align-top">
-                  <PriorityBadge
-                    value={t.priority}
-                    setting={prioritySettings.find((item) => item.code === t.priority)}
-                  />
+                  {t.is_arising ? <ArisingBadge /> : <span className="text-gray-300">—</span>}
                 </td>
                 <td className="p-3 align-top">
                   <StatusBadge
