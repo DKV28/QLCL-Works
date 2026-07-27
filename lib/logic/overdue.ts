@@ -1,13 +1,15 @@
 // Logic thuần liên quan tới hạn công việc — không phụ thuộc Supabase/UI, dễ test.
 import type { Task } from "@/lib/types";
 
-/** Trả về ngày hôm nay dạng YYYY-MM-DD theo giờ địa phương (VN). */
+/**
+ * Ngày hôm nay dạng YYYY-MM-DD, LUÔN theo giờ Việt Nam (Asia/Ho_Chi_Minh) —
+ * nhất quán giữa máy chủ (Vercel chạy UTC) và trình duyệt.
+ */
 export function todayISO(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  // en-CA cho định dạng YYYY-MM-DD
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+  }).format(new Date());
 }
 
 /** Công việc quá hạn: có deadline < hôm nay và chưa hoàn thành. */

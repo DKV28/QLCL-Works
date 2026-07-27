@@ -110,27 +110,30 @@ export async function listTasksByProject(
 export async function listAllTasks(): Promise<TaskWithAssignees[]> {
   const supabase = createClient();
 
-  // Lấy id dự án mẫu để loại khỏi màn hình vận hành.
+  // Lấy id dự án mẫu để loại công việc của chúng khỏi màn hình vận hành.
   const { data: tpl } = await supabase
     .from("projects")
     .select("id")
     .eq("is_template", true)
     .is("deleted_at", null);
-  const templateIds = ((tpl as { id: string }[]) ?? []).map((r) => r.id);
+  const templateIds = new Set(
+    ((tpl as { id: string }[]) ?? []).map((r) => r.id),
+  );
 
-  let query = supabase
-    .from("tasks")
-    .select(SELECT_WITH_ASSIGNEES)
-    .is("deleted_at", null)
-    .order("due_date", { ascending: true, nullsFirst: false });
-  if (templateIds.length) {
-    query = query.not("project_id", "in", `(${templateIds.join(",")})`);
-  }
-
-  const [teams, res] = await Promise.all([listTeams(), query]);
+  const [teams, res] = await Promise.all([
+    listTeams(),
+    supabase
+      .from("tasks")
+      .select(SELECT_WITH_ASSIGNEES)
+      .is("deleted_at", null)
+      .order("due_date", { ascending: true, nullsFirst: false }),
+  ]);
 
   if (res.error) throw res.error;
-  return ((res.data as unknown as TaskRow[]) ?? []).map((r) => mapRow(r, teams));
+  // Lọc ở JS để KHÔNG loại nhầm công việc không thuộc dự án (project_id = null).
+  return ((res.data as unknown as TaskRow[]) ?? [])
+    .filter((r) => !r.project_id || !templateIds.has(r.project_id))
+    .map((r) => mapRow(r, teams));
 }
 
 export interface TaskInput {
@@ -293,6 +296,18 @@ export async function getTaskTitle(id: string): Promise<string | null> {
     .eq("id", id)
     .single();
   return (data as { title: string } | null)?.title ?? null;
+}
+
+/** Công việc đã hoàn thành chưa (để tránh sinh việc lặp trùng). */
+export async function isTaskCompleted(id: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("tasks")
+    .select("completed_at, status")
+    .eq("id", id)
+    .single();
+  const row = data as { completed_at: string | null; status: string } | null;
+  return !!row && (!!row.completed_at || row.status === "hoan_thanh");
 }
 
 /** Đặt trạng thái + đồng bộ completed_at (dùng cho kéo thả Kanban). */

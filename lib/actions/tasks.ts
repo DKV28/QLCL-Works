@@ -5,6 +5,7 @@ import {
   createNextRecurrence,
   createTask,
   duplicateTask,
+  isTaskCompleted,
   setStatus,
   softDeleteTask,
   toggleComplete,
@@ -140,14 +141,15 @@ export async function updateTaskStatusAction(
   status: TaskStatus,
 ): Promise<ActionResult> {
   try {
+    // Chỉ sinh việc lặp khi CHUYỂN sang hoàn thành (tránh nhân đôi).
+    const wasDone = status === "hoan_thanh" ? await isTaskCompleted(id) : false;
     await setStatus(id, status);
     await recordActivity({
       task_id: id,
       action: "doi_trang_thai",
       detail: TASK_STATUS_LABEL[status],
     });
-    // Kéo sang "Hoàn thành" -> sinh lần lặp kế tiếp nếu có.
-    if (status === "hoan_thanh") await createNextRecurrence(id);
+    if (status === "hoan_thanh" && !wasDone) await createNextRecurrence(id);
   } catch (e) {
     return { ok: false, error: "Không đổi được trạng thái." };
   }
@@ -161,13 +163,14 @@ export async function toggleCompleteAction(
   completed: boolean,
 ): Promise<ActionResult> {
   try {
+    // Chỉ sinh việc lặp khi CHUYỂN sang hoàn thành (tránh nhân đôi).
+    const wasDone = completed ? await isTaskCompleted(id) : false;
     await toggleComplete(id, completed);
     await recordActivity({
       task_id: id,
       action: completed ? "danh_dau_hoan_thanh" : "mo_lai",
     });
-    // Đánh dấu hoàn thành -> sinh lần lặp kế tiếp nếu có.
-    if (completed) await createNextRecurrence(id);
+    if (completed && !wasDone) await createNextRecurrence(id);
   } catch (e) {
     return { ok: false, error: "Không cập nhật được trạng thái." };
   }
