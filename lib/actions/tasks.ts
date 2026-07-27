@@ -57,18 +57,20 @@ export async function createTaskAction(
 
   try {
     const task = await createTask({ project_id: projectId, ...fields });
-    await recordActivity({
-      task_id: task.id,
-      project_id: projectId,
-      action: "tao_cong_viec",
-      detail: fields.title,
-    });
-    await createNotification({
-      type: "cong_viec_moi",
-      task_id: task.id,
-      project_id: projectId,
-      message: `Công việc mới: ${fields.title}`,
-    });
+    await Promise.all([
+      recordActivity({
+        task_id: task.id,
+        project_id: projectId,
+        action: "tao_cong_viec",
+        detail: fields.title,
+      }),
+      createNotification({
+        type: "cong_viec_moi",
+        task_id: task.id,
+        project_id: projectId,
+        message: `Công việc mới: ${fields.title}`,
+      }),
+    ]);
   } catch (e) {
     return { ok: false, error: "Không tạo được công việc." };
   }
@@ -141,13 +143,15 @@ export async function updateTaskStatusAction(
 ): Promise<ActionResult> {
   try {
     await setStatus(id, status);
-    await recordActivity({
-      task_id: id,
-      action: "doi_trang_thai",
-      detail: TASK_STATUS_LABEL[status],
-    });
-    // Kéo sang "Hoàn thành" -> sinh lần lặp kế tiếp nếu có.
-    if (status === "hoan_thanh") await createNextRecurrence(id);
+    await Promise.all([
+      recordActivity({
+        task_id: id,
+        action: "doi_trang_thai",
+        detail: TASK_STATUS_LABEL[status],
+      }),
+      // Kéo sang "Hoàn thành" -> sinh lần lặp kế tiếp nếu có.
+      status === "hoan_thanh" ? createNextRecurrence(id) : Promise.resolve(),
+    ]);
   } catch (e) {
     return { ok: false, error: "Không đổi được trạng thái." };
   }
@@ -162,12 +166,14 @@ export async function toggleCompleteAction(
 ): Promise<ActionResult> {
   try {
     await toggleComplete(id, completed);
-    await recordActivity({
-      task_id: id,
-      action: completed ? "danh_dau_hoan_thanh" : "mo_lai",
-    });
-    // Đánh dấu hoàn thành -> sinh lần lặp kế tiếp nếu có.
-    if (completed) await createNextRecurrence(id);
+    await Promise.all([
+      recordActivity({
+        task_id: id,
+        action: completed ? "danh_dau_hoan_thanh" : "mo_lai",
+      }),
+      // Đánh dấu hoàn thành -> sinh lần lặp kế tiếp nếu có.
+      completed ? createNextRecurrence(id) : Promise.resolve(),
+    ]);
   } catch (e) {
     return { ok: false, error: "Không cập nhật được trạng thái." };
   }

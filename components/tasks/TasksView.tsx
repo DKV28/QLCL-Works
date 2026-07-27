@@ -10,9 +10,15 @@ import { GanttChart } from "./GanttChart";
 import { TaskForm } from "./TaskForm";
 import { Modal } from "@/components/ui/Modal";
 import { createTaskFromListAction } from "@/lib/actions/tasks";
-import { getTagsAction } from "@/lib/actions/tags";
 import { filterTasks, sortTasks, type TaskFilters } from "@/lib/logic/filters";
-import type { MemberLite, Project, Tag, TaskWithAssignees } from "@/lib/types";
+import type {
+  MemberLite,
+  Project,
+  Tag,
+  TaskPrioritySetting,
+  TaskStatusSetting,
+  TaskWithAssignees,
+} from "@/lib/types";
 
 type ViewMode = "list" | "kanban" | "gantt";
 
@@ -26,20 +32,25 @@ export function TasksView({
   tasks,
   members,
   projects,
+  tags,
+  prioritySettings,
+  statusSettings,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
   projects: Pick<Project, "id" | "name">[];
+  tags: Tag[];
+  prioritySettings: TaskPrioritySetting[];
+  statusSettings: TaskStatusSetting[];
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
   const [filters, setFilters] = useState<TaskFilters>({});
-  const [tags, setTags] = useState<Tag[]>([]);
-
-  useEffect(() => {
-    getTagsAction().then(setTags);
-  }, []);
+  // Một nguồn dữ liệu lạc quan dùng chung cho Danh sách/Kanban/Gantt.
+  // Nhờ vậy đổi view không phải chờ router.refresh để thấy thay đổi vừa làm.
+  const [localTasks, setLocalTasks] = useState(tasks);
+  useEffect(() => setLocalTasks(tasks), [tasks]);
 
   // Realtime: khi có người khác thay đổi công việc/nhiệm vụ con -> tự làm mới.
   useEffect(() => {
@@ -69,9 +80,21 @@ export function TasksView({
   }, [router]);
 
   const visible = useMemo(
-    () => sortTasks(filterTasks(tasks, filters)),
-    [tasks, filters],
+    () => sortTasks(filterTasks(localTasks, filters)),
+    [localTasks, filters],
   );
+
+  function replaceTask(next: TaskWithAssignees) {
+    setLocalTasks((current) =>
+      current.some((task) => task.id === next.id)
+        ? current.map((task) => (task.id === next.id ? next : task))
+        : [...current, next],
+    );
+  }
+
+  function removeTask(id: string) {
+    setLocalTasks((current) => current.filter((task) => task.id !== id));
+  }
 
   // Danh sách team duy nhất (từ nhân sự) cho bộ lọc theo team.
   const teamOptions = useMemo(() => {
@@ -115,7 +138,7 @@ export function TasksView({
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {visible.length}/{tasks.length} công việc
+            {visible.length}/{localTasks.length} công việc
           </span>
           <button className="btn-primary" onClick={() => setCreating(true)}>
             Thêm công việc
@@ -150,7 +173,7 @@ export function TasksView({
             </select>
           </div>
           <div>
-            <label className="label">Người phụ trách</label>
+            <label className="label">Người phụ trách (chính hoặc hỗ trợ)</label>
             <select
               className="input"
               value={filters.assigneeId ?? ""}
@@ -232,11 +255,37 @@ export function TasksView({
         </div>
       </div>
 
-      {view === "list" && <TaskTable tasks={visible} members={members} />}
-      {view === "kanban" && (
-        <KanbanBoard tasks={visible} members={members} projects={projects} />
+      {view === "list" && (
+        <TaskTable
+          tasks={visible}
+          members={members}
+          tags={tags}
+          prioritySettings={prioritySettings}
+          statusSettings={statusSettings}
+          onTaskChange={replaceTask}
+          onTaskRemove={removeTask}
+        />
       )}
-      {view === "gantt" && <GanttChart tasks={visible} members={members} />}
+      {view === "kanban" && (
+        <KanbanBoard
+          tasks={visible}
+          members={members}
+          projects={projects}
+          tags={tags}
+          prioritySettings={prioritySettings}
+          statusSettings={statusSettings}
+          onTaskChange={replaceTask}
+        />
+      )}
+      {view === "gantt" && (
+        <GanttChart
+          tasks={visible}
+          members={members}
+          tags={tags}
+          prioritySettings={prioritySettings}
+          statusSettings={statusSettings}
+        />
+      )}
 
       <Modal
         open={creating}
@@ -246,6 +295,9 @@ export function TasksView({
         <TaskForm
           members={members}
           projects={projects}
+          tags={tags}
+          prioritySettings={prioritySettings}
+          statusSettings={statusSettings}
           onSubmit={createTaskFromListAction}
           onDone={() => {
             setCreating(false);

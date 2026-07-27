@@ -9,15 +9,21 @@ import {
   type MemberLite,
   type Project,
   type Tag,
+  type TaskPrioritySetting,
+  type TaskStatusSetting,
   type TaskWithAssignees,
 } from "@/lib/types";
 import type { ActionResult } from "@/lib/actions/tasks";
 import { getTagsAction } from "@/lib/actions/tags";
+import { todayISO } from "@/lib/logic/overdue";
 
 export function TaskForm({
   task,
   members,
   projects,
+  tags,
+  prioritySettings,
+  statusSettings,
   onSubmit,
   onDone,
 }: {
@@ -25,17 +31,50 @@ export function TaskForm({
   members: MemberLite[];
   // Khi truyền vào (từ trang Danh sách tổng), form hiện ô chọn dự án.
   projects?: Pick<Project, "id" | "name">[];
+  tags?: Tag[];
+  prioritySettings?: TaskPrioritySetting[];
+  statusSettings?: TaskStatusSetting[];
   onSubmit: (formData: FormData) => Promise<ActionResult>;
   onDone: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [primaryId, setPrimaryId] = useState(task?.primary?.id ?? "");
-  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>(tags ?? []);
 
   useEffect(() => {
-    getTagsAction().then(setAllTags);
-  }, []);
+    if (!tags) getTagsAction().then(setAllTags);
+  }, [tags]);
+
+  const priorityOptions =
+    prioritySettings && prioritySettings.length > 0
+      ? prioritySettings.filter((item) => item.is_active || item.code === task?.priority)
+      : TASK_PRIORITY_OPTIONS.map(([code, label], index) => ({
+          code,
+          label,
+          color: "",
+          sort_order: index,
+          is_active: true,
+          is_default: code === "trung_binh",
+          updated_at: "",
+        }));
+  const statusOptions =
+    statusSettings && statusSettings.length > 0
+      ? statusSettings.filter((item) => item.is_active || item.code === task?.status)
+      : TASK_STATUS_OPTIONS.map(([code, label], index) => ({
+          code,
+          label,
+          color: "",
+          sort_order: index,
+          is_active: true,
+          is_default: code === "chua_bat_dau",
+          is_terminal: code === "hoan_thanh",
+          updated_at: "",
+        }));
+  const defaultPriority =
+    priorityOptions.find((item) => item.is_default)?.code ?? "trung_binh";
+  const defaultStatus =
+    statusOptions.find((item) => item.is_default)?.code ?? "chua_bat_dau";
 
   const initialTagIds = useMemo(
     () => new Set((task?.tags ?? []).map((t) => t.id)),
@@ -205,7 +244,7 @@ export function TaskForm({
             id="start_date"
             name="start_date"
             type="date"
-            defaultValue={task?.start_date ?? ""}
+            defaultValue={task ? task.start_date ?? "" : todayISO()}
             className="input"
           />
         </div>
@@ -231,12 +270,12 @@ export function TaskForm({
           <select
             id="priority"
             name="priority"
-            defaultValue={task?.priority ?? "trung_binh"}
+            defaultValue={task?.priority ?? defaultPriority}
             className="input"
           >
-            {TASK_PRIORITY_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
+            {priorityOptions.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.label}
               </option>
             ))}
           </select>
@@ -248,12 +287,12 @@ export function TaskForm({
           <select
             id="status"
             name="status"
-            defaultValue={task?.status ?? "chua_bat_dau"}
+            defaultValue={task?.status ?? defaultStatus}
             className="input"
           >
-            {TASK_STATUS_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
+            {statusOptions.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.label}
               </option>
             ))}
           </select>

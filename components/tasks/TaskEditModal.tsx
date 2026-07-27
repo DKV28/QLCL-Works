@@ -7,16 +7,28 @@ import { SubtaskList } from "./SubtaskList";
 import { AttachmentList } from "./AttachmentList";
 import { TaskThread } from "./TaskThread";
 import { updateTaskAction } from "@/lib/actions/tasks";
-import type { MemberLite, TaskWithAssignees } from "@/lib/types";
+import type {
+  MemberLite,
+  Tag,
+  TaskPrioritySetting,
+  TaskStatusSetting,
+  TaskWithAssignees,
+} from "@/lib/types";
 
 // Modal sửa công việc dùng chung cho view Danh sách và Kanban.
 export function TaskEditModal({
   task,
   members,
+  tags,
+  prioritySettings,
+  statusSettings,
   onClose,
 }: {
   task: TaskWithAssignees | null;
   members: MemberLite[];
+  tags?: Tag[];
+  prioritySettings?: TaskPrioritySetting[];
+  statusSettings?: TaskStatusSetting[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -28,6 +40,9 @@ export function TaskEditModal({
           <TaskForm
             task={task}
             members={members}
+            tags={tags}
+            prioritySettings={prioritySettings}
+            statusSettings={statusSettings}
             onSubmit={(fd) => updateTaskAction(task.id, task.project_id, fd)}
             onDone={() => {
               onClose();

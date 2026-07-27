@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -21,21 +20,24 @@ import { TaskEditModal } from "./TaskEditModal";
 import { updateTaskStatusAction } from "@/lib/actions/tasks";
 import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
-import {
-  TASK_STATUS_LABEL,
-  TASK_STATUS_OPTIONS,
-  type MemberLite,
-  type TaskStatus,
-  type TaskWithAssignees,
+import type {
+  MemberLite,
+  Tag,
+  TaskPrioritySetting,
+  TaskStatus,
+  TaskStatusSetting,
+  TaskWithAssignees,
 } from "@/lib/types";
 
 function KanbanCard({
   task,
   projectName,
+  prioritySetting,
   onEdit,
 }: {
   task: TaskWithAssignees;
   projectName?: string;
+  prioritySetting?: TaskPrioritySetting;
   onEdit: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -77,7 +79,7 @@ function KanbanCard({
         </div>
       )}
       <div className="flex flex-wrap items-center gap-1.5">
-        <PriorityBadge value={task.priority} />
+        <PriorityBadge value={task.priority} setting={prioritySetting} />
         {overdue && <OverdueBadge />}
         {startLate && !overdue && <NeedStartBadge />}
         {task.subtasks.length > 0 && (
@@ -104,12 +106,16 @@ function KanbanCard({
 
 function KanbanColumn({
   status,
+  label,
   tasks,
+  prioritySettings,
   projectNameOf,
   onEdit,
 }: {
   status: TaskStatus;
+  label: string;
   tasks: TaskWithAssignees[];
+  prioritySettings: TaskPrioritySetting[];
   projectNameOf: (id: string) => string | undefined;
   onEdit: (id: string) => void;
 }) {
@@ -118,7 +124,7 @@ function KanbanColumn({
   return (
     <div className="flex min-w-[260px] flex-1 flex-col">
       <div className="mb-2 flex items-center gap-2 px-1">
-        <h3 className="text-sm font-semibold">{TASK_STATUS_LABEL[status]}</h3>
+        <h3 className="text-sm font-semibold">{label}</h3>
         <span className="text-xs text-gray-400">{tasks.length}</span>
       </div>
       <div
@@ -134,6 +140,9 @@ function KanbanColumn({
             key={t.id}
             task={t}
             projectName={t.project_id ? projectNameOf(t.project_id) : undefined}
+            prioritySetting={prioritySettings.find(
+              (item) => item.code === t.priority,
+            )}
             onEdit={onEdit}
           />
         ))}
@@ -151,19 +160,29 @@ export function KanbanBoard({
   tasks,
   members,
   projects,
+  tags,
+  prioritySettings,
+  statusSettings,
+  onTaskChange,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
   projects: { id: string; name: string }[];
+  tags: Tag[];
+  prioritySettings: TaskPrioritySetting[];
+  statusSettings: TaskStatusSetting[];
+  onTaskChange: (task: TaskWithAssignees) => void;
 }) {
-  const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  // Bản sao cục bộ để cập nhật lạc quan khi kéo thả (phản hồi tức thì).
-  const [localTasks, setLocalTasks] = useState(tasks);
-  useEffect(() => setLocalTasks(tasks), [tasks]);
-
-  const editing = localTasks.find((t) => t.id === editingId) ?? null;
+  const editing = tasks.find((t) => t.id === editingId) ?? null;
+  const visibleStatuses = useMemo(
+    () =>
+      statusSettings.filter(
+        (item) =>
+          item.is_active || tasks.some((task) => task.status === item.code),
+      ),
+    [statusSettings, tasks],
+  );
 
   const projectNameOf = (id: string) =>
     projects.find((p) => p.id === id)?.name;
@@ -177,31 +196,19 @@ export function KanbanBoard({
     const newStatus = event.over?.id as TaskStatus | undefined;
     if (!newStatus) return;
 
-    const task = localTasks.find((t) => t.id === taskId);
+    const task = tasks.find((t) => t.id === taskId);
     if (!task || task.status === newStatus) return;
 
     // Cập nhật lạc quan: thẻ di chuyển ngay, không chờ mạng.
-    setLocalTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              status: newStatus,
-              completed_at:
-                newStatus === "hoan_thanh"
-                  ? new Date().toISOString()
-                  : null,
-            }
-          : t,
-      ),
-    );
+    onTaskChange({
+      ...task,
+      status: newStatus,
+      completed_at:
+        newStatus === "hoan_thanh" ? new Date().toISOString() : null,
+    });
 
     updateTaskStatusAction(taskId, newStatus).then((res) => {
-      if (!res.ok) {
-        setLocalTasks(tasks); // lỗi -> khôi phục
-        return;
-      }
-      router.refresh(); // đồng bộ ngầm cho các view khác
+      if (!res.ok) onTaskChange(task);
     });
   }
 
@@ -209,11 +216,13 @@ export function KanbanBoard({
     <>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-2">
-          {TASK_STATUS_OPTIONS.map(([status]) => (
+          {visibleStatuses.map((statusSetting) => (
             <KanbanColumn
-              key={status}
-              status={status}
-              tasks={localTasks.filter((t) => t.status === status)}
+              key={statusSetting.code}
+              status={statusSetting.code}
+              label={statusSetting.label}
+              tasks={tasks.filter((t) => t.status === statusSetting.code)}
+              prioritySettings={prioritySettings}
               projectNameOf={projectNameOf}
               onEdit={setEditingId}
             />
@@ -224,6 +233,9 @@ export function KanbanBoard({
       <TaskEditModal
         task={editing}
         members={members}
+        tags={tags}
+        prioritySettings={prioritySettings}
+        statusSettings={statusSettings}
         onClose={() => setEditingId(null)}
       />
     </>

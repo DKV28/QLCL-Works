@@ -4,19 +4,24 @@ import {
   TASK_STATUS_LABEL,
   type ProjectStatus,
   type TaskPriority,
+  type TaskPrioritySetting,
   type TaskStatus,
+  type TaskStatusSetting,
 } from "@/lib/types";
 
 function Pill({
   children,
   className,
+  style,
 }: {
   children: React.ReactNode;
   className: string;
+  style?: React.CSSProperties;
 }) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${className}`}
+      style={style}
     >
       {children}
     </span>
@@ -29,7 +34,20 @@ const PRIORITY_STYLE: Record<TaskPriority, string> = {
   thap: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
 };
 
-export function PriorityBadge({ value }: { value: TaskPriority }) {
+export function PriorityBadge({
+  value,
+  setting,
+}: {
+  value: TaskPriority;
+  setting?: TaskPrioritySetting;
+}) {
+  if (setting) {
+    return (
+      <Pill className="text-white" style={{ backgroundColor: setting.color }}>
+        {setting.label}
+      </Pill>
+    );
+  }
   return <Pill className={PRIORITY_STYLE[value]}>{TASK_PRIORITY_LABEL[value]}</Pill>;
 }
 
@@ -39,7 +57,20 @@ const TASK_STATUS_STYLE: Record<TaskStatus, string> = {
   hoan_thanh: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
 };
 
-export function StatusBadge({ value }: { value: TaskStatus }) {
+export function StatusBadge({
+  value,
+  setting,
+}: {
+  value: TaskStatus;
+  setting?: TaskStatusSetting;
+}) {
+  if (setting) {
+    return (
+      <Pill className="text-white" style={{ backgroundColor: setting.color }}>
+        {setting.label}
+      </Pill>
+    );
+  }
   return <Pill className={TASK_STATUS_STYLE[value]}>{TASK_STATUS_LABEL[value]}</Pill>;
 }
 

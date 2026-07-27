@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   NeedStartBadge,
@@ -17,51 +17,57 @@ import {
 import { TagChips } from "@/components/ui/TagChips";
 import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
-import type { MemberLite, TaskWithAssignees } from "@/lib/types";
+import type {
+  MemberLite,
+  Tag,
+  TaskPrioritySetting,
+  TaskStatusSetting,
+  TaskWithAssignees,
+} from "@/lib/types";
 
 export function TaskTable({
   tasks,
   members,
+  tags,
+  prioritySettings,
+  statusSettings,
+  onTaskChange,
+  onTaskRemove,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
+  tags: Tag[];
+  prioritySettings: TaskPrioritySetting[];
+  statusSettings: TaskStatusSetting[];
+  onTaskChange: (task: TaskWithAssignees) => void;
+  onTaskRemove: (id: string) => void;
 }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
-  // Bản sao cục bộ để cập nhật lạc quan (tick/xóa phản hồi tức thì).
-  const [localTasks, setLocalTasks] = useState(tasks);
-  useEffect(() => setLocalTasks(tasks), [tasks]);
 
-  const editing = localTasks.find((t) => t.id === editingId) ?? null;
+  const editing = tasks.find((t) => t.id === editingId) ?? null;
 
   function handleToggle(task: TaskWithAssignees, checked: boolean) {
-    setLocalTasks((prev) =>
-      prev.map((t) =>
-        t.id === task.id
-          ? {
-              ...t,
-              completed_at: checked ? new Date().toISOString() : null,
-              status: checked
-                ? "hoan_thanh"
-                : t.status === "hoan_thanh"
-                  ? "dang_lam"
-                  : t.status,
-            }
-          : t,
-      ),
-    );
+    const next: TaskWithAssignees = {
+      ...task,
+      completed_at: checked ? new Date().toISOString() : null,
+      status: checked
+        ? "hoan_thanh"
+        : task.status === "hoan_thanh"
+          ? "dang_lam"
+          : task.status,
+    };
+    onTaskChange(next);
     toggleCompleteAction(task.id, checked).then((res) => {
-      if (!res.ok) setLocalTasks(tasks);
-      else router.refresh();
+      if (!res.ok) onTaskChange(task);
     });
   }
 
   function handleDelete(task: TaskWithAssignees) {
     if (!confirm(`Xóa công việc "${task.title}"?`)) return;
-    setLocalTasks((prev) => prev.filter((t) => t.id !== task.id));
+    onTaskRemove(task.id);
     deleteTaskAction(task.id, task.project_id).then((res) => {
-      if (!res.ok) setLocalTasks(tasks);
-      else router.refresh();
+      if (!res.ok) onTaskChange(task);
     });
   }
 
@@ -69,7 +75,7 @@ export function TaskTable({
     duplicateTaskAction(task.id, task.project_id).then(() => router.refresh());
   }
 
-  if (localTasks.length === 0) {
+  if (tasks.length === 0) {
     return (
       <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
         Không có công việc nào.
@@ -92,7 +98,7 @@ export function TaskTable({
           </tr>
         </thead>
         <tbody>
-          {localTasks.map((t) => {
+          {tasks.map((t) => {
             const overdue = isOverdue(t);
             const startLate = needsToStart(t);
             const attention = needsAttention(t);
@@ -176,10 +182,16 @@ export function TaskTable({
                   </div>
                 </td>
                 <td className="p-3 align-top">
-                  <PriorityBadge value={t.priority} />
+                  <PriorityBadge
+                    value={t.priority}
+                    setting={prioritySettings.find((item) => item.code === t.priority)}
+                  />
                 </td>
                 <td className="p-3 align-top">
-                  <StatusBadge value={t.status} />
+                  <StatusBadge
+                    value={t.status}
+                    setting={statusSettings.find((item) => item.code === t.status)}
+                  />
                 </td>
                 <td className="p-3 align-top text-right">
                   <div className="flex justify-end gap-2">
@@ -212,6 +224,9 @@ export function TaskTable({
       <TaskEditModal
         task={editing}
         members={members}
+        tags={tags}
+        prioritySettings={prioritySettings}
+        statusSettings={statusSettings}
         onClose={() => setEditingId(null)}
       />
     </div>
