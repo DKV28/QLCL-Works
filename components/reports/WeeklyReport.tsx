@@ -84,7 +84,7 @@ export function WeeklyReport({
             className="btn-secondary text-sm"
             onClick={() => setWeekStart(addDays(weekStart, -7))}
           >
-            ← Tuần trước
+            ← Kỳ trước
           </button>
           <span className="text-sm text-gray-600 dark:text-gray-300">
             {r.weekStart} → {r.weekEnd}
@@ -93,9 +93,12 @@ export function WeeklyReport({
             className="btn-secondary text-sm"
             onClick={() => setWeekStart(addDays(weekStart, 7))}
           >
-            Tuần sau →
+            Kỳ sau →
           </button>
         </div>
+        <p className="w-full text-xs text-gray-500 dark:text-gray-400">
+          Báo cáo chốt vào Thứ Bảy, tính công việc từ Thứ Bảy tuần trước đến hết Thứ Sáu.
+        </p>
       </div>
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

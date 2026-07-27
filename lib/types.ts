@@ -135,6 +135,17 @@ export interface TaskWorkLog {
   created_at: string;
 }
 
+export interface TaskDailyNote {
+  id: string;
+  task_id: string;
+  member_id: string;
+  note_date: string;
+  note: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const ATTACHMENTS_BUCKET = "task-attachments";
 
 export interface Tag {

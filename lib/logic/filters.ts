@@ -52,20 +52,11 @@ export function filterTasks(
 /** Sắp xếp: quá hạn trước, rồi theo mức độ quan trọng, rồi theo deadline gần nhất. */
 export function sortTasks(
   tasks: TaskWithAssignees[],
-  priorityOrder: Record<string, number> = {
-    cao: 10,
-    trung_binh: 20,
-    thap: 30,
-  },
 ): TaskWithAssignees[] {
   return [...tasks].sort((a, b) => {
     const ao = isOverdue(a) ? 0 : 1;
     const bo = isOverdue(b) ? 0 : 1;
     if (ao !== bo) return ao - bo;
-
-    const ap = priorityOrder[a.priority] ?? Number.MAX_SAFE_INTEGER;
-    const bp = priorityOrder[b.priority] ?? Number.MAX_SAFE_INTEGER;
-    if (ap !== bp) return ap - bp;
 
     const ad = a.due_date ?? "9999-12-31";
     const bd = b.due_date ?? "9999-12-31";

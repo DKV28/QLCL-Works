@@ -103,3 +103,7 @@ export function OverdueBadge() {
 export function NeedStartBadge() {
   return <Pill className="bg-orange-500 text-white">Cần bắt đầu</Pill>;
 }
+
+export function ArisingBadge() {
+  return <Pill className="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">Phát sinh</Pill>;
+}

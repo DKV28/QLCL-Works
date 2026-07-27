@@ -89,16 +89,9 @@ export function TasksView({
     };
   }, [router]);
 
-  const priorityOrder = useMemo(
-    () =>
-      Object.fromEntries(
-        prioritySettings.map((item) => [item.code, item.sort_order]),
-      ),
-    [prioritySettings],
-  );
   const visible = useMemo(
-    () => sortTasks(filterTasks(localTasks, filters), priorityOrder),
-    [localTasks, filters, priorityOrder],
+    () => sortTasks(filterTasks(localTasks, filters)),
+    [localTasks, filters],
   );
 
   useEffect(() => {
@@ -381,7 +374,7 @@ export function TasksView({
         <div className="card mb-4 p-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[240px] flex-1">
-              <label className="label">Ghi nhận thực hiện cho</label>
+              <label className="label">My day của</label>
               <select
                 className="input"
                 value={workMemberId}
@@ -406,7 +399,7 @@ export function TasksView({
               />
             </div>
             <p className="pb-2 text-xs text-gray-500 dark:text-gray-400">
-              Dấu tick ghi nhận đã tham gia thực hiện, không hoàn thành công việc.
+              My day ghi nhận công việc đã thực hiện, không đánh dấu hoàn thành.
             </p>
           </div>
           {workLogError && (

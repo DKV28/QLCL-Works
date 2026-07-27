@@ -11,9 +11,9 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import {
+  ArisingBadge,
   NeedStartBadge,
   OverdueBadge,
-  PriorityBadge,
 } from "@/components/ui/Badges";
 import { TagChips } from "@/components/ui/TagChips";
 import { TaskEditModal } from "./TaskEditModal";
@@ -32,7 +32,6 @@ import type {
 function KanbanCard({
   task,
   projectName,
-  prioritySetting,
   workMemberId,
   worked,
   onToggleWorkLog,
@@ -40,7 +39,6 @@ function KanbanCard({
 }: {
   task: TaskWithAssignees;
   projectName?: string;
-  prioritySetting?: TaskPrioritySetting;
   workMemberId: string;
   worked: boolean;
   onToggleWorkLog: (taskId: string, enabled: boolean) => void;
@@ -95,7 +93,7 @@ function KanbanCard({
             onChange={(event) => onToggleWorkLog(task.id, event.target.checked)}
             className="h-4 w-4 accent-brand"
           />
-          Đã thực hiện trong ngày
+          My day
         </label>
       )}
       <div className="mb-1 font-medium text-gray-900 dark:text-gray-100">
@@ -107,7 +105,7 @@ function KanbanCard({
         </div>
       )}
       <div className="flex flex-wrap items-center gap-1.5">
-        <PriorityBadge value={task.priority} setting={prioritySetting} />
+        {task.is_arising && <ArisingBadge />}
         {overdue && <OverdueBadge />}
         {startLate && !overdue && <NeedStartBadge />}
         {task.subtasks.length > 0 && (
@@ -136,7 +134,6 @@ function KanbanColumn({
   status,
   label,
   tasks,
-  prioritySettings,
   projectNameOf,
   workMemberId,
   workTaskIds,
@@ -146,7 +143,6 @@ function KanbanColumn({
   status: TaskStatus;
   label: string;
   tasks: TaskWithAssignees[];
-  prioritySettings: TaskPrioritySetting[];
   projectNameOf: (id: string) => string | undefined;
   workMemberId: string;
   workTaskIds: Set<string>;
@@ -174,9 +170,6 @@ function KanbanColumn({
             key={t.id}
             task={t}
             projectName={t.project_id ? projectNameOf(t.project_id) : undefined}
-            prioritySetting={prioritySettings.find(
-              (item) => item.code === t.priority,
-            )}
             workMemberId={workMemberId}
             worked={workTaskIds.has(t.id)}
             onToggleWorkLog={onToggleWorkLog}
@@ -265,7 +258,6 @@ export function KanbanBoard({
               status={statusSetting.code}
               label={statusSetting.label}
               tasks={tasks.filter((t) => t.status === statusSetting.code)}
-              prioritySettings={prioritySettings}
               projectNameOf={projectNameOf}
               workMemberId={workMemberId}
               workTaskIds={workTaskIds}

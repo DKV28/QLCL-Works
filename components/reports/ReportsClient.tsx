@@ -18,17 +18,22 @@ export function ReportsClient({
   tasks,
   members,
   projects,
+  canViewWeekly,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
   projects: Pick<Project, "id" | "name">[];
+  canViewWeekly: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
+  const tabs = canViewWeekly
+    ? TABS
+    : TABS.filter(([id]) => id !== "weekly");
 
   return (
     <div>
       <div className="no-print mb-6 inline-flex rounded-md border border-gray-300 p-0.5 dark:border-gray-700">
-        {TABS.map(([id, label]) => (
+        {tabs.map(([id, label]) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -47,7 +52,9 @@ export function ReportsClient({
         <DashboardClient tasks={tasks} members={members} projects={projects} />
       )}
       {tab === "daily" && <DailyReport tasks={tasks} members={members} />}
-      {tab === "weekly" && <WeeklyReport tasks={tasks} members={members} />}
+      {canViewWeekly && tab === "weekly" && (
+        <WeeklyReport tasks={tasks} members={members} />
+      )}
     </div>
   );
 }

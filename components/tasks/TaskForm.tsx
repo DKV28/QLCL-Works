@@ -264,24 +264,12 @@ export function TaskForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="label" htmlFor="priority">
-            Mức độ quan trọng
-          </label>
-          <select
-            id="priority"
-            name="priority"
-            defaultValue={task?.priority ?? defaultPriority}
-            className="input"
-          >
-            {priorityOptions.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </div>
+      <input
+        type="hidden"
+        name="priority"
+        value={task?.priority ?? defaultPriority}
+      />
+      <div className="grid grid-cols-2 items-end gap-4">
         <div>
           <label className="label" htmlFor="status">
             Trạng thái
@@ -299,6 +287,15 @@ export function TaskForm({
             ))}
           </select>
         </div>
+        <label className="flex h-10 items-center gap-2 rounded-md border border-gray-300 px-3 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300">
+          <input
+            type="checkbox"
+            name="is_arising"
+            defaultChecked={task?.is_arising ?? false}
+            className="h-4 w-4 accent-brand"
+          />
+          Công việc phát sinh (ngoài kế hoạch)
+        </label>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -340,16 +337,6 @@ export function TaskForm({
           </div>
         )}
       </div>
-
-      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input
-          type="checkbox"
-          name="is_arising"
-          defaultChecked={task?.is_arising ?? false}
-          className="h-4 w-4 accent-brand"
-        />
-        Công việc phát sinh (ngoài kế hoạch)
-      </label>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
