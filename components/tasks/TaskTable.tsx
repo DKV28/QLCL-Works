@@ -17,6 +17,7 @@ import {
   toggleCompleteAction,
 } from "@/lib/actions/tasks";
 import { getNextStep, getStep, isLastStep } from "@/lib/logic/van-hanh";
+import { ActionsMenu, type ActionItem } from "@/components/ui/ActionsMenu";
 import { TagChips } from "@/components/ui/TagChips";
 import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
@@ -312,40 +313,29 @@ export function TaskTable({
                   />
                 </td>
                 <td className="p-3 align-top text-right">
-                  <div className="flex justify-end gap-2">
-                    {t.van_hanh_step && !done && (
-                      <button
-                        className="btn-primary text-xs"
-                        onClick={() => handleAdvance(t)}
-                        title={
-                          isLastStep(t.van_hanh_step)
-                            ? "Hoàn thành quy trình"
-                            : "Chuyển sang bước tiếp theo"
-                        }
-                      >
-                        {isLastStep(t.van_hanh_step)
-                          ? "Hoàn thành"
-                          : "Bước tiếp theo →"}
-                      </button>
-                    )}
-                    <button
-                      className="btn-secondary text-xs"
-                      onClick={() => setEditingId(t.id)}
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      className="btn-secondary text-xs"
-                      onClick={() => handleDuplicate(t)}
-                    >
-                      Nhân bản
-                    </button>
-                    <button
-                      className="btn-danger text-xs"
-                      onClick={() => handleDelete(t)}
-                    >
-                      Xóa
-                    </button>
+                  <div className="flex justify-end">
+                    <ActionsMenu
+                      items={[
+                        ...(t.van_hanh_step && !done
+                          ? [
+                              {
+                                label: isLastStep(t.van_hanh_step)
+                                  ? "Hoàn thành"
+                                  : "Bước tiếp theo →",
+                                onClick: () => handleAdvance(t),
+                                emphasize: true,
+                              } satisfies ActionItem,
+                            ]
+                          : []),
+                        { label: "Sửa", onClick: () => setEditingId(t.id) },
+                        { label: "Nhân bản", onClick: () => handleDuplicate(t) },
+                        {
+                          label: "Xóa",
+                          onClick: () => handleDelete(t),
+                          danger: true,
+                        },
+                      ]}
+                    />
                   </div>
                 </td>
               </tr>
