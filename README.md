@@ -37,6 +37,14 @@ Kiến trúc tách lớp:
    - `0009_recurring_optional_project.sql` — dự án tùy chọn + công việc lặp lại.
    - `0010_arising.sql` — đánh dấu công việc "phát sinh" (cho báo cáo tuần).
    - `0011_workflow_settings.sql` — cấu hình mức độ quan trọng, trạng thái và siết quyền quản lý nhãn cho Quản trị.
+   - `0012_dynamic_workflow_and_work_logs.sql` — trạng thái/độ ưu tiên động + nhật ký làm việc theo ngày.
+   - `0013_public_staff_signup.sql` — tự đăng ký công khai luôn tạo tài khoản Thành viên; chặn tự nâng quyền.
+   - `0014_task_daily_notes.sql` — ghi chú công việc theo ngày.
+   - `0015_van_hanh_workflow.sql` — thêm cột `tasks.van_hanh_step` cho Quy trình vận hành
+     (kiểm soát tài liệu theo từng bước, TA2.QLCL.QT.06 mục 4.2). Danh mục 9 bước định nghĩa
+     trong `lib/logic/van-hanh.ts`; lịch sử chuyển bước dùng lại `activity_log`.
+   - `0016_role_permissions.sql` — phân quyền 3 cấp trên dữ liệu vận hành: đọc dùng chung; Quản trị/Quản lý sửa mọi thứ; Thành viên chỉ sửa dự án mình sở hữu và công việc mình tạo.
+   - `0017_configurable_permissions.sql` — bảng `role_permissions` để Quản trị viên tự chỉnh quyền tạo/sửa của từng vai trò trong **Cài đặt → Người dùng & phân quyền** (không cần sửa mã).
    Khi có migration mới về sau, chạy tiếp theo số thứ tự.
 
 ### 2. Cấu hình biến môi trường

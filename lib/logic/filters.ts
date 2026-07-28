@@ -12,6 +12,12 @@ export interface TaskFilters {
   toDate?: string; // lọc theo due_date <= toDate
   keyword?: string; // tìm trong tên + mô tả
   onlyOverdue?: boolean;
+  hideCompleted?: boolean; // ẩn công việc đã hoàn thành
+}
+
+/** Công việc đã hoàn thành (đánh dấu nhanh hoặc trạng thái hoàn thành). */
+function isDone(t: TaskWithAssignees): boolean {
+  return !!t.completed_at || t.status === "hoan_thanh";
 }
 
 /** Tất cả người phụ trách (chính + hỗ trợ) của một công việc. */
@@ -41,6 +47,7 @@ export function filterTasks(
     if (f.fromDate && (!t.due_date || t.due_date < f.fromDate)) return false;
     if (f.toDate && (!t.due_date || t.due_date > f.toDate)) return false;
     if (f.onlyOverdue && !isOverdue(t)) return false;
+    if (f.hideCompleted && isDone(t)) return false;
     if (kw) {
       const hay = `${t.title} ${t.description ?? ""}`.toLowerCase();
       if (!hay.includes(kw)) return false;

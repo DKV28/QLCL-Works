@@ -146,6 +146,7 @@ export interface TaskInput {
   status?: TaskStatus;
   repeat?: TaskRepeat;
   is_arising?: boolean; // công việc phát sinh (ngoài kế hoạch)
+  van_hanh_step?: string | null; // bước quy trình vận hành (null = công việc thường)
   primary_member_id?: string | null; // người phụ trách chính (bắt buộc khi tạo)
   support_member_ids?: string[]; // người hỗ trợ (tùy chọn)
   tag_ids?: string[]; // nhãn (tùy chọn)
@@ -290,6 +291,43 @@ export async function createNextRecurrence(taskId: string): Promise<void> {
     tag_id: tt.tag_id,
   }));
   if (tagRows.length) await supabase.from("task_tags").insert(tagRows);
+}
+
+/** Lấy thông tin tối thiểu để chuyển bước quy trình vận hành. */
+export async function getTaskStepInfo(
+  id: string,
+): Promise<{ van_hanh_step: string | null; project_id: string | null } | null> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("tasks")
+    .select("van_hanh_step, project_id")
+    .eq("id", id)
+    .single();
+  return (
+    (data as { van_hanh_step: string | null; project_id: string | null } | null) ??
+    null
+  );
+}
+
+/** Cập nhật bước + deadline (+ hoàn thành nếu là bước cuối) khi chuyển bước. */
+export async function updateTaskStep(
+  id: string,
+  patch: {
+    van_hanh_step: string;
+    due_date?: string | null;
+    status?: TaskStatus;
+    completed?: boolean;
+  },
+): Promise<void> {
+  const supabase = createClient();
+  const fields: Record<string, unknown> = { van_hanh_step: patch.van_hanh_step };
+  if (patch.due_date !== undefined) fields.due_date = patch.due_date;
+  if (patch.status !== undefined) fields.status = patch.status;
+  if (patch.completed !== undefined) {
+    fields.completed_at = patch.completed ? new Date().toISOString() : null;
+  }
+  const { error } = await supabase.from("tasks").update(fields).eq("id", id);
+  if (error) throw error;
 }
 
 export async function getTaskTitle(id: string): Promise<string | null> {

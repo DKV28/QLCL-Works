@@ -63,22 +63,31 @@ export function TasksView({
   const [localTasks, setLocalTasks] = useState(tasks);
   useEffect(() => setLocalTasks(tasks), [tasks]);
 
-  // My day thuộc về từng ngày riêng biệt. Nếu màn hình được mở qua nửa đêm,
-  // tự chuyển về ngày hiện tại và nạp lại nhật ký thay vì giữ lựa chọn hôm qua.
+  // My day thuộc về từng ngày riêng biệt. Khi qua ngày mới (kể cả lúc mở màn hình
+  // qua nửa đêm hoặc quay lại tab sau đó): nếu đang xem "hôm nay" thì tự chuyển
+  // sang ngày mới; việc đổi workDate kích hoạt nạp lại nhật ký nên tick tự reset.
   useEffect(() => {
     const syncWorkDate = () => {
       const nextDate = todayISO();
       if (nextDate === currentDateRef.current) return;
       const previousDate = currentDateRef.current;
       currentDateRef.current = nextDate;
-      setWorkDate((selectedDate) => {
-        if (selectedDate !== previousDate) return selectedDate;
-        setWorkTaskIds(new Set());
-        return nextDate;
-      });
+      setWorkDate((selectedDate) =>
+        selectedDate === previousDate ? nextDate : selectedDate,
+      );
     };
     const timer = window.setInterval(syncWorkDate, 60_000);
-    return () => window.clearInterval(timer);
+    // Reset ngay khi người dùng quay lại tab/cửa sổ, không phải chờ tới 60 giây.
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") syncWorkDate();
+    };
+    window.addEventListener("focus", syncWorkDate);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", syncWorkDate);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   // Realtime: khi có người khác thay đổi công việc/nhiệm vụ con -> tự làm mới.
@@ -373,16 +382,27 @@ export function TasksView({
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-brand"
-              checked={filters.onlyOverdue ?? false}
-              onChange={(e) => update({ onlyOverdue: e.target.checked })}
-            />
-            Chỉ hiện công việc quá hạn
-          </label>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-brand"
+                checked={filters.onlyOverdue ?? false}
+                onChange={(e) => update({ onlyOverdue: e.target.checked })}
+              />
+              Chỉ hiện công việc quá hạn
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-brand"
+                checked={filters.hideCompleted ?? false}
+                onChange={(e) => update({ hideCompleted: e.target.checked })}
+              />
+              Ẩn công việc đã hoàn thành
+            </label>
+          </div>
           <button className="btn-secondary text-sm" onClick={reset}>
             Xóa bộ lọc
           </button>

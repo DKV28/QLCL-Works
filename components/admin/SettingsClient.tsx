@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { TagsClient } from "./TagsClient";
 import { UsersClient } from "./UsersClient";
+import { RolePermissionsClient } from "./RolePermissionsClient";
 import { WorkflowSettingsClient } from "./WorkflowSettingsClient";
 import { TeamsClient } from "./TeamsClient";
 import type {
   Profile,
+  RolePermission,
   Tag,
   TaskPrioritySetting,
   TaskStatusSetting,
@@ -29,6 +31,7 @@ export function SettingsClient({
   tags,
   teams,
   users,
+  rolePermissions,
 }: {
   initialTab: SettingsTab;
   priorities: TaskPrioritySetting[];
@@ -36,6 +39,7 @@ export function SettingsClient({
   tags: Tag[];
   teams: Team[];
   users: Profile[];
+  rolePermissions: RolePermission[];
 }) {
   const [tab, setTab] = useState<SettingsTab>(initialTab);
 
@@ -70,7 +74,12 @@ export function SettingsClient({
       )}
       {tab === "nhan" && <TagsClient tags={tags} />}
       {tab === "co-cau" && <TeamsClient teams={teams} />}
-      {tab === "nguoi-dung" && <UsersClient users={users} />}
+      {tab === "nguoi-dung" && (
+        <>
+          <UsersClient users={users} />
+          <RolePermissionsClient permissions={rolePermissions} />
+        </>
+      )}
     </div>
   );
 }
