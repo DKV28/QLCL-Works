@@ -5,11 +5,13 @@ import {
   createNextRecurrence,
   createTask,
   duplicateTask,
+  getTaskStepInfo,
   isTaskCompleted,
   setStatus,
   softDeleteTask,
   toggleComplete,
   updateTask,
+  updateTaskStep,
 } from "@/lib/data/tasks";
 import { recordActivity } from "@/lib/data/activity";
 import { createNotification } from "@/lib/data/notifications";
@@ -19,6 +21,9 @@ import {
   type TaskRepeat,
   type TaskStatus,
 } from "@/lib/types";
+import { getNextStep, isLastStep, stepLabel } from "@/lib/logic/van-hanh";
+import { addWorkingDays } from "@/lib/logic/working-days";
+import { todayISO } from "@/lib/logic/overdue";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -34,6 +39,7 @@ function parseTaskForm(formData: FormData) {
       "chua_bat_dau") as TaskStatus,
     repeat: (String(formData.get("repeat") ?? "none") || "none") as TaskRepeat,
     is_arising: formData.get("is_arising") === "on",
+    van_hanh_step: String(formData.get("van_hanh_step") ?? "").trim() || null,
     primary_member_id: String(formData.get("primary_member_id") ?? "") || null,
     support_member_ids: formData
       .getAll("support_member_ids")
@@ -184,6 +190,64 @@ export async function toggleCompleteAction(
   } catch (e) {
     return { ok: false, error: "Không cập nhật được trạng thái." };
   }
+  revalidatePath("/cong-viec");
+  revalidatePath("/du-an", "layout");
+  return { ok: true };
+}
+
+/**
+ * Chuyển công việc quy trình vận hành sang BƯỚC TIẾP THEO.
+ * - Bước cuối → đánh dấu Hoàn thành.
+ * - Ngược lại → set bước kế + deadline = hôm nay + SLA bước kế (ngày làm việc, trừ CN).
+ * Ghi vết vào nhật ký hoạt động ("chuyển bước").
+ */
+export async function advanceVanHanhStepAction(
+  id: string,
+): Promise<ActionResult> {
+  try {
+    const info = await getTaskStepInfo(id);
+    if (!info || !info.van_hanh_step) {
+      return { ok: false, error: "Công việc không thuộc quy trình vận hành." };
+    }
+    const current = info.van_hanh_step;
+
+    if (isLastStep(current)) {
+      // Bước cuối: hoàn thành, giữ nguyên mã bước để còn biết dừng ở đâu.
+      const wasDone = await isTaskCompleted(id);
+      await updateTaskStep(id, {
+        van_hanh_step: current,
+        status: "hoan_thanh",
+        completed: true,
+      });
+      await Promise.all([
+        recordActivity({
+          task_id: id,
+          project_id: info.project_id,
+          action: "chuyen_buoc",
+          detail: `${stepLabel(current)} → Hoàn thành`,
+        }),
+        wasDone ? Promise.resolve() : createNextRecurrence(id),
+      ]);
+    } else {
+      const next = getNextStep(current);
+      if (!next) return { ok: false, error: "Không tìm được bước tiếp theo." };
+      await updateTaskStep(id, {
+        van_hanh_step: next.code,
+        due_date: addWorkingDays(next.slaDays, todayISO()),
+        status: "dang_lam",
+        completed: false,
+      });
+      await recordActivity({
+        task_id: id,
+        project_id: info.project_id,
+        action: "chuyen_buoc",
+        detail: `${stepLabel(current)} → ${next.label}`,
+      });
+    }
+  } catch (e) {
+    return { ok: false, error: "Không chuyển được bước." };
+  }
+
   revalidatePath("/cong-viec");
   revalidatePath("/du-an", "layout");
   return { ok: true };

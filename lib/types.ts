@@ -88,6 +88,9 @@ export interface Task {
   status: TaskStatus;
   repeat: TaskRepeat;
   is_arising: boolean;
+  // Bước hiện tại của quy trình vận hành (null = công việc thường).
+  // Danh mục bước: lib/logic/van-hanh.ts
+  van_hanh_step: string | null;
   completed_at: string | null;
   created_by: string | null;
   created_at: string;

@@ -16,6 +16,12 @@ import {
 import type { ActionResult } from "@/lib/actions/tasks";
 import { getTagsAction } from "@/lib/actions/tags";
 import { todayISO } from "@/lib/logic/overdue";
+import {
+  DEFAULT_FIRST_STEP_DAYS,
+  FIRST_STEP_CODE,
+  VAN_HANH_STEPS,
+} from "@/lib/logic/van-hanh";
+import { addWorkingDays } from "@/lib/logic/working-days";
 
 export function TaskForm({
   task,
@@ -41,6 +47,22 @@ export function TaskForm({
   const [pending, startTransition] = useTransition();
   const [primaryId, setPrimaryId] = useState(task?.primary?.id ?? "");
   const [allTags, setAllTags] = useState<Tag[]>(tags ?? []);
+  // Quy trình vận hành: bật/tắt, bước hiện tại, và deadline (điều khiển được để
+  // tự điền mặc định khi bật quy trình lúc tạo mới).
+  const [isVanHanh, setIsVanHanh] = useState(!!task?.van_hanh_step);
+  const [vanHanhStep, setVanHanhStep] = useState(
+    task?.van_hanh_step ?? FIRST_STEP_CODE,
+  );
+  const [dueDate, setDueDate] = useState(task?.due_date ?? "");
+
+  function toggleVanHanh(on: boolean) {
+    setIsVanHanh(on);
+    // Khi bật quy trình cho công việc TẠO MỚI mà chưa có deadline: điền mặc định
+    // = hôm nay + 9 ngày làm việc (theo nghiệp vụ đã chốt). Vẫn sửa tay được.
+    if (on && !task && !dueDate) {
+      setDueDate(addWorkingDays(DEFAULT_FIRST_STEP_DAYS));
+    }
+  }
 
   useEffect(() => {
     if (!tags) getTagsAction().then(setAllTags);
@@ -258,11 +280,53 @@ export function TaskForm({
             id="due_date"
             name="due_date"
             type="date"
-            defaultValue={task?.due_date ?? ""}
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
             className="input"
           />
         </div>
       </div>
+
+      <div className="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+          <input
+            type="checkbox"
+            checked={isVanHanh}
+            onChange={(e) => toggleVanHanh(e.target.checked)}
+            className="h-4 w-4 accent-brand"
+          />
+          Quy trình vận hành (kiểm soát tài liệu theo từng bước)
+        </label>
+        {isVanHanh && (
+          <div className="mt-3">
+            <label className="label" htmlFor="van_hanh_step">
+              Bước hiện tại
+            </label>
+            <select
+              id="van_hanh_step"
+              value={vanHanhStep}
+              onChange={(e) => setVanHanhStep(e.target.value)}
+              className="input"
+            >
+              {VAN_HANH_STEPS.map((step) => (
+                <option key={step.code} value={step.code}>
+                  {step.order}. {step.label} · {step.role}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Bấm “Bước tiếp theo” ở danh sách để tiến bước và tự tính lại deadline
+              theo số ngày làm việc của bước kế.
+            </p>
+          </div>
+        )}
+      </div>
+      {/* Rỗng khi tắt quy trình → server lưu null (công việc thường). */}
+      <input
+        type="hidden"
+        name="van_hanh_step"
+        value={isVanHanh ? vanHanhStep : ""}
+      />
 
       <input
         type="hidden"

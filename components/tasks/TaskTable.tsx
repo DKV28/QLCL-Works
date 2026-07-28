@@ -7,13 +7,16 @@ import {
   NeedStartBadge,
   OverdueBadge,
   StatusBadge,
+  StepBadge,
 } from "@/components/ui/Badges";
 import { TaskEditModal } from "./TaskEditModal";
 import {
+  advanceVanHanhStepAction,
   deleteTaskAction,
   duplicateTaskAction,
   toggleCompleteAction,
 } from "@/lib/actions/tasks";
+import { getNextStep, getStep, isLastStep } from "@/lib/logic/van-hanh";
 import { TagChips } from "@/components/ui/TagChips";
 import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
@@ -146,6 +149,18 @@ export function TaskTable({
     duplicateTaskAction(task.id, task.project_id).then(() => router.refresh());
   }
 
+  function handleAdvance(task: TaskWithAssignees) {
+    const last = isLastStep(task.van_hanh_step);
+    const nextLabel = last
+      ? "Hoàn thành"
+      : (getNextStep(task.van_hanh_step)?.label ?? "");
+    if (!confirm(`Chuyển "${task.title}" sang: ${nextLabel}?`)) return;
+    advanceVanHanhStepAction(task.id).then((res) => {
+      if (res.ok) router.refresh();
+      else alert(res.error);
+    });
+  }
+
   if (tasks.length === 0) {
     return (
       <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
@@ -156,7 +171,7 @@ export function TaskTable({
 
   return (
     <div className="card overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
+      <table className="w-full min-w-[860px] text-sm">
         <thead>
           <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
             <th className="w-10 p-3"></th>
@@ -164,6 +179,7 @@ export function TaskTable({
             <th className="p-3"><SortHeader column="title">Công việc</SortHeader></th>
             <th className="p-3"><SortHeader column="assignee">Người phụ trách</SortHeader></th>
             <th className="p-3"><SortHeader column="due_date">Deadline</SortHeader></th>
+            <th className="p-3">Bước</th>
             <th className="p-3"><SortHeader column="arising">Phát sinh</SortHeader></th>
             <th className="p-3"><SortHeader column="status">Trạng thái</SortHeader></th>
             <th className="p-3 text-right">Thao tác</th>
@@ -277,6 +293,16 @@ export function TaskTable({
                   </div>
                 </td>
                 <td className="p-3 align-top">
+                  {t.van_hanh_step ? (
+                    <StepBadge
+                      order={getStep(t.van_hanh_step)?.order}
+                      label={getStep(t.van_hanh_step)?.label ?? t.van_hanh_step}
+                    />
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </td>
+                <td className="p-3 align-top">
                   {t.is_arising ? <ArisingBadge /> : <span className="text-gray-300">—</span>}
                 </td>
                 <td className="p-3 align-top">
@@ -287,6 +313,21 @@ export function TaskTable({
                 </td>
                 <td className="p-3 align-top text-right">
                   <div className="flex justify-end gap-2">
+                    {t.van_hanh_step && !done && (
+                      <button
+                        className="btn-primary text-xs"
+                        onClick={() => handleAdvance(t)}
+                        title={
+                          isLastStep(t.van_hanh_step)
+                            ? "Hoàn thành quy trình"
+                            : "Chuyển sang bước tiếp theo"
+                        }
+                      >
+                        {isLastStep(t.van_hanh_step)
+                          ? "Hoàn thành"
+                          : "Bước tiếp theo →"}
+                      </button>
+                    )}
                     <button
                       className="btn-secondary text-xs"
                       onClick={() => setEditingId(t.id)}

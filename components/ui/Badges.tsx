@@ -107,3 +107,11 @@ export function NeedStartBadge() {
 export function ArisingBadge() {
   return <Pill className="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">Phát sinh</Pill>;
 }
+
+export function StepBadge({ order, label }: { order?: number; label: string }) {
+  return (
+    <Pill className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+      {order ? `${order}. ${label}` : label}
+    </Pill>
+  );
+}
