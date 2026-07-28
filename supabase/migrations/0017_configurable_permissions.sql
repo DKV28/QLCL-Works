@@ -1,5 +1,5 @@
 -- =============================================================
--- QLCL Works — Migration 0015
+-- QLCL Works — Migration 0017
 -- Phân quyền CẤU HÌNH ĐƯỢC: thay vì cứng trong code, quyền sửa/tạo
 -- theo vai trò được lưu ở bảng role_permissions và admin chỉnh trong
 -- trang Cài đặt. RLS đọc cấu hình này qua hàm SQL.
@@ -45,7 +45,7 @@ create trigger trg_enforce_admin_permissions
   before insert or update on public.role_permissions
   for each row execute function public.enforce_admin_permissions();
 
--- Giá trị mặc định = tương đương migration 0014 (giữ nguyên hành vi hiện tại).
+-- Giá trị mặc định = tương đương migration 0016 (giữ nguyên hành vi hiện tại).
 insert into public.role_permissions (resource, role, edit_scope, can_create)
 values
   ('project', 'admin',   'all', true),
@@ -97,7 +97,7 @@ as $$
 $$;
 
 -- -------------------------------------------------------------
--- Áp cấu hình vào RLS (thay các policy cứng ở 0014).
+-- Áp cấu hình vào RLS (thay các policy cứng ở 0016).
 -- -------------------------------------------------------------
 
 -- projects

@@ -211,6 +211,8 @@ export async function toggleCompleteAction(
 export async function advanceVanHanhStepAction(
   id: string,
 ): Promise<ActionResult> {
+  if (!(await canWriteTask(id)))
+    return { ok: false, error: "Bạn chỉ chuyển bước công việc do mình tạo." };
   try {
     const info = await getTaskStepInfo(id);
     if (!info || !info.van_hanh_step) {

@@ -1,5 +1,5 @@
 // Đọc phân quyền cấu hình được (bảng role_permissions) và kiểm tra quyền
-// sửa/xóa ở tầng server action — phản ánh đúng RLS (migration 0015) để trả
+// sửa/xóa ở tầng server action — phản ánh đúng RLS (migration 0017) để trả
 // về thông báo rõ ràng thay vì lỗi/không-làm-gì âm thầm.
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "./profiles";
