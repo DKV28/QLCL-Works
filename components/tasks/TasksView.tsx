@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -57,10 +57,29 @@ export function TasksView({
   const [workDate, setWorkDate] = useState(todayISO());
   const [workTaskIds, setWorkTaskIds] = useState<Set<string>>(new Set());
   const [workLogError, setWorkLogError] = useState<string | null>(null);
+  const currentDateRef = useRef(todayISO());
   // Một nguồn dữ liệu lạc quan dùng chung cho Danh sách/Kanban/Gantt.
   // Nhờ vậy đổi view không phải chờ router.refresh để thấy thay đổi vừa làm.
   const [localTasks, setLocalTasks] = useState(tasks);
   useEffect(() => setLocalTasks(tasks), [tasks]);
+
+  // My day thuộc về từng ngày riêng biệt. Nếu màn hình được mở qua nửa đêm,
+  // tự chuyển về ngày hiện tại và nạp lại nhật ký thay vì giữ lựa chọn hôm qua.
+  useEffect(() => {
+    const syncWorkDate = () => {
+      const nextDate = todayISO();
+      if (nextDate === currentDateRef.current) return;
+      const previousDate = currentDateRef.current;
+      currentDateRef.current = nextDate;
+      setWorkDate((selectedDate) => {
+        if (selectedDate !== previousDate) return selectedDate;
+        setWorkTaskIds(new Set());
+        return nextDate;
+      });
+    };
+    const timer = window.setInterval(syncWorkDate, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Realtime: khi có người khác thay đổi công việc/nhiệm vụ con -> tự làm mới.
   useEffect(() => {
