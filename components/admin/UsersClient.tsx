@@ -95,8 +95,9 @@ export function UsersClient({ users }: { users: Profile[] }) {
       </div>
 
       <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-        Đổi vai trò áp dụng ngay. Vai trò hiện chưa giới hạn quyền xem dữ liệu
-        (sẽ bật ở phiên bản sau).
+        Đổi vai trò áp dụng ngay. Mọi vai trò đều xem chung toàn bộ dữ liệu.
+        Quyền tạo và sửa/xóa của từng vai trò được điều chỉnh ở mục “Phân quyền
+        theo vai trò” bên dưới.
       </p>
 
       <Modal

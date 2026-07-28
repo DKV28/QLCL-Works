@@ -94,11 +94,10 @@ export async function updateProject(
 export async function duplicateProject(id: string): Promise<Project> {
   const supabase = createClient();
 
-  const { data: src, error } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const [{ data: src, error }, { data: auth }] = await Promise.all([
+    supabase.from("projects").select("*").eq("id", id).single(),
+    supabase.auth.getUser(),
+  ]);
   if (error) throw error;
   const source = src as Project;
 
@@ -107,7 +106,8 @@ export async function duplicateProject(id: string): Promise<Project> {
     .insert({
       name: `${source.name} (bản sao)`,
       description: source.description,
-      owner_id: source.owner_id,
+      // Người thực hiện nhân bản làm chủ dự án mới (để sửa được theo RLS).
+      owner_id: auth.user?.id ?? source.owner_id,
       status: source.status,
     })
     .select("*")
