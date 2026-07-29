@@ -41,6 +41,7 @@ Kiến trúc tách lớp:
    - `0013_public_staff_signup.sql` — tự đăng ký công khai luôn tạo tài khoản Thành viên; chặn tự nâng quyền.
    - `0014_task_daily_notes.sql` — ghi chú công việc theo ngày.
    - `0015_van_hanh_workflow.sql` — thêm cột `tasks.van_hanh_step` cho Quy trình vận hành
+   - `0018_configurable_workflow_sla.sql` — cấu hình động các bước Quy trình vận hành và SLA theo ngày làm việc.
      (kiểm soát tài liệu theo từng bước, TA2.QLCL.QT.06 mục 4.2). Danh mục 9 bước định nghĩa
      trong `lib/logic/van-hanh.ts`; lịch sử chuyển bước dùng lại `activity_log`.
    - `0016_role_permissions.sql` — phân quyền 3 cấp trên dữ liệu vận hành: đọc dùng chung; Quản trị/Quản lý sửa mọi thứ; Thành viên chỉ sửa dự án mình sở hữu và công việc mình tạo.

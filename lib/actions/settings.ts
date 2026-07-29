@@ -4,14 +4,23 @@ import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/data/profiles";
 import {
   countTasksUsingSetting,
+  countTasksUsingWorkflowStep,
   createTaskPrioritySetting,
   createTaskStatusSetting,
+  createWorkflowStepSetting,
   deleteTaskPrioritySetting,
   deleteTaskStatusSetting,
+  deleteWorkflowStepSetting,
+  listWorkflowStepSettings,
   updateTaskPrioritySetting,
   updateTaskStatusSetting,
+  updateWorkflowStepSetting,
 } from "@/lib/data/settings";
-import type { TaskPriority, TaskStatus } from "@/lib/types";
+import type {
+  TaskPriority,
+  TaskStatus,
+  WorkflowStepSetting,
+} from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -169,5 +178,90 @@ export async function updateStatusSettingAction(
     return { ok: true };
   } catch {
     return { ok: false, error: "Không cập nhật được trạng thái." };
+  }
+}
+
+function parseWorkflowStep(formData: FormData) {
+  const label = String(formData.get("label") ?? "").trim();
+  const roleLabel = String(formData.get("role_label") ?? "").trim();
+  const slaDays = Number(formData.get("sla_days") ?? 0);
+  const sortOrder = Number(formData.get("sort_order") ?? 0);
+  return {
+    label,
+    role_label: roleLabel,
+    sla_days: Number.isInteger(slaDays) ? slaDays : -1,
+    sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+    is_active: formData.get("is_active") === "on",
+  };
+}
+
+function validateWorkflowStep(input: ReturnType<typeof parseWorkflowStep>): string | null {
+  if (!input.label) return "Tên bước không được để trống.";
+  if (input.sla_days < 0 || input.sla_days > 365) {
+    return "SLA phải là số nguyên từ 0 đến 365 ngày làm việc.";
+  }
+  return null;
+}
+
+export async function getWorkflowStepsAction(): Promise<WorkflowStepSetting[]> {
+  return listWorkflowStepSettings();
+}
+
+export async function createWorkflowStepAction(
+  formData: FormData,
+): Promise<ActionResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  const input = parseWorkflowStep(formData);
+  const error = validateWorkflowStep(input);
+  if (error) return { ok: false, error };
+  const code = codeFromLabel(input.label);
+  if (!code) return { ok: false, error: "Không thể tạo mã hệ thống từ tên bước." };
+  try {
+    await createWorkflowStepSetting({ code, ...input });
+    revalidate();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Không thể thêm bước. Tên hoặc mã có thể đã tồn tại." };
+  }
+}
+
+export async function updateWorkflowStepAction(
+  code: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  const input = parseWorkflowStep(formData);
+  const error = validateWorkflowStep(input);
+  if (error) return { ok: false, error };
+  try {
+    await updateWorkflowStepSetting(code, input);
+    revalidate();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Không thể cập nhật bước quy trình." };
+  }
+}
+
+export async function deleteWorkflowStepAction(code: string): Promise<ActionResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  try {
+    const count = await countTasksUsingWorkflowStep(code);
+    if (count > 0) {
+      return {
+        ok: false,
+        error: `Không thể xóa vì đang có ${count} công việc sử dụng. Hãy tắt bước này.`,
+      };
+    }
+    await deleteWorkflowStepSetting(code);
+    revalidate();
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      error: "Không thể xóa bước hệ thống hoặc bước đang được sử dụng.",
+    };
   }
 }

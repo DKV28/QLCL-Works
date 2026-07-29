@@ -59,6 +59,18 @@ export interface TaskStatusSetting {
   updated_at: string;
 }
 
+export interface WorkflowStepSetting {
+  code: string;
+  label: string;
+  role_label: string;
+  sla_days: number;
+  sort_order: number;
+  is_active: boolean;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Profile {
   id: string;
   full_name: string | null;

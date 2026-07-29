@@ -17,12 +17,15 @@ import { recordActivity } from "@/lib/data/activity";
 import { createNotification } from "@/lib/data/notifications";
 import { canWriteTask } from "@/lib/data/permissions";
 import {
+  getNextWorkflowStepSetting,
+  getWorkflowStepSetting,
+} from "@/lib/data/settings";
+import {
   TASK_STATUS_LABEL,
   type TaskPriority,
   type TaskRepeat,
   type TaskStatus,
 } from "@/lib/types";
-import { getNextStep, isLastStep, stepLabel } from "@/lib/logic/van-hanh";
 import { addWorkingDays } from "@/lib/logic/working-days";
 import { todayISO } from "@/lib/logic/overdue";
 
@@ -219,8 +222,13 @@ export async function advanceVanHanhStepAction(
       return { ok: false, error: "Công việc không thuộc quy trình vận hành." };
     }
     const current = info.van_hanh_step;
+    const currentStep = await getWorkflowStepSetting(current);
+    if (!currentStep) {
+      return { ok: false, error: "Bước hiện tại không còn trong cấu hình quy trình." };
+    }
+    const next = await getNextWorkflowStepSetting(currentStep.sort_order);
 
-    if (isLastStep(current)) {
+    if (!next) {
       // Bước cuối: hoàn thành, giữ nguyên mã bước để còn biết dừng ở đâu.
       const wasDone = await isTaskCompleted(id);
       await updateTaskStep(id, {
@@ -233,16 +241,14 @@ export async function advanceVanHanhStepAction(
           task_id: id,
           project_id: info.project_id,
           action: "chuyen_buoc",
-          detail: `${stepLabel(current)} → Hoàn thành`,
+          detail: `${currentStep.label} → Hoàn thành`,
         }),
         wasDone ? Promise.resolve() : createNextRecurrence(id),
       ]);
     } else {
-      const next = getNextStep(current);
-      if (!next) return { ok: false, error: "Không tìm được bước tiếp theo." };
       await updateTaskStep(id, {
         van_hanh_step: next.code,
-        due_date: addWorkingDays(next.slaDays, todayISO()),
+        due_date: addWorkingDays(next.sla_days, todayISO()),
         status: "dang_lam",
         completed: false,
       });
@@ -250,7 +256,7 @@ export async function advanceVanHanhStepAction(
         task_id: id,
         project_id: info.project_id,
         action: "chuyen_buoc",
-        detail: `${stepLabel(current)} → ${next.label}`,
+        detail: `${currentStep.label} → ${next.label}`,
       });
     }
   } catch (e) {

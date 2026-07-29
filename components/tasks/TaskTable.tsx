@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArisingBadge,
@@ -16,7 +16,8 @@ import {
   duplicateTaskAction,
   toggleCompleteAction,
 } from "@/lib/actions/tasks";
-import { getNextStep, getStep, isLastStep } from "@/lib/logic/van-hanh";
+import { VAN_HANH_STEPS } from "@/lib/logic/van-hanh";
+import { getWorkflowStepsAction } from "@/lib/actions/settings";
 import { ActionsMenu, type ActionItem } from "@/components/ui/ActionsMenu";
 import { TagChips } from "@/components/ui/TagChips";
 import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
@@ -27,6 +28,7 @@ import type {
   TaskPrioritySetting,
   TaskStatusSetting,
   TaskWithAssignees,
+  WorkflowStepSetting,
 } from "@/lib/types";
 
 type SortKey = "title" | "assignee" | "due_date" | "arising" | "status";
@@ -59,6 +61,36 @@ export function TaskTable({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStepSetting[]>(
+    VAN_HANH_STEPS.map((step) => ({
+      code: step.code,
+      label: step.label,
+      role_label: step.role,
+      sla_days: step.slaDays,
+      sort_order: step.order * 10,
+      is_active: true,
+      is_system: true,
+      created_at: "",
+      updated_at: "",
+    })),
+  );
+
+  useEffect(() => {
+    getWorkflowStepsAction().then((steps) => {
+      if (steps.length > 0) setWorkflowSteps(steps);
+    });
+  }, []);
+
+  const getStep = (code: string | null) =>
+    workflowSteps.find((step) => step.code === code);
+  const getNextStep = (code: string | null) => {
+    const current = getStep(code);
+    if (!current) return undefined;
+    return workflowSteps
+      .filter((step) => step.is_active && step.sort_order > current.sort_order)
+      .sort((a, b) => a.sort_order - b.sort_order)[0];
+  };
+  const isLastStep = (code: string | null) => !!getStep(code) && !getNextStep(code);
 
   const editing = tasks.find((t) => t.id === editingId) ?? null;
   const statusOrder = useMemo(
@@ -296,7 +328,10 @@ export function TaskTable({
                 <td className="p-3 align-top">
                   {t.van_hanh_step ? (
                     <StepBadge
-                      order={getStep(t.van_hanh_step)?.order}
+                      order={
+                        workflowSteps
+                          .findIndex((step) => step.code === t.van_hanh_step) + 1
+                      }
                       label={getStep(t.van_hanh_step)?.label ?? t.van_hanh_step}
                     />
                   ) : (

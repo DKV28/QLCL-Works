@@ -13,6 +13,7 @@ import type {
   TaskPrioritySetting,
   TaskStatusSetting,
   Team,
+  WorkflowStepSetting,
 } from "@/lib/types";
 
 type SettingsTab = "quy-trinh" | "nhan" | "co-cau" | "nguoi-dung";
@@ -28,6 +29,7 @@ export function SettingsClient({
   initialTab,
   priorities,
   statuses,
+  workflowSteps,
   tags,
   teams,
   users,
@@ -36,6 +38,7 @@ export function SettingsClient({
   initialTab: SettingsTab;
   priorities: TaskPrioritySetting[];
   statuses: TaskStatusSetting[];
+  workflowSteps: WorkflowStepSetting[];
   tags: Tag[];
   teams: Team[];
   users: Profile[];
@@ -70,7 +73,11 @@ export function SettingsClient({
       </div>
 
       {tab === "quy-trinh" && (
-        <WorkflowSettingsClient priorities={priorities} statuses={statuses} />
+        <WorkflowSettingsClient
+          priorities={priorities}
+          statuses={statuses}
+          workflowSteps={workflowSteps}
+        />
       )}
       {tab === "nhan" && <TagsClient tags={tags} />}
       {tab === "co-cau" && <TeamsClient teams={teams} />}

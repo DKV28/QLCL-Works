@@ -12,15 +12,13 @@ import {
   type TaskPrioritySetting,
   type TaskStatusSetting,
   type TaskWithAssignees,
+  type WorkflowStepSetting,
 } from "@/lib/types";
 import type { ActionResult } from "@/lib/actions/tasks";
 import { getTagsAction } from "@/lib/actions/tags";
+import { getWorkflowStepsAction } from "@/lib/actions/settings";
 import { todayISO } from "@/lib/logic/overdue";
-import {
-  DEFAULT_FIRST_STEP_DAYS,
-  FIRST_STEP_CODE,
-  VAN_HANH_STEPS,
-} from "@/lib/logic/van-hanh";
+import { FIRST_STEP_CODE, VAN_HANH_STEPS } from "@/lib/logic/van-hanh";
 import { addWorkingDays } from "@/lib/logic/working-days";
 
 export function TaskForm({
@@ -53,20 +51,48 @@ export function TaskForm({
   const [vanHanhStep, setVanHanhStep] = useState(
     task?.van_hanh_step ?? FIRST_STEP_CODE,
   );
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStepSetting[]>(
+    VAN_HANH_STEPS.map((step) => ({
+      code: step.code,
+      label: step.label,
+      role_label: step.role,
+      sla_days: step.slaDays,
+      sort_order: step.order * 10,
+      is_active: true,
+      is_system: true,
+      created_at: "",
+      updated_at: "",
+    })),
+  );
   const [dueDate, setDueDate] = useState(task?.due_date ?? "");
 
   function toggleVanHanh(on: boolean) {
     setIsVanHanh(on);
-    // Khi bật quy trình cho công việc TẠO MỚI mà chưa có deadline: điền mặc định
-    // = hôm nay + 9 ngày làm việc (theo nghiệp vụ đã chốt). Vẫn sửa tay được.
+    // Khi bật quy trình cho công việc mới, lấy SLA của bước đang chọn.
     if (on && !task && !dueDate) {
-      setDueDate(addWorkingDays(DEFAULT_FIRST_STEP_DAYS));
+      const selected = workflowSteps.find((step) => step.code === vanHanhStep);
+      setDueDate(addWorkingDays(selected?.sla_days ?? 1));
     }
   }
 
   useEffect(() => {
     if (!tags) getTagsAction().then(setAllTags);
   }, [tags]);
+
+  useEffect(() => {
+    getWorkflowStepsAction().then((steps) => {
+      if (steps.length === 0) return;
+      setWorkflowSteps(steps);
+      if (!task) {
+        const firstActive = steps.find((step) => step.is_active);
+        if (firstActive) setVanHanhStep(firstActive.code);
+      }
+    });
+  }, [task]);
+
+  const availableWorkflowSteps = workflowSteps.filter(
+    (step) => step.is_active || step.code === task?.van_hanh_step,
+  );
 
   const priorityOptions =
     prioritySettings && prioritySettings.length > 0
@@ -308,9 +334,11 @@ export function TaskForm({
               onChange={(e) => setVanHanhStep(e.target.value)}
               className="input"
             >
-              {VAN_HANH_STEPS.map((step) => (
+              {availableWorkflowSteps.map((step, index) => (
                 <option key={step.code} value={step.code}>
-                  {step.order}. {step.label} · {step.role}
+                  {index + 1}. {step.label}
+                  {step.role_label ? ` · ${step.role_label}` : ""}
+                  {` · SLA ${step.sla_days} ngày`}
                 </option>
               ))}
             </select>
