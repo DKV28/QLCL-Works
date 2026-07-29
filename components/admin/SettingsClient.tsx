@@ -11,7 +11,6 @@ import type {
   Profile,
   RolePermission,
   Tag,
-  TaskPrioritySetting,
   TaskStatusSetting,
   Team,
   WorkflowStepSetting,
@@ -25,7 +24,7 @@ type SettingsTab =
   | "nguoi-dung";
 
 const TABS: [SettingsTab, string][] = [
-  ["quy-trinh", "Quy trình công việc"],
+  ["quy-trinh", "Trạng thái"],
   ["buoc-quy-trinh", "Các bước & SLA"],
   ["nhan", "Nhãn"],
   ["co-cau", "Cơ cấu team/tổ"],
@@ -34,7 +33,6 @@ const TABS: [SettingsTab, string][] = [
 
 export function SettingsClient({
   initialTab,
-  priorities,
   statuses,
   workflowSteps,
   tags,
@@ -43,7 +41,6 @@ export function SettingsClient({
   rolePermissions,
 }: {
   initialTab: SettingsTab;
-  priorities: TaskPrioritySetting[];
   statuses: TaskStatusSetting[];
   workflowSteps: WorkflowStepSetting[];
   tags: Tag[];
@@ -55,23 +52,25 @@ export function SettingsClient({
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Cài đặt</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Khu vực dành riêng cho Quản trị viên.
-        </p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Cài đặt</h1>
+          <p className="page-description">
+            Quản lý quy trình, cơ cấu tổ chức và quyền truy cập hệ thống.
+          </p>
+        </div>
       </div>
 
-      <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200 pb-3 dark:border-gray-800">
+      <div className="subnav mb-6" role="tablist" aria-label="Mục cài đặt">
         {TABS.map(([value, label]) => (
           <button
             key={value}
             type="button"
+            role="tab"
+            aria-selected={tab === value}
             onClick={() => setTab(value)}
-            className={`shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium ${
-              tab === value
-                ? "bg-brand text-white"
-                : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+            className={`subnav-item ${
+              tab === value ? "subnav-item-active" : ""
             }`}
           >
             {label}
@@ -80,7 +79,7 @@ export function SettingsClient({
       </div>
 
       {tab === "quy-trinh" && (
-        <WorkflowSettingsClient priorities={priorities} statuses={statuses} />
+        <WorkflowSettingsClient statuses={statuses} />
       )}
       {tab === "buoc-quy-trinh" && (
         <WorkflowStepsSettingsClient steps={workflowSteps} />

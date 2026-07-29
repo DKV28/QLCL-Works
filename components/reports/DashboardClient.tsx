@@ -64,8 +64,13 @@ export function DashboardClient({
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Báo cáo</h1>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Báo cáo</h1>
+          <p className="page-description">
+            Tổng hợp tiến độ, hiệu suất và các công việc cần chú ý.
+          </p>
+        </div>
         <button className="btn-secondary no-print" onClick={() => window.print()}>
           Xuất PDF
         </button>

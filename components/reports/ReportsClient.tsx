@@ -32,15 +32,17 @@ export function ReportsClient({
 
   return (
     <div>
-      <div className="no-print mb-6 inline-flex rounded-md border border-gray-300 p-0.5 dark:border-gray-700">
+      <div className="segmented no-print mb-6" role="tablist" aria-label="Loại báo cáo">
         {tabs.map(([id, label]) => (
           <button
             key={id}
+            role="tab"
+            aria-selected={tab === id}
             onClick={() => setTab(id)}
-            className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+            className={`segmented-item ${
               tab === id
-                ? "bg-brand text-white"
-                : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                ? "segmented-item-active"
+                : ""
             }`}
           >
             {label}

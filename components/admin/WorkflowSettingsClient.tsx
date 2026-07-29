@@ -3,17 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  createPrioritySettingAction,
   createStatusSettingAction,
-  deletePrioritySettingAction,
   deleteStatusSettingAction,
-  updatePrioritySettingAction,
   updateStatusSettingAction,
 } from "@/lib/actions/settings";
-import type {
-  TaskPrioritySetting,
-  TaskStatusSetting,
-} from "@/lib/types";
+import type { TaskStatusSetting } from "@/lib/types";
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -149,23 +143,15 @@ function SettingRow({
   );
 }
 
-function NewSettingForm({
-  kind,
-}: {
-  kind: "priority" | "status";
-}) {
+function NewSettingForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const action =
-    kind === "priority"
-      ? createPrioritySettingAction
-      : createStatusSettingAction;
 
   function submit(formData: FormData) {
     setError(null);
     startTransition(async () => {
-      const result = await action(formData);
+      const result = await createStatusSettingAction(formData);
       if (result.ok) router.refresh();
       else setError(result.error);
     });
@@ -183,7 +169,7 @@ function NewSettingForm({
           <input
             name="color"
             type="color"
-            defaultValue={kind === "priority" ? "#6366f1" : "#0ea5e9"}
+            defaultValue="#0ea5e9"
             className="h-10 w-full cursor-pointer rounded-md border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
           />
         </div>
@@ -205,48 +191,25 @@ function NewSettingForm({
 }
 
 export function WorkflowSettingsClient({
-  priorities,
   statuses,
 }: {
-  priorities: TaskPrioritySetting[];
   statuses: TaskStatusSetting[];
 }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Quy trình công việc</h2>
+        <h2 className="text-xl font-semibold">Trạng thái công việc</h2>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Tùy chỉnh tên, màu, thứ tự hiển thị và giá trị mặc định. Mã hệ thống
-          được giữ cố định để bảo toàn dữ liệu và hành vi Kanban.
+          Quản lý tên, màu và thứ tự hiển thị trên danh sách và Kanban.
+          Mã hệ thống được giữ cố định để bảo toàn dữ liệu.
         </p>
       </div>
 
       <section>
-        <h3 className="mb-2 font-semibold">Mức độ quan trọng</h3>
-        <NewSettingForm kind="priority" />
-        <div className="card">
-          {priorities.map((item) => (
-            <SettingRow
-              key={item.code}
-              code={item.code}
-              label={item.label}
-              color={item.color}
-              sortOrder={item.sort_order}
-              active={item.is_active}
-              isDefault={item.is_default}
-              isSystem={item.is_system}
-              onSubmit={(formData) =>
-                updatePrioritySettingAction(item.code, formData)
-              }
-              onDelete={() => deletePrioritySettingAction(item.code)}
-            />
-          ))}
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="section-title">Danh sách trạng thái</h3>
         </div>
-      </section>
-
-      <section>
-        <h3 className="mb-2 font-semibold">Trạng thái</h3>
-        <NewSettingForm kind="status" />
+        <NewSettingForm />
         <div className="card">
           {statuses.map((item) => (
             <SettingRow

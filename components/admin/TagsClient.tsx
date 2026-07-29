@@ -111,15 +111,21 @@ export function TagsClient({ tags }: { tags: Tag[] }) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Nhãn</h1>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">Nhãn công việc</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Dùng nhãn để nhóm và tìm nhanh các công việc liên quan.
+          </p>
+        </div>
         <button className="btn-primary" onClick={() => setCreating(true)}>
-          Tạo nhãn
+          <span className="text-lg leading-none">+</span>
+          Nhãn
         </button>
       </div>
 
       {tags.length === 0 ? (
-        <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
+        <div className="empty-state">
           Chưa có nhãn nào.
         </div>
       ) : (

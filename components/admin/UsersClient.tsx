@@ -46,10 +46,16 @@ export function UsersClient({ users }: { users: Profile[] }) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Người dùng</h1>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">Người dùng</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Quản lý tài khoản và vai trò truy cập hệ thống.
+          </p>
+        </div>
         <button className="btn-primary" onClick={() => setCreating(true)}>
-          Tạo tài khoản
+          <span className="text-lg leading-none">+</span>
+          Tài khoản
         </button>
       </div>
 

@@ -51,6 +51,7 @@ export function TasksView({
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [filters, setFilters] = useState<TaskFilters>({});
   const [teamTab, setTeamTab] = useState("");
   const [workMemberId, setWorkMemberId] = useState("");
@@ -200,18 +201,21 @@ export function TasksView({
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">Công việc</h1>
-          <div className="inline-flex rounded-md border border-gray-300 p-0.5 dark:border-gray-700">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Công việc</h1>
+          <p className="page-description">
+            Theo dõi tiến độ, người phụ trách và deadline trong một nơi.
+          </p>
+          <div className="segmented mt-3">
             {VIEW_LABELS.map(([mode, label]) => (
               <button
                 key={mode}
                 onClick={() => setView(mode)}
-                className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                className={`segmented-item ${
                   view === mode
-                    ? "bg-brand text-white"
-                    : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                    ? "segmented-item-active"
+                    : ""
                 }`}
               >
                 {label}
@@ -219,27 +223,35 @@ export function TasksView({
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <span className="mr-1 text-sm text-gray-500 dark:text-gray-400">
             {visible.length}/{localTasks.length} công việc
           </span>
+          <button
+            className="btn-secondary"
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-expanded={filtersOpen}
+          >
+            {filtersOpen ? "Ẩn bộ lọc" : "Bộ lọc"}
+          </button>
           <button className="btn-primary" onClick={() => setCreating(true)}>
-            Thêm công việc
+            <span className="text-lg leading-none">+</span>
+            Công việc
           </button>
         </div>
       </div>
 
-      <div className="mb-4 flex gap-2 overflow-x-auto border-b border-gray-200 pb-2 dark:border-gray-800">
+      <div className="subnav mb-4">
         <button
           type="button"
           onClick={() => {
             setTeamTab("");
             update({ teamId: "" });
           }}
-          className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium ${
+          className={`subnav-item ${
             teamTab === ""
-              ? "bg-brand text-white"
-              : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+              ? "subnav-item-active"
+              : ""
           }`}
         >
           Tất cả team
@@ -252,10 +264,10 @@ export function TasksView({
               setTeamTab(id);
               update({ teamId: id });
             }}
-            className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium ${
+            className={`subnav-item ${
               teamTab === id
-                ? "bg-brand text-white"
-                : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                ? "subnav-item-active"
+                : ""
             }`}
           >
             {name}
@@ -263,7 +275,18 @@ export function TasksView({
         ))}
       </div>
 
-      <div className="card mb-4 p-4">
+      {filtersOpen && <div className="card mb-4 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="section-title">Bộ lọc công việc</h2>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              Kết hợp nhiều điều kiện để thu hẹp danh sách.
+            </p>
+          </div>
+          <button className="text-sm font-medium text-brand hover:underline" onClick={reset}>
+            Đặt lại
+          </button>
+        </div>
         <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5">
           <div>
             <label className="label">Từ khóa</label>
@@ -403,14 +426,12 @@ export function TasksView({
               Ẩn công việc đã hoàn thành
             </label>
           </div>
-          <button className="btn-secondary text-sm" onClick={reset}>
-            Xóa bộ lọc
-          </button>
+          <span />
         </div>
-      </div>
+      </div>}
 
       {(view === "list" || view === "kanban") && (
-        <div className="card mb-4 p-4">
+        <div className="card mb-4 border-brand/20 bg-brand/[0.025] p-4 dark:bg-brand/[0.04]">
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[240px] flex-1">
               <label className="label">My day của</label>

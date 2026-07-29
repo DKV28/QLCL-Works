@@ -47,16 +47,16 @@ export function ProjectDetailClient({
 
   return (
     <div>
-      <div className="mb-2">
+      <div className="mb-3">
         <Link href="/du-an" className="text-sm text-brand hover:underline">
-          Quay lại danh sách dự án
+          ← Dự án
         </Link>
       </div>
 
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="page-header">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{project.name}</h1>
+            <h1 className="page-title">{project.name}</h1>
             <ProjectStatusBadge value={project.status} />
           </div>
           {project.description && (
@@ -66,7 +66,8 @@ export function ProjectDetailClient({
           )}
         </div>
         <button className="btn-primary shrink-0" onClick={() => setCreating(true)}>
-          Thêm công việc
+          <span className="text-lg leading-none">+</span>
+          Công việc
         </button>
       </div>
 

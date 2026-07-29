@@ -18,11 +18,11 @@ export function StatCard({
   };
 
   return (
-    <div className="card p-4">
-      <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+    <div className="card p-5">
+      <div className="text-xs font-semibold text-gray-500 dark:text-gray-400">
         {label}
       </div>
-      <div className={`mt-1 text-2xl font-bold ${toneClass[tone]}`}>{value}</div>
+      <div className={`mt-2 text-3xl font-semibold tracking-tight ${toneClass[tone]}`}>{value}</div>
       {sub && (
         <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
           {sub}

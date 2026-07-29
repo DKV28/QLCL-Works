@@ -263,7 +263,7 @@ export function DailyReport({
           <div className="card p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div
-                className="flex min-w-0 gap-1 overflow-x-auto"
+                className="segmented min-w-0 overflow-x-auto"
                 role="tablist"
                 aria-label="Chi tiết báo cáo ngày"
               >
@@ -272,10 +272,10 @@ export function DailyReport({
                   role="tab"
                   aria-selected={detailTab === "today"}
                   onClick={() => setDetailTab("today")}
-                  className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold ${
+                  className={`segmented-item ${
                     detailTab === "today"
-                      ? "bg-brand text-white"
-                      : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                      ? "segmented-item-active"
+                      : ""
                   }`}
                 >
                   Việc trong ngày ({selected.todayTasks.length})
@@ -285,10 +285,10 @@ export function DailyReport({
                   role="tab"
                   aria-selected={detailTab === "tomorrow"}
                   onClick={() => setDetailTab("tomorrow")}
-                  className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold ${
+                  className={`segmented-item ${
                     detailTab === "tomorrow"
-                      ? "bg-brand text-white"
-                      : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                      ? "segmented-item-active"
+                      : ""
                   }`}
                 >
                   Việc ngày mai ({selected.tomorrowNew.length})

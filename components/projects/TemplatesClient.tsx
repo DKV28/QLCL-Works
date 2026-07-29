@@ -40,32 +40,33 @@ export function TemplatesClient({ templates }: { templates: Project[] }) {
 
   return (
     <div>
-      <div className="mb-2">
+      <div className="mb-3">
         <Link href="/du-an" className="text-sm text-brand hover:underline">
-          Dự án vận hành
+          ← Dự án
         </Link>
       </div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Thư viện mẫu</h1>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Thư viện mẫu</h1>
+          <p className="page-description">
+            Chuẩn hóa các checklist thường dùng để khởi tạo dự án nhanh hơn.
+          </p>
+        </div>
         <button className="btn-primary" onClick={() => setCreating(true)}>
-          Tạo mẫu mới
+          <span className="text-lg leading-none">+</span>
+          Mẫu mới
         </button>
       </div>
 
-      <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-        Dự án mẫu là checklist dùng lại (vd audit hằng tháng). Bấm &quot;Tạo dự
-        án từ mẫu&quot; để sinh một dự án vận hành kèm toàn bộ công việc.
-      </p>
-
       {templates.length === 0 ? (
-        <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
+        <div className="empty-state">
           Chưa có mẫu nào. Bấm &quot;Tạo mẫu mới&quot;, hoặc mở một dự án và đánh
           dấu &quot;Đây là dự án mẫu&quot;.
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((p) => (
-            <div key={p.id} className="card flex flex-col p-5">
+            <div key={p.id} className="card flex min-h-48 flex-col p-5 transition hover:border-gray-300 dark:hover:border-gray-700">
               <div className="mb-2 text-lg font-semibold">{p.name}</div>
               <p className="mb-4 flex-1 text-sm text-gray-600 line-clamp-3 dark:text-gray-400">
                 {p.description || "—"}
