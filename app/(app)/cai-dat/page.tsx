@@ -33,7 +33,10 @@ export default async function SettingsPage({
 
   const requested = searchParams?.tab;
   const initialTab =
-    requested === "nhan" || requested === "co-cau" || requested === "nguoi-dung"
+    requested === "buoc-quy-trinh" ||
+    requested === "nhan" ||
+    requested === "co-cau" ||
+    requested === "nguoi-dung"
       ? requested
       : "quy-trinh";
 

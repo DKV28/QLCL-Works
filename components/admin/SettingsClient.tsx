@@ -5,6 +5,7 @@ import { TagsClient } from "./TagsClient";
 import { UsersClient } from "./UsersClient";
 import { RolePermissionsClient } from "./RolePermissionsClient";
 import { WorkflowSettingsClient } from "./WorkflowSettingsClient";
+import { WorkflowStepsSettingsClient } from "./WorkflowStepsSettingsClient";
 import { TeamsClient } from "./TeamsClient";
 import type {
   Profile,
@@ -16,10 +17,16 @@ import type {
   WorkflowStepSetting,
 } from "@/lib/types";
 
-type SettingsTab = "quy-trinh" | "nhan" | "co-cau" | "nguoi-dung";
+type SettingsTab =
+  | "quy-trinh"
+  | "buoc-quy-trinh"
+  | "nhan"
+  | "co-cau"
+  | "nguoi-dung";
 
 const TABS: [SettingsTab, string][] = [
   ["quy-trinh", "Quy trình công việc"],
+  ["buoc-quy-trinh", "Các bước & SLA"],
   ["nhan", "Nhãn"],
   ["co-cau", "Cơ cấu team/tổ"],
   ["nguoi-dung", "Người dùng & phân quyền"],
@@ -55,13 +62,13 @@ export function SettingsClient({
         </p>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-gray-200 pb-3 dark:border-gray-800">
+      <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200 pb-3 dark:border-gray-800">
         {TABS.map(([value, label]) => (
           <button
             key={value}
             type="button"
             onClick={() => setTab(value)}
-            className={`rounded-md px-3 py-2 text-sm font-medium ${
+            className={`shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium ${
               tab === value
                 ? "bg-brand text-white"
                 : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
@@ -73,11 +80,10 @@ export function SettingsClient({
       </div>
 
       {tab === "quy-trinh" && (
-        <WorkflowSettingsClient
-          priorities={priorities}
-          statuses={statuses}
-          workflowSteps={workflowSteps}
-        />
+        <WorkflowSettingsClient priorities={priorities} statuses={statuses} />
+      )}
+      {tab === "buoc-quy-trinh" && (
+        <WorkflowStepsSettingsClient steps={workflowSteps} />
       )}
       {tab === "nhan" && <TagsClient tags={tags} />}
       {tab === "co-cau" && <TeamsClient teams={teams} />}

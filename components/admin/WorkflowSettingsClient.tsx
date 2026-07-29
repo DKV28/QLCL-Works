@@ -13,9 +13,7 @@ import {
 import type {
   TaskPrioritySetting,
   TaskStatusSetting,
-  WorkflowStepSetting,
 } from "@/lib/types";
-import { WorkflowStepsSettingsClient } from "./WorkflowStepsSettingsClient";
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -209,11 +207,9 @@ function NewSettingForm({
 export function WorkflowSettingsClient({
   priorities,
   statuses,
-  workflowSteps,
 }: {
   priorities: TaskPrioritySetting[];
   statuses: TaskStatusSetting[];
-  workflowSteps: WorkflowStepSetting[];
 }) {
   return (
     <div className="space-y-6">
@@ -224,8 +220,6 @@ export function WorkflowSettingsClient({
           được giữ cố định để bảo toàn dữ liệu và hành vi Kanban.
         </p>
       </div>
-
-      <WorkflowStepsSettingsClient steps={workflowSteps} />
 
       <section>
         <h3 className="mb-2 font-semibold">Mức độ quan trọng</h3>
