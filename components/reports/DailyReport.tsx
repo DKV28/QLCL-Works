@@ -43,6 +43,14 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+function normalizeSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("vi")
+    .trim();
+}
+
 export function DailyReport({
   tasks,
   members,
@@ -57,6 +65,7 @@ export function DailyReport({
   const [error, setError] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<"today" | "tomorrow">("today");
   const [myDayOpen, setMyDayOpen] = useState(false);
+  const [myDayQuery, setMyDayQuery] = useState("");
   const currentDateRef = useRef(todayISO());
 
   useEffect(() => {
@@ -76,6 +85,7 @@ export function DailyReport({
   useEffect(() => {
     setDetailTab("today");
     setMyDayOpen(false);
+    setMyDayQuery("");
   }, [memberId, reportDate]);
 
   useEffect(() => {
@@ -110,6 +120,18 @@ export function DailyReport({
           task.supporters.some((member) => member.id === memberId),
       )
     : [];
+  const normalizedMyDayQuery = normalizeSearch(myDayQuery);
+  const filteredAssignedTasks = normalizedMyDayQuery
+    ? assignedTasks.filter((task) =>
+        normalizeSearch(
+          [
+            task.title,
+            task.description ?? "",
+            ...task.tags.map((tag) => tag.name),
+          ].join(" "),
+        ).includes(normalizedMyDayQuery),
+      )
+    : assignedTasks;
   const loggedTaskIds = new Set(
     workLogs
       .filter((log) => log.member_id === memberId)
@@ -390,13 +412,52 @@ export function DailyReport({
               Chọn công việc đã thực hiện trong ngày. Báo cáo cũng tự động tính
               các công việc có deadline đúng ngày báo cáo.
             </p>
+            <div className="relative mb-3">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m16 16 4 4" strokeLinecap="round" />
+              </svg>
+              <input
+                type="search"
+                className="input pl-9 pr-9"
+                value={myDayQuery}
+                onChange={(event) => setMyDayQuery(event.target.value)}
+                placeholder="Tìm theo tên, mô tả hoặc nhãn..."
+                aria-label="Tìm công việc trong My day"
+                autoFocus
+              />
+              {myDayQuery && (
+                <button
+                  type="button"
+                  onClick={() => setMyDayQuery("")}
+                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                  aria-label="Xóa từ khóa tìm kiếm"
+                >
+                  ×
+                </button>
+              )}
+            </div>
             <div className="mb-1 hidden grid-cols-[40px_minmax(0,1fr)_120px] gap-2 px-2 text-xs font-semibold uppercase tracking-wide text-gray-400 sm:grid">
               <span />
-              <span>Công việc</span>
+              <span>
+                Công việc
+                {myDayQuery && (
+                  <span className="ml-1 font-normal normal-case">
+                    ({filteredAssignedTasks.length}/{assignedTasks.length})
+                  </span>
+                )}
+              </span>
               <span>Deadline</span>
             </div>
             <div className="max-h-[60vh] space-y-2 overflow-y-auto">
-              {assignedTasks.map((task) => (
+              {filteredAssignedTasks.map((task) => (
                 <label
                   key={task.id}
                   className="grid cursor-pointer gap-2 rounded border border-gray-100 p-3 text-sm sm:grid-cols-[40px_minmax(0,1fr)_120px] sm:items-center dark:border-gray-800"
@@ -421,6 +482,11 @@ export function DailyReport({
               ))}
               {assignedTasks.length === 0 && (
                 <p className="text-sm text-gray-400">Không có công việc được phân công.</p>
+              )}
+              {assignedTasks.length > 0 && filteredAssignedTasks.length === 0 && (
+                <div className="rounded-lg border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-400 dark:border-gray-700">
+                  Không tìm thấy công việc phù hợp.
+                </div>
               )}
             </div>
           </Modal>

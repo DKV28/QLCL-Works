@@ -51,7 +51,8 @@ export function TasksView({
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [myDayOpen, setMyDayOpen] = useState(false);
   const [filters, setFilters] = useState<TaskFilters>({});
   const [teamTab, setTeamTab] = useState("");
   const [workMemberId, setWorkMemberId] = useState("");
@@ -122,6 +123,8 @@ export function TasksView({
     () => sortTasks(filterTasks(localTasks, filters)),
     [localTasks, filters],
   );
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const activeWorkMemberId = myDayOpen ? workMemberId : "";
 
   useEffect(() => {
     let cancelled = false;
@@ -228,12 +231,45 @@ export function TasksView({
             {visible.length}/{localTasks.length} công việc
           </span>
           <button
-            className="btn-secondary"
+            type="button"
+            className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition ${
+              filtersOpen || activeFilterCount > 0
+                ? "border-brand/30 bg-brand/10 text-brand dark:text-brand-light"
+                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+            }`}
             onClick={() => setFiltersOpen((open) => !open)}
             aria-expanded={filtersOpen}
+            aria-controls="task-filters"
           >
-            {filtersOpen ? "Ẩn bộ lọc" : "Bộ lọc"}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden="true">
+              <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
+            </svg>
+            Lọc
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-brand px-1.5 py-0.5 text-[10px] leading-none text-white">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
+          {(view === "list" || view === "kanban") && (
+            <button
+              type="button"
+              className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition ${
+                myDayOpen
+                  ? "border-brand/30 bg-brand/10 text-brand dark:text-brand-light"
+                  : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              }`}
+              onClick={() => setMyDayOpen((open) => !open)}
+              aria-expanded={myDayOpen}
+              aria-controls="task-my-day"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden="true">
+                <path d="M8 3v3M16 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="m9 15 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              My day
+            </button>
+          )}
           <button className="btn-primary" onClick={() => setCreating(true)}>
             <span className="text-lg leading-none">+</span>
             Công việc
@@ -275,19 +311,14 @@ export function TasksView({
         ))}
       </div>
 
-      {filtersOpen && <div className="card mb-4 p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="section-title">Bộ lọc công việc</h2>
-            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              Kết hợp nhiều điều kiện để thu hẹp danh sách.
-            </p>
-          </div>
+      {filtersOpen && <div id="task-filters" className="card mb-4 p-3">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Bộ lọc công việc</h2>
           <button className="text-sm font-medium text-brand hover:underline" onClick={reset}>
             Đặt lại
           </button>
         </div>
-        <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5">
+        <div className="grid items-end gap-2.5 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5">
           <div>
             <label className="label">Từ khóa</label>
             <input
@@ -405,7 +436,7 @@ export function TasksView({
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-2.5 dark:border-gray-800">
           <div className="flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
@@ -430,8 +461,26 @@ export function TasksView({
         </div>
       </div>}
 
-      {(view === "list" || view === "kanban") && (
-        <div className="card mb-4 border-brand/20 bg-brand/[0.025] p-4 dark:bg-brand/[0.04]">
+      {myDayOpen && (view === "list" || view === "kanban") && (
+        <div id="task-my-day" className="card mb-4 border-brand/20 bg-brand/[0.025] p-3 dark:bg-brand/[0.04]">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Ghi nhận My day</h2>
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                Đánh dấu việc đã thực hiện, không thay đổi trạng thái hoàn thành.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMyDayOpen(false)}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+              aria-label="Đóng My day"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[240px] flex-1">
               <label className="label">My day của</label>
@@ -458,9 +507,6 @@ export function TasksView({
                 onChange={(e) => setWorkDate(e.target.value || todayISO())}
               />
             </div>
-            <p className="pb-2 text-xs text-gray-500 dark:text-gray-400">
-              My day ghi nhận công việc đã thực hiện, không đánh dấu hoàn thành.
-            </p>
           </div>
           {workLogError && (
             <p className="mt-2 text-sm text-red-600">{workLogError}</p>
@@ -477,7 +523,7 @@ export function TasksView({
           statusSettings={statusSettings}
           onTaskChange={replaceTask}
           onTaskRemove={removeTask}
-          workMemberId={workMemberId}
+          workMemberId={activeWorkMemberId}
           workTaskIds={workTaskIds}
           onToggleWorkLog={toggleWorkLog}
         />
@@ -491,7 +537,7 @@ export function TasksView({
           prioritySettings={prioritySettings}
           statusSettings={statusSettings}
           onTaskChange={replaceTask}
-          workMemberId={workMemberId}
+          workMemberId={activeWorkMemberId}
           workTaskIds={workTaskIds}
           onToggleWorkLog={toggleWorkLog}
         />
