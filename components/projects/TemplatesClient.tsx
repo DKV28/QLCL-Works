@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ActionsMenu } from "@/components/ui/ActionsMenu";
 import { ProjectForm } from "./ProjectForm";
 import {
   createFromTemplateAction,
@@ -16,22 +18,34 @@ export function TemplatesClient({ templates }: { templates: Project[] }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [pending, startTransition] = useTransition();
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   function refresh() {
     setCreating(false);
     router.refresh();
   }
 
-  function useTemplate(p: Project) {
-    if (!confirm(`Tạo dự án mới từ mẫu "${p.name}"?`)) return;
+  async function useTemplate(p: Project) {
+    const accepted = await confirm({
+      title: "Tạo dự án từ mẫu",
+      message: `Tạo dự án mới cùng toàn bộ công việc trong mẫu “${p.name}”?`,
+      confirmLabel: "Tạo dự án",
+    });
+    if (!accepted) return;
     startTransition(async () => {
       await createFromTemplateAction(p.id);
       router.refresh();
     });
   }
 
-  function remove(p: Project) {
-    if (!confirm(`Xóa mẫu "${p.name}"?`)) return;
+  async function remove(p: Project) {
+    const accepted = await confirm({
+      title: "Xóa mẫu",
+      message: `Mẫu “${p.name}” sẽ không còn xuất hiện trong thư viện.`,
+      confirmLabel: "Xóa mẫu",
+      danger: true,
+    });
+    if (!accepted) return;
     startTransition(async () => {
       await deleteProjectAction(p.id);
       router.refresh();
@@ -71,24 +85,24 @@ export function TemplatesClient({ templates }: { templates: Project[] }) {
               <p className="mb-4 flex-1 text-sm text-gray-600 line-clamp-3 dark:text-gray-400">
                 {p.description || "—"}
               </p>
-              <div className="flex justify-end gap-2">
+              <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
                 <button
-                  className="btn-primary text-xs"
+                  className="text-sm font-semibold text-brand hover:underline"
                   onClick={() => useTemplate(p)}
                   disabled={pending}
                 >
-                  Tạo dự án từ mẫu
+                  Sử dụng mẫu
                 </button>
-                <Link href={`/du-an/${p.id}`} className="btn-secondary text-xs">
-                  Sửa
-                </Link>
-                <button
-                  className="btn-danger text-xs"
-                  onClick={() => remove(p)}
-                  disabled={pending}
-                >
-                  Xóa
-                </button>
+                <ActionsMenu
+                  label={`Thao tác với mẫu ${p.name}`}
+                  items={[
+                    {
+                      label: "Chỉnh sửa mẫu",
+                      onClick: () => router.push(`/du-an/${p.id}`),
+                    },
+                    { label: "Xóa mẫu", onClick: () => remove(p), danger: true },
+                  ]}
+                />
               </div>
             </div>
           ))}
@@ -102,6 +116,7 @@ export function TemplatesClient({ templates }: { templates: Project[] }) {
           onDone={refresh}
         />
       </Modal>
+      {confirmDialog}
     </div>
   );
 }

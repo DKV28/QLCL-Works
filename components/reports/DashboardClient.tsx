@@ -64,18 +64,6 @@ export function DashboardClient({
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Báo cáo</h1>
-          <p className="page-description">
-            Tổng hợp tiến độ, hiệu suất và các công việc cần chú ý.
-          </p>
-        </div>
-        <button className="btn-secondary no-print" onClick={() => window.print()}>
-          Xuất PDF
-        </button>
-      </div>
-
       {/* Bộ lọc */}
       <div className="card no-print mb-6 p-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

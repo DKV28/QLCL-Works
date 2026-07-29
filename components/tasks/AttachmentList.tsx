@@ -33,6 +33,7 @@ export function AttachmentList({
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -86,9 +87,13 @@ export function AttachmentList({
   }
 
   function remove(att: Attachment) {
-    if (!confirm(`Xóa tệp "${att.file_name}"?`)) return;
+    setConfirmingDeleteId(null);
     startTransition(async () => {
-      await deleteAttachmentAction(att.id);
+      const result = await deleteAttachmentAction(att.id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       router.refresh();
     });
   }
@@ -119,13 +124,32 @@ export function AttachmentList({
             <span className="shrink-0 text-xs text-gray-400">
               {formatSize(att.size_bytes)}
             </span>
-            <button
-              type="button"
-              onClick={() => remove(att)}
-              className="shrink-0 text-xs text-gray-400 hover:text-red-600"
-            >
-              Xóa
-            </button>
+            {confirmingDeleteId === att.id ? (
+              <span className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDeleteId(null)}
+                  className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(att)}
+                  className="text-xs font-medium text-red-600 hover:text-red-700"
+                >
+                  Xác nhận
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmingDeleteId(att.id)}
+                className="shrink-0 text-xs text-gray-400 hover:text-red-600"
+              >
+                Xóa
+              </button>
+            )}
           </div>
         ))}
       </div>

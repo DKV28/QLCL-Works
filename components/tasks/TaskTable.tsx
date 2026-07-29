@@ -19,6 +19,7 @@ import {
 import { VAN_HANH_STEPS } from "@/lib/logic/van-hanh";
 import { getWorkflowStepsAction } from "@/lib/actions/settings";
 import { ActionsMenu, type ActionItem } from "@/components/ui/ActionsMenu";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TagChips } from "@/components/ui/TagChips";
 import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
@@ -61,6 +62,8 @@ export function TaskTable({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStepSetting[]>(
     VAN_HANH_STEPS.map((step) => ({
       code: step.code,
@@ -170,11 +173,20 @@ export function TaskTable({
     });
   }
 
-  function handleDelete(task: TaskWithAssignees) {
-    if (!confirm(`Xóa công việc "${task.title}"?`)) return;
+  async function handleDelete(task: TaskWithAssignees) {
+    const accepted = await confirm({
+      title: "Xóa công việc",
+      message: `Công việc “${task.title}” sẽ được ẩn khỏi danh sách và báo cáo.`,
+      confirmLabel: "Xóa công việc",
+      danger: true,
+    });
+    if (!accepted) return;
     onTaskRemove(task.id);
     deleteTaskAction(task.id, task.project_id).then((res) => {
-      if (!res.ok) onTaskChange(task);
+      if (!res.ok) {
+        onTaskChange(task);
+        setActionError(res.error);
+      }
     });
   }
 
@@ -182,28 +194,178 @@ export function TaskTable({
     duplicateTaskAction(task.id, task.project_id).then(() => router.refresh());
   }
 
-  function handleAdvance(task: TaskWithAssignees) {
+  async function handleAdvance(task: TaskWithAssignees) {
     const last = isLastStep(task.van_hanh_step);
     const nextLabel = last
       ? "Hoàn thành"
       : (getNextStep(task.van_hanh_step)?.label ?? "");
-    if (!confirm(`Chuyển "${task.title}" sang: ${nextLabel}?`)) return;
+    const accepted = await confirm({
+      title: "Chuyển bước quy trình",
+      message: `Chuyển “${task.title}” sang “${nextLabel}”? Deadline sẽ được tính lại theo SLA của bước mới.`,
+      confirmLabel: "Chuyển bước",
+    });
+    if (!accepted) return;
+    setActionError(null);
     advanceVanHanhStepAction(task.id).then((res) => {
       if (res.ok) router.refresh();
-      else alert(res.error);
+      else setActionError(res.error);
     });
+  }
+
+  function actionsFor(
+    task: TaskWithAssignees,
+    done: boolean,
+  ): ActionItem[] {
+    return [
+      ...(task.van_hanh_step && !done
+        ? [
+            {
+              label: isLastStep(task.van_hanh_step)
+                ? "Hoàn thành"
+                : "Bước tiếp theo →",
+              onClick: () => handleAdvance(task),
+              emphasize: true,
+            } satisfies ActionItem,
+          ]
+        : []),
+      { label: "Sửa", onClick: () => setEditingId(task.id) },
+      { label: "Nhân bản", onClick: () => handleDuplicate(task) },
+      {
+        label: "Xóa",
+        onClick: () => handleDelete(task),
+        danger: true,
+      },
+    ];
   }
 
   if (tasks.length === 0) {
     return (
-      <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
+      <div className="empty-state">
         Không có công việc nào.
       </div>
     );
   }
 
   return (
-    <div className="card overflow-x-auto">
+    <>
+      {actionError && (
+        <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          <span>{actionError}</span>
+          <button
+            type="button"
+            className="font-semibold"
+            onClick={() => setActionError(null)}
+            aria-label="Đóng thông báo lỗi"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      <div className="space-y-2 md:hidden">
+        {sortedTasks.map((task) => {
+          const overdue = isOverdue(task);
+          const startLate = needsToStart(task);
+          const attention = needsAttention(task);
+          const done = task.status === "hoan_thanh" || !!task.completed_at;
+          const canLog =
+            !!workMemberId &&
+            (task.primary?.id === workMemberId ||
+              task.supporters.some((member) => member.id === workMemberId));
+          return (
+            <article
+              key={task.id}
+              className={`card p-4 ${
+                done
+                  ? "border-green-200 bg-green-50/70 dark:border-green-900 dark:bg-green-950/20"
+                  : attention
+                    ? "border-red-200 dark:border-red-900"
+                    : ""
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={done}
+                  onChange={(event) => handleToggle(task, event.target.checked)}
+                  className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-brand"
+                  aria-label={`Đánh dấu hoàn thành ${task.title}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setEditingId(task.id)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <span className={`block break-words font-semibold leading-5 ${
+                    done ? "text-green-700 dark:text-green-300" : ""
+                  }`}>
+                    {task.title}
+                  </span>
+                  <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+                    {task.primary?.full_name ?? "Chưa giao"} ·{" "}
+                    <span className={overdue ? "font-medium text-red-600" : ""}>
+                      {formatFriendlyDate(task.due_date)}
+                    </span>
+                  </span>
+                </button>
+                <ActionsMenu
+                  label={`Thao tác với ${task.title}`}
+                  items={actionsFor(task, done)}
+                />
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <StatusBadge
+                  value={task.status}
+                  setting={statusSettings.find((item) => item.code === task.status)}
+                />
+                {task.is_arising && <ArisingBadge />}
+                {overdue && <OverdueBadge />}
+                {startLate && !overdue && <NeedStartBadge />}
+                {task.van_hanh_step && (
+                  <StepBadge
+                    order={
+                      workflowSteps.findIndex(
+                        (step) => step.code === task.van_hanh_step,
+                      ) + 1
+                    }
+                    label={
+                      getStep(task.van_hanh_step)?.label ?? task.van_hanh_step
+                    }
+                  />
+                )}
+              </div>
+
+              {(task.tags.length > 0 || task.subtasks.length > 0) && (
+                <div className="mt-3 border-t border-gray-100 pt-3 dark:border-gray-800">
+                  {task.tags.length > 0 && <TagChips tags={task.tags} />}
+                  {task.subtasks.length > 0 && (
+                    <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      {task.subtasks.filter((subtask) => subtask.is_done).length}/
+                      {task.subtasks.length} nhiệm vụ con
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {workMemberId && canLog && (
+                <label className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3 text-xs font-medium text-gray-600 dark:border-gray-800 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={workTaskIds.has(task.id)}
+                    onChange={(event) =>
+                      onToggleWorkLog(task.id, event.target.checked)
+                    }
+                    className="h-4 w-4 accent-brand"
+                  />
+                  Thêm vào My day
+                </label>
+              )}
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="card hidden overflow-x-auto md:block">
       <table className="w-full min-w-[860px] text-sm">
         <thead>
           <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
@@ -350,26 +512,7 @@ export function TaskTable({
                 <td className="p-3 align-top text-right">
                   <div className="flex justify-end">
                     <ActionsMenu
-                      items={[
-                        ...(t.van_hanh_step && !done
-                          ? [
-                              {
-                                label: isLastStep(t.van_hanh_step)
-                                  ? "Hoàn thành"
-                                  : "Bước tiếp theo →",
-                                onClick: () => handleAdvance(t),
-                                emphasize: true,
-                              } satisfies ActionItem,
-                            ]
-                          : []),
-                        { label: "Sửa", onClick: () => setEditingId(t.id) },
-                        { label: "Nhân bản", onClick: () => handleDuplicate(t) },
-                        {
-                          label: "Xóa",
-                          onClick: () => handleDelete(t),
-                          danger: true,
-                        },
-                      ]}
+                      items={actionsFor(t, done)}
                     />
                   </div>
                 </td>
@@ -379,6 +522,8 @@ export function TaskTable({
         </tbody>
       </table>
 
+      </div>
+
       <TaskEditModal
         task={editing}
         members={members}
@@ -387,6 +532,7 @@ export function TaskTable({
         statusSettings={statusSettings}
         onClose={() => setEditingId(null)}
       />
-    </div>
+      {confirmDialog}
+    </>
   );
 }

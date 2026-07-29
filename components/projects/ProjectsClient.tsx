@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ProjectStatusBadge } from "@/components/ui/Badges";
 import { ActionsMenu } from "@/components/ui/ActionsMenu";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProjectForm } from "./ProjectForm";
 import {
   createProjectAction,
@@ -20,6 +21,7 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
   const [pendingDelete, startDelete] = useTransition();
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   function refresh() {
     setCreating(false);
@@ -27,17 +29,27 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
     router.refresh();
   }
 
-  function handleDelete(p: Project) {
-    if (!confirm(`Xóa dự án "${p.name}"? Công việc bên trong cũng sẽ bị ẩn.`))
-      return;
+  async function handleDelete(p: Project) {
+    const accepted = await confirm({
+      title: "Xóa dự án",
+      message: `Dự án “${p.name}” và các công việc bên trong sẽ được ẩn khỏi hệ thống.`,
+      confirmLabel: "Xóa dự án",
+      danger: true,
+    });
+    if (!accepted) return;
     startDelete(async () => {
       await deleteProjectAction(p.id);
       router.refresh();
     });
   }
 
-  function handleDuplicate(p: Project) {
-    if (!confirm(`Nhân bản dự án "${p.name}" cùng toàn bộ công việc?`)) return;
+  async function handleDuplicate(p: Project) {
+    const accepted = await confirm({
+      title: "Nhân bản dự án",
+      message: `Tạo một bản sao của “${p.name}” cùng toàn bộ công việc?`,
+      confirmLabel: "Nhân bản",
+    });
+    if (!accepted) return;
     startDelete(async () => {
       await duplicateProjectAction(p.id);
       router.refresh();
@@ -122,6 +134,7 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
           />
         )}
       </Modal>
+      {confirmDialog}
     </div>
   );
 }

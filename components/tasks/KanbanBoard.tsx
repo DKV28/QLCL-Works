@@ -59,8 +59,6 @@ function KanbanCard({
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
       onClick={() => onEdit(task.id)}
       style={{
         transform: transform
@@ -68,7 +66,7 @@ function KanbanCard({
           : undefined,
         opacity: isDragging ? 0.5 : 1,
       }}
-      className={`cursor-grab touch-none rounded-md border p-3 text-sm shadow-sm active:cursor-grabbing ${
+      className={`rounded-lg border p-3 text-sm transition hover:border-gray-300 hover:shadow-sm dark:hover:border-gray-700 ${
         done
           ? "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/30"
           : attention
@@ -76,11 +74,30 @@ function KanbanCard({
             : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
       }`}
     >
-      {projectName && (
-        <div className="mb-1 truncate text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-          {projectName}
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          {projectName && (
+            <div className="truncate text-[11px] font-semibold text-gray-400 dark:text-gray-500">
+              {projectName}
+            </div>
+          )}
         </div>
-      )}
+        <button
+          type="button"
+          {...listeners}
+          {...attributes}
+          onClick={(event) => event.stopPropagation()}
+          className="flex h-7 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          aria-label={`Kéo để di chuyển ${task.title}`}
+          title="Kéo để đổi trạng thái"
+        >
+          <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+            <circle cx="5" cy="4" r="1" /><circle cx="11" cy="4" r="1" />
+            <circle cx="5" cy="8" r="1" /><circle cx="11" cy="8" r="1" />
+            <circle cx="5" cy="12" r="1" /><circle cx="11" cy="12" r="1" />
+          </svg>
+        </button>
+      </div>
       {canLog && (
         <label
           className="mb-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"
@@ -96,7 +113,7 @@ function KanbanCard({
           My day
         </label>
       )}
-      <div className="mb-1 font-medium text-gray-900 dark:text-gray-100">
+      <div className="mb-1 font-semibold leading-5 text-gray-900 dark:text-gray-100">
         {task.title}
       </div>
       {task.tags.length > 0 && (
@@ -152,14 +169,16 @@ function KanbanColumn({
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
-    <div className="flex min-w-[260px] flex-1 flex-col">
-      <div className="mb-2 flex items-center gap-2 px-1">
+    <div className="flex min-w-[280px] flex-1 snap-start flex-col">
+      <div className="mb-2 flex items-center justify-between px-1">
         <h3 className="text-sm font-semibold">{label}</h3>
-        <span className="text-xs text-gray-400">{tasks.length}</span>
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+          {tasks.length}
+        </span>
       </div>
       <div
         ref={setNodeRef}
-        className={`flex flex-1 flex-col gap-2 rounded-lg border p-2 transition-colors ${
+        className={`flex min-h-40 flex-1 flex-col gap-2 rounded-xl border p-2 transition-colors ${
           isOver
             ? "border-brand bg-brand/5"
             : "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950/40"
@@ -251,7 +270,7 @@ export function KanbanBoard({
   return (
     <>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3">
           {visibleStatuses.map((statusSetting) => (
             <KanbanColumn
               key={statusSetting.code}

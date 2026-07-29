@@ -80,6 +80,7 @@ function StepForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   function submit(formData: FormData) {
     setError(null);
@@ -95,7 +96,7 @@ function StepForm({
   }
 
   function remove() {
-    if (!step || !onDelete || !confirm(`Xóa bước "${step.label}"?`)) return;
+    if (!step || !onDelete) return;
     setError(null);
     startTransition(async () => {
       const result = await onDelete();
@@ -112,16 +113,41 @@ function StepForm({
     <form action={submit} className="space-y-3">
       <StepFields step={step} />
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {confirmingDelete && step && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+          Xóa “{step.label}”? Chỉ bước tùy chỉnh chưa được sử dụng mới có thể xóa.
+        </div>
+      )}
       <div className="flex justify-end gap-2">
-        {step && !step.is_system && (
+        {step && !step.is_system && !confirmingDelete && (
           <button
             type="button"
             className="btn-danger text-sm"
-            onClick={remove}
+            onClick={() => setConfirmingDelete(true)}
             disabled={pending}
           >
             Xóa bước
           </button>
+        )}
+        {confirmingDelete && (
+          <>
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={pending}
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              className="btn-danger text-sm"
+              onClick={remove}
+              disabled={pending}
+            >
+              {pending ? "Đang xóa..." : "Xác nhận xóa"}
+            </button>
+          </>
         )}
         <button className="btn-primary text-sm" disabled={pending}>
           {pending ? "Đang lưu..." : step ? "Lưu thay đổi" : "Thêm bước"}
