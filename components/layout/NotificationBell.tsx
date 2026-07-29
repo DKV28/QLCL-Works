@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -15,6 +15,89 @@ function formatDateTime(iso: string): string {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(
     d.getMinutes(),
   )}`;
+}
+
+function notificationAppearance(type: string): {
+  className: string;
+  icon: ReactNode;
+} {
+  const iconClass = "h-4 w-4";
+  if (type === "cong_viec_moi") {
+    return {
+      className: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
+          <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+        </svg>
+      ),
+    };
+  }
+  if (type === "binh_luan_moi") {
+    return {
+      className: "bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
+          <path d="M20 15a3 3 0 0 1-3 3H9l-5 3V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3Z" strokeLinejoin="round" />
+        </svg>
+      ),
+    };
+  }
+  if (type === "deadline_thay_doi") {
+    return {
+      className: "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+    };
+  }
+  if (type === "phan_cong_thay_doi") {
+    return {
+      className: "bg-cyan-50 text-cyan-600 dark:bg-cyan-950/40 dark:text-cyan-300",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 8h5M18.5 5.5v5" strokeLinecap="round" />
+        </svg>
+      ),
+    };
+  }
+  if (type === "cong_viec_hoan_thanh") {
+    return {
+      className: "bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-300",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
+          <circle cx="12" cy="12" r="8" />
+          <path d="m8.5 12 2.3 2.3 4.8-5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+    };
+  }
+  if (
+    type === "trang_thai_thay_doi" ||
+    type === "cong_viec_mo_lai" ||
+    type === "chuyen_buoc_quy_trinh"
+  ) {
+    return {
+      className: "bg-brand/10 text-brand dark:text-brand-light",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
+          <path d="M5 7h11l-3-3M19 17H8l3 3M16 7l3 3-3 3M8 17l-3-3 3-3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+    };
+  }
+  return {
+    className: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
+      </svg>
+    ),
+  };
 }
 
 export function NotificationBell() {
@@ -50,6 +133,16 @@ export function NotificationBell() {
   async function markSeen() {
     await markNotificationsSeenAction();
     await load();
+  }
+
+  function openNotification() {
+    setOpen(false);
+    setState((current) =>
+      current
+        ? { ...current, lastSeen: new Date().toISOString() }
+        : current,
+    );
+    void markNotificationsSeenAction();
   }
 
   return (
@@ -107,20 +200,40 @@ export function NotificationBell() {
               ) : (
                 items.map((n) => {
                   const isUnread = !lastSeen || n.created_at > lastSeen;
+                  const appearance = notificationAppearance(n.type);
+                  const href = n.task_id
+                    ? `/cong-viec?task=${encodeURIComponent(n.task_id)}`
+                    : n.project_id
+                      ? `/du-an/${encodeURIComponent(n.project_id)}`
+                      : "/cong-viec";
                   return (
-                    <div
+                    <Link
                       key={n.id}
-                      className={`border-b border-gray-100 px-4 py-2 text-sm last:border-0 dark:border-gray-800 ${
-                        isUnread ? "bg-brand/5" : ""
+                      href={href}
+                      onClick={openNotification}
+                      className={`group flex gap-3 border-b border-gray-100 px-4 py-3 text-sm transition last:border-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/60 ${
+                        isUnread ? "bg-brand/5 dark:bg-brand/[0.07]" : ""
                       }`}
                     >
-                      <div className="text-gray-800 dark:text-gray-200">
-                        {n.message}
+                      <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${appearance.className}`}>
+                        {appearance.icon}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="break-words leading-5 text-gray-800 group-hover:text-gray-950 dark:text-gray-200 dark:group-hover:text-white">
+                          {n.message}
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-gray-400">
+                          <span>{formatDateTime(n.created_at)}</span>
+                          <span className="font-medium text-brand opacity-0 transition group-hover:opacity-100">
+                            {n.task_id
+                              ? "Mở công việc"
+                              : n.project_id
+                                ? "Mở dự án"
+                                : "Xem chi tiết"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="mt-0.5 text-[11px] text-gray-400">
-                        {formatDateTime(n.created_at)}
-                      </div>
-                    </div>
+                    </Link>
                   );
                 })
               )}

@@ -46,6 +46,7 @@ export function TaskTable({
   workMemberId = "",
   workTaskIds = new Set<string>(),
   onToggleWorkLog = () => {},
+  openTaskId,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
@@ -57,6 +58,7 @@ export function TaskTable({
   workMemberId?: string;
   workTaskIds?: Set<string>;
   onToggleWorkLog?: (taskId: string, enabled: boolean) => void;
+  openTaskId?: string;
 }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -83,6 +85,17 @@ export function TaskTable({
       if (steps.length > 0) setWorkflowSteps(steps);
     });
   }, []);
+
+  useEffect(() => {
+    if (openTaskId && tasks.some((task) => task.id === openTaskId)) {
+      setEditingId(openTaskId);
+    }
+  }, [openTaskId, tasks]);
+
+  function closeEditor() {
+    setEditingId(null);
+    if (openTaskId) router.replace("/cong-viec", { scroll: false });
+  }
 
   const getStep = (code: string | null) =>
     workflowSteps.find((step) => step.code === code);
@@ -530,7 +543,7 @@ export function TaskTable({
         tags={tags}
         prioritySettings={prioritySettings}
         statusSettings={statusSettings}
-        onClose={() => setEditingId(null)}
+        onClose={closeEditor}
       />
       {confirmDialog}
     </>

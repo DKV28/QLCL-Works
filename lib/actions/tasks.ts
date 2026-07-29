@@ -5,7 +5,9 @@ import {
   createNextRecurrence,
   createTask,
   duplicateTask,
+  getTaskNotificationInfo,
   getTaskStepInfo,
+  getTaskTitle,
   isTaskCompleted,
   setStatus,
   softDeleteTask,
@@ -27,6 +29,7 @@ import {
   type TaskStatus,
 } from "@/lib/types";
 import { addWorkingDays } from "@/lib/logic/working-days";
+import { formatDMY } from "@/lib/logic/dates";
 import { todayISO } from "@/lib/logic/overdue";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -113,13 +116,57 @@ export async function updateTaskAction(
     return { ok: false, error: "Bạn chỉ sửa được công việc do mình tạo." };
 
   try {
+    const before = await getTaskNotificationInfo(id);
     await updateTask(id, fields);
-    await recordActivity({
-      task_id: id,
-      project_id: projectId,
-      action: "cap_nhat_cong_viec",
-      detail: fields.title,
-    });
+    const nextSupporters = [...fields.support_member_ids].sort();
+    const assignmentChanged =
+      !!before &&
+      (before.primary_member_id !== fields.primary_member_id ||
+        before.support_member_ids.join(",") !== nextSupporters.join(","));
+    const importantNotifications: Promise<void>[] = [];
+
+    if (before && before.status !== fields.status) {
+      importantNotifications.push(
+        createNotification({
+          type: "trang_thai_thay_doi",
+          task_id: id,
+          project_id: projectId,
+          message: `Trạng thái chuyển sang ${TASK_STATUS_LABEL[fields.status] ?? fields.status}: ${fields.title}`,
+        }),
+      );
+    }
+    if (before && before.due_date !== fields.due_date) {
+      importantNotifications.push(
+        createNotification({
+          type: "deadline_thay_doi",
+          task_id: id,
+          project_id: projectId,
+          message: fields.due_date
+            ? `Deadline đổi sang ${formatDMY(fields.due_date)}: ${fields.title}`
+            : `Đã bỏ deadline: ${fields.title}`,
+        }),
+      );
+    }
+    if (assignmentChanged) {
+      importantNotifications.push(
+        createNotification({
+          type: "phan_cong_thay_doi",
+          task_id: id,
+          project_id: projectId,
+          message: `Phân công đã thay đổi: ${fields.title}`,
+        }),
+      );
+    }
+
+    await Promise.all([
+      recordActivity({
+        task_id: id,
+        project_id: projectId,
+        action: "cap_nhat_cong_viec",
+        detail: fields.title,
+      }),
+      ...importantNotifications,
+    ]);
   } catch (e) {
     return { ok: false, error: "Không cập nhật được công việc." };
   }
@@ -157,6 +204,7 @@ export async function updateTaskStatusAction(
   if (!(await canWriteTask(id)))
     return { ok: false, error: "Bạn chỉ đổi được trạng thái công việc do mình tạo." };
   try {
+    const before = await getTaskNotificationInfo(id);
     // Chỉ sinh việc lặp khi CHUYỂN sang hoàn thành (tránh nhân đôi).
     const wasDone = status === "hoan_thanh" ? await isTaskCompleted(id) : false;
     await setStatus(id, status);
@@ -166,6 +214,13 @@ export async function updateTaskStatusAction(
         action: "doi_trang_thai",
         detail: TASK_STATUS_LABEL[status] ?? status,
       }),
+      before && before.status !== status
+        ? createNotification({
+            type: "trang_thai_thay_doi",
+            task_id: id,
+            message: `Trạng thái chuyển sang ${TASK_STATUS_LABEL[status] ?? status}: ${before.title}`,
+          })
+        : Promise.resolve(),
       // Kéo sang "Hoàn thành" -> sinh lần lặp kế tiếp (chỉ khi thực sự chuyển).
       status === "hoan_thanh" && !wasDone
         ? createNextRecurrence(id)
@@ -186,6 +241,7 @@ export async function toggleCompleteAction(
   if (!(await canWriteTask(id)))
     return { ok: false, error: "Bạn chỉ cập nhật được công việc do mình tạo." };
   try {
+    const before = await getTaskNotificationInfo(id);
     // Chỉ sinh việc lặp khi CHUYỂN sang hoàn thành (tránh nhân đôi).
     const wasDone = completed ? await isTaskCompleted(id) : false;
     await toggleComplete(id, completed);
@@ -194,6 +250,16 @@ export async function toggleCompleteAction(
         task_id: id,
         action: completed ? "danh_dau_hoan_thanh" : "mo_lai",
       }),
+      before &&
+      (completed
+        ? before.status !== "hoan_thanh"
+        : before.status === "hoan_thanh")
+        ? createNotification({
+            type: completed ? "cong_viec_hoan_thanh" : "cong_viec_mo_lai",
+            task_id: id,
+            message: `${completed ? "Đã hoàn thành" : "Đã mở lại"}: ${before.title}`,
+          })
+        : Promise.resolve(),
       // Đánh dấu hoàn thành -> sinh lần lặp kế tiếp (chỉ khi thực sự chuyển).
       completed && !wasDone ? createNextRecurrence(id) : Promise.resolve(),
     ]);
@@ -222,6 +288,7 @@ export async function advanceVanHanhStepAction(
       return { ok: false, error: "Công việc không thuộc quy trình vận hành." };
     }
     const current = info.van_hanh_step;
+    const taskTitle = (await getTaskTitle(id)) ?? "Công việc";
     const currentStep = await getWorkflowStepSetting(current);
     if (!currentStep) {
       return { ok: false, error: "Bước hiện tại không còn trong cấu hình quy trình." };
@@ -243,6 +310,12 @@ export async function advanceVanHanhStepAction(
           action: "chuyen_buoc",
           detail: `${currentStep.label} → Hoàn thành`,
         }),
+        createNotification({
+          type: "chuyen_buoc_quy_trinh",
+          task_id: id,
+          project_id: info.project_id,
+          message: `Hoàn thành quy trình: ${taskTitle}`,
+        }),
         wasDone ? Promise.resolve() : createNextRecurrence(id),
       ]);
     } else {
@@ -252,12 +325,20 @@ export async function advanceVanHanhStepAction(
         status: "dang_lam",
         completed: false,
       });
-      await recordActivity({
-        task_id: id,
-        project_id: info.project_id,
-        action: "chuyen_buoc",
-        detail: `${currentStep.label} → ${next.label}`,
-      });
+      await Promise.all([
+        recordActivity({
+          task_id: id,
+          project_id: info.project_id,
+          action: "chuyen_buoc",
+          detail: `${currentStep.label} → ${next.label}`,
+        }),
+        createNotification({
+          type: "chuyen_buoc_quy_trinh",
+          task_id: id,
+          project_id: info.project_id,
+          message: `Chuyển sang bước ${next.label}: ${taskTitle}`,
+        }),
+      ]);
     }
   } catch (e) {
     return { ok: false, error: "Không chuyển được bước." };

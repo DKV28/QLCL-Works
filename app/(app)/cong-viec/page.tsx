@@ -10,7 +10,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function TasksPage() {
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams?: { task?: string };
+}) {
   const [tasks, members, projects, tags, prioritySettings, statusSettings] =
     await Promise.all([
     listAllTasks(),
@@ -31,6 +35,7 @@ export default async function TasksPage() {
       tags={tags}
       prioritySettings={prioritySettings}
       statusSettings={statusSettings}
+      initialTaskId={searchParams?.task}
     />
   );
 }

@@ -340,6 +340,48 @@ export async function getTaskTitle(id: string): Promise<string | null> {
   return (data as { title: string } | null)?.title ?? null;
 }
 
+export interface TaskNotificationInfo {
+  title: string;
+  due_date: string | null;
+  status: TaskStatus;
+  primary_member_id: string | null;
+  support_member_ids: string[];
+}
+
+/** Dữ liệu tối thiểu để phát hiện các thay đổi đáng thông báo. */
+export async function getTaskNotificationInfo(
+  id: string,
+): Promise<TaskNotificationInfo | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("title, due_date, status, task_assignees ( member_id, is_primary )")
+    .eq("id", id)
+    .single();
+  if (error || !data) return null;
+
+  const row = data as unknown as {
+    title: string;
+    due_date: string | null;
+    status: TaskStatus;
+    task_assignees:
+      | { member_id: string; is_primary: boolean }[]
+      | null;
+  };
+  const assignees = row.task_assignees ?? [];
+  return {
+    title: row.title,
+    due_date: row.due_date,
+    status: row.status,
+    primary_member_id:
+      assignees.find((assignee) => assignee.is_primary)?.member_id ?? null,
+    support_member_ids: assignees
+      .filter((assignee) => !assignee.is_primary)
+      .map((assignee) => assignee.member_id)
+      .sort(),
+  };
+}
+
 /** Công việc đã hoàn thành chưa (để tránh sinh việc lặp trùng). */
 export async function isTaskCompleted(id: string): Promise<boolean> {
   const supabase = createClient();

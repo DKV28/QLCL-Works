@@ -40,6 +40,7 @@ export function TasksView({
   tags,
   prioritySettings,
   statusSettings,
+  initialTaskId,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
@@ -47,6 +48,7 @@ export function TasksView({
   tags: Tag[];
   prioritySettings: TaskPrioritySetting[];
   statusSettings: TaskStatusSetting[];
+  initialTaskId?: string;
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
@@ -64,6 +66,15 @@ export function TasksView({
   // Nhờ vậy đổi view không phải chờ router.refresh để thấy thay đổi vừa làm.
   const [localTasks, setLocalTasks] = useState(tasks);
   useEffect(() => setLocalTasks(tasks), [tasks]);
+
+  // Liên kết từ thông báo luôn đưa người dùng về Danh sách và bỏ các bộ lọc
+  // đang giữ trong phiên để công việc đích không bị ẩn.
+  useEffect(() => {
+    if (!initialTaskId) return;
+    setView("list");
+    setFilters({});
+    setTeamTab("");
+  }, [initialTaskId]);
 
   // My day thuộc về từng ngày riêng biệt. Khi qua ngày mới (kể cả lúc mở màn hình
   // qua nửa đêm hoặc quay lại tab sau đó): nếu đang xem "hôm nay" thì tự chuyển
@@ -526,6 +537,7 @@ export function TasksView({
           workMemberId={activeWorkMemberId}
           workTaskIds={workTaskIds}
           onToggleWorkLog={toggleWorkLog}
+          openTaskId={initialTaskId}
         />
       )}
       {view === "kanban" && (
