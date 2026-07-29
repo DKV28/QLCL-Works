@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArisingBadge,
@@ -24,7 +24,12 @@ import { getWorkflowStepsAction } from "@/lib/actions/settings";
 import { ActionsMenu, type ActionItem } from "@/components/ui/ActionsMenu";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TagChips } from "@/components/ui/TagChips";
-import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
+import {
+  isOverdue,
+  needsAttention,
+  needsToStart,
+  todayISO,
+} from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
 import type {
   MemberLite,
@@ -37,6 +42,13 @@ import type {
 
 type SortKey = "title" | "assignee" | "due_date" | "arising" | "status";
 type SortDirection = "asc" | "desc";
+type TaskGroup = {
+  id: "today" | "upcoming" | "completed";
+  label: string;
+  helper: string;
+  dotClass: string;
+  tasks: TaskWithAssignees[];
+};
 
 export function TaskTable({
   tasks,
@@ -143,6 +155,47 @@ export function TaskTable({
       return comparison * direction;
     });
   }, [tasks, sortKey, sortDirection, statusOrder]);
+  const taskGroups = useMemo(() => {
+    const today = todayISO();
+    const groups: TaskGroup[] = [
+      {
+        id: "today",
+        label: "Hôm nay",
+        helper: "Đã đến ngày bắt đầu hoặc deadline",
+        dotClass: "bg-orange-500",
+        tasks: [],
+      },
+      {
+        id: "upcoming",
+        label: "Sắp tới",
+        helper: "Chưa đến thời điểm thực hiện",
+        dotClass: "bg-blue-500",
+        tasks: [],
+      },
+      {
+        id: "completed",
+        label: "Hoàn thành",
+        helper: "Đã kết thúc",
+        dotClass: "bg-emerald-500",
+        tasks: [],
+      },
+    ];
+
+    for (const task of sortedTasks) {
+      const done = task.status === "hoan_thanh" || !!task.completed_at;
+      if (done) {
+        groups[2].tasks.push(task);
+      } else if (
+        (task.start_date !== null && task.start_date <= today) ||
+        (task.due_date !== null && task.due_date <= today)
+      ) {
+        groups[0].tasks.push(task);
+      } else {
+        groups[1].tasks.push(task);
+      }
+    }
+    return groups.filter((group) => group.tasks.length > 0);
+  }, [sortedTasks]);
 
   function changeSort(key: SortKey) {
     if (sortKey === key) {
@@ -278,8 +331,21 @@ export function TaskTable({
           </button>
         </div>
       )}
-      <div className="space-y-2 md:hidden">
-        {sortedTasks.map((task) => {
+      <div className="space-y-5 md:hidden">
+        {taskGroups.map((group) => (
+          <section key={group.id}>
+            <div className="mb-2 flex items-center gap-2 px-1">
+              <span className={`h-2.5 w-2.5 rounded-full ${group.dotClass}`} />
+              <h2 className="text-sm font-semibold">{group.label}</h2>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                {group.tasks.length}
+              </span>
+              <span className="ml-auto hidden text-[11px] text-gray-400 sm:inline">
+                {group.helper}
+              </span>
+            </div>
+            <div className="space-y-2">
+        {group.tasks.map((task) => {
           const overdue = isOverdue(task);
           const startLate = needsToStart(task);
           const attention = needsAttention(task);
@@ -386,6 +452,9 @@ export function TaskTable({
             </article>
           );
         })}
+            </div>
+          </section>
+        ))}
       </div>
 
       <div className="card hidden overflow-x-auto md:block">
@@ -404,7 +473,28 @@ export function TaskTable({
           </tr>
         </thead>
         <tbody>
-          {sortedTasks.map((t) => {
+          {taskGroups.map((group) => (
+            <Fragment key={group.id}>
+              <tr className="border-y border-gray-100 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-950/45">
+                <td
+                  colSpan={workMemberId ? 9 : 8}
+                  className="px-3 py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${group.dotClass}`} />
+                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                      {group.label}
+                    </span>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-300">
+                      {group.tasks.length}
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      {group.helper}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+          {group.tasks.map((t) => {
             const overdue = isOverdue(t);
             const startLate = needsToStart(t);
             const attention = needsAttention(t);
@@ -548,6 +638,8 @@ export function TaskTable({
               </tr>
             );
           })}
+            </Fragment>
+          ))}
         </tbody>
       </table>
 

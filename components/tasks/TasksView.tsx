@@ -15,7 +15,7 @@ import {
   toggleTaskWorkLogAction,
 } from "@/lib/actions/work-logs";
 import { filterTasks, sortTasks, type TaskFilters } from "@/lib/logic/filters";
-import { todayISO } from "@/lib/logic/overdue";
+import { isOverdue, todayISO } from "@/lib/logic/overdue";
 import type {
   MemberLite,
   Project,
@@ -32,6 +32,89 @@ const VIEW_LABELS: [ViewMode, string][] = [
   ["kanban", "Kanban"],
   ["gantt", "Gantt"],
 ];
+
+function TaskKpiStrip({ tasks }: { tasks: TaskWithAssignees[] }) {
+  const today = todayISO();
+  const completed = tasks.filter(
+    (task) => task.status === "hoan_thanh" || !!task.completed_at,
+  ).length;
+  const metrics = [
+    {
+      label: "Tổng việc",
+      value: tasks.length,
+      helper: "Trong phạm vi đang xem",
+      tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-300",
+      icon: "calendar",
+    },
+    {
+      label: "Quá hạn",
+      value: tasks.filter(isOverdue).length,
+      helper: "Cần ưu tiên xử lý",
+      tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-300",
+      icon: "clock",
+    },
+    {
+      label: "Hôm nay",
+      value: tasks.filter(
+        (task) =>
+          task.due_date === today &&
+          task.status !== "hoan_thanh" &&
+          !task.completed_at,
+      ).length,
+      helper: "Có deadline hôm nay",
+      tone: "text-orange-600 bg-orange-50 dark:bg-orange-950/40 dark:text-orange-300",
+      icon: "today",
+    },
+    {
+      label: "Hoàn thành",
+      value: completed,
+      helper:
+        tasks.length > 0
+          ? `${Math.round((completed / tasks.length) * 100)}% tổng công việc`
+          : "Chưa có dữ liệu",
+      tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300",
+      icon: "check",
+    },
+  ];
+
+  return (
+    <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+      {metrics.map((metric) => (
+        <div key={metric.label} className="card flex min-w-0 items-center gap-3 p-3">
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${metric.tone}`}>
+            {metric.icon === "clock" ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-[18px] w-[18px]" aria-hidden="true">
+                <circle cx="12" cy="12" r="8" />
+                <path d="M12 8v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : metric.icon === "check" ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-[18px] w-[18px]" aria-hidden="true">
+                <circle cx="12" cy="12" r="8" />
+                <path d="m8.5 12 2.3 2.3 4.8-5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-[18px] w-[18px]" aria-hidden="true">
+                <path d="M8 3v3M16 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" strokeLinecap="round" strokeLinejoin="round" />
+                {metric.icon === "today" && <path d="M9 14h6" strokeLinecap="round" />}
+              </svg>
+            )}
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-2">
+              <span className="truncate text-xs font-medium text-gray-500 dark:text-gray-400">
+                {metric.label}
+              </span>
+              <strong className="text-lg font-bold tabular-nums text-gray-950 dark:text-white">
+                {metric.value}
+              </strong>
+            </div>
+            <p className="truncate text-[11px] text-gray-400">{metric.helper}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function TasksView({
   tasks,
@@ -287,6 +370,8 @@ export function TasksView({
           </button>
         </div>
       </div>
+
+      <TaskKpiStrip tasks={visible} />
 
       <div className="subnav mb-4">
         <button
