@@ -20,6 +20,24 @@ export interface VanHanhStep {
 // Người dùng chọn +9 ngày làm việc — khác với SLA của bước 1; chỉ áp dụng lúc tạo.
 export const DEFAULT_FIRST_STEP_DAYS = 9;
 
+// Bảng màu vai trò tham khảo theo mẫu quy trình của người dùng.
+export const WORKFLOW_STEP_COLOR_PRESETS = [
+  { label: "Đơn vị kiểm soát", color: "#EC5AA6" },
+  { label: "Đơn vị soạn thảo", color: "#1736C4" },
+  { label: "Ban giám đốc", color: "#FF9F70" },
+  { label: "Đơn vị liên quan", color: "#4FE7AD" },
+] as const;
+
+export const DEFAULT_WORKFLOW_STEP_COLOR =
+  WORKFLOW_STEP_COLOR_PRESETS[0].color;
+
+export function workflowStepColorForRole(role: string): string {
+  if (role === "ĐVST") return WORKFLOW_STEP_COLOR_PRESETS[1].color;
+  if (role === "Phó TGĐ") return WORKFLOW_STEP_COLOR_PRESETS[2].color;
+  if (role === "Đơn vị liên quan") return WORKFLOW_STEP_COLOR_PRESETS[3].color;
+  return WORKFLOW_STEP_COLOR_PRESETS[0].color;
+}
+
 // 9 bước theo thứ tự (đã bỏ viet_moi_sua_doi, in_tai_lieu, scan_phat_hanh).
 export const VAN_HANH_STEPS: VanHanhStep[] = [
   { code: "duyet_yeu_cau", order: 1, label: "Duyệt yêu cầu", role: "P. QLCL", slaDays: 3 },

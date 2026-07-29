@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { VAN_HANH_STEPS } from "@/lib/logic/van-hanh";
+import {
+  VAN_HANH_STEPS,
+  workflowStepColorForRole,
+} from "@/lib/logic/van-hanh";
 import type {
   TaskPriority,
   TaskPrioritySetting,
@@ -13,6 +16,7 @@ function fallbackWorkflowSteps(): WorkflowStepSetting[] {
     code: step.code,
     label: step.label,
     role_label: step.role,
+    color: workflowStepColorForRole(step.role),
     sla_days: step.slaDays,
     sort_order: step.order * 10,
     is_active: true,
@@ -57,6 +61,7 @@ export async function createWorkflowStepSetting(input: {
   code: string;
   label: string;
   role_label: string;
+  color: string;
   sla_days: number;
   sort_order: number;
   is_active: boolean;
@@ -74,6 +79,7 @@ export async function updateWorkflowStepSetting(
   input: {
     label: string;
     role_label: string;
+    color: string;
     sla_days: number;
     sort_order: number;
     is_active: boolean;

@@ -42,53 +42,6 @@ function notificationAppearance(type: string): {
       ),
     };
   }
-  if (type === "deadline_thay_doi") {
-    return {
-      className: "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
-          <circle cx="12" cy="12" r="8" />
-          <path d="M12 8v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
-    };
-  }
-  if (type === "phan_cong_thay_doi") {
-    return {
-      className: "bg-cyan-50 text-cyan-600 dark:bg-cyan-950/40 dark:text-cyan-300",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
-          <circle cx="9" cy="8" r="3" />
-          <path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 8h5M18.5 5.5v5" strokeLinecap="round" />
-        </svg>
-      ),
-    };
-  }
-  if (type === "cong_viec_hoan_thanh") {
-    return {
-      className: "bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-300",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
-          <circle cx="12" cy="12" r="8" />
-          <path d="m8.5 12 2.3 2.3 4.8-5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
-    };
-  }
-  if (
-    type === "trang_thai_thay_doi" ||
-    type === "cong_viec_mo_lai" ||
-    type === "chuyen_buoc_quy_trinh"
-  ) {
-    return {
-      className: "bg-brand/10 text-brand dark:text-brand-light",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
-          <path d="M5 7h11l-3-3M19 17H8l3 3M16 7l3 3-3 3M8 17l-3-3 3-3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
-    };
-  }
   return {
     className: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300",
     icon: (
@@ -127,7 +80,6 @@ export function NotificationBell() {
 
   const items = state?.items ?? [];
   const lastSeen = state?.lastSeen ?? null;
-  const alerts = state?.alerts ?? { overdue: 0, needStart: 0 };
   const unread = items.filter((n) => !lastSeen || n.created_at > lastSeen).length;
 
   async function markSeen() {
@@ -179,18 +131,6 @@ export function NotificationBell() {
                 </button>
               )}
             </div>
-
-            {(alerts.overdue > 0 || alerts.needStart > 0) && (
-              <Link
-                href="/cong-viec"
-                onClick={() => setOpen(false)}
-                className="block border-b border-gray-200 bg-red-50 px-4 py-2 text-xs text-red-700 hover:bg-red-100 dark:border-gray-800 dark:bg-red-950/30 dark:text-red-300"
-              >
-                {alerts.overdue > 0 && `${alerts.overdue} việc quá hạn`}
-                {alerts.overdue > 0 && alerts.needStart > 0 && " · "}
-                {alerts.needStart > 0 && `${alerts.needStart} việc cần bắt đầu`}
-              </Link>
-            )}
 
             <div className="max-h-80 overflow-y-auto">
               {items.length === 0 ? (

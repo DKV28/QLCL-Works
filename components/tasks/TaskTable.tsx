@@ -16,7 +16,10 @@ import {
   duplicateTaskAction,
   toggleCompleteAction,
 } from "@/lib/actions/tasks";
-import { VAN_HANH_STEPS } from "@/lib/logic/van-hanh";
+import {
+  VAN_HANH_STEPS,
+  workflowStepColorForRole,
+} from "@/lib/logic/van-hanh";
 import { getWorkflowStepsAction } from "@/lib/actions/settings";
 import { ActionsMenu, type ActionItem } from "@/components/ui/ActionsMenu";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -71,6 +74,7 @@ export function TaskTable({
       code: step.code,
       label: step.label,
       role_label: step.role,
+      color: workflowStepColorForRole(step.role),
       sla_days: step.slaDays,
       sort_order: step.order * 10,
       is_active: true,
@@ -344,6 +348,12 @@ export function TaskTable({
                     label={
                       getStep(task.van_hanh_step)?.label ?? task.van_hanh_step
                     }
+                    color={
+                      getStep(task.van_hanh_step)?.color ||
+                      workflowStepColorForRole(
+                        getStep(task.van_hanh_step)?.role_label ?? "",
+                      )
+                    }
                   />
                 )}
               </div>
@@ -508,6 +518,12 @@ export function TaskTable({
                           .findIndex((step) => step.code === t.van_hanh_step) + 1
                       }
                       label={getStep(t.van_hanh_step)?.label ?? t.van_hanh_step}
+                      color={
+                        getStep(t.van_hanh_step)?.color ||
+                        workflowStepColorForRole(
+                          getStep(t.van_hanh_step)?.role_label ?? "",
+                        )
+                      }
                     />
                   ) : (
                     <span className="text-gray-300">—</span>

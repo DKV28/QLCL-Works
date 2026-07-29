@@ -21,6 +21,7 @@ import type {
   TaskStatus,
   WorkflowStepSetting,
 } from "@/lib/types";
+import { DEFAULT_WORKFLOW_STEP_COLOR } from "@/lib/logic/van-hanh";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -184,11 +185,15 @@ export async function updateStatusSettingAction(
 function parseWorkflowStep(formData: FormData) {
   const label = String(formData.get("label") ?? "").trim();
   const roleLabel = String(formData.get("role_label") ?? "").trim();
+  const color =
+    String(formData.get("color") ?? "").trim() ||
+    DEFAULT_WORKFLOW_STEP_COLOR;
   const slaDays = Number(formData.get("sla_days") ?? 0);
   const sortOrder = Number(formData.get("sort_order") ?? 0);
   return {
     label,
     role_label: roleLabel,
+    color,
     sla_days: Number.isInteger(slaDays) ? slaDays : -1,
     sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
     is_active: formData.get("is_active") === "on",
@@ -197,6 +202,9 @@ function parseWorkflowStep(formData: FormData) {
 
 function validateWorkflowStep(input: ReturnType<typeof parseWorkflowStep>): string | null {
   if (!input.label) return "Tên bước không được để trống.";
+  if (!/^#[0-9a-f]{6}$/i.test(input.color)) {
+    return "Màu phải có định dạng #RRGGBB.";
+  }
   if (input.sla_days < 0 || input.sla_days > 365) {
     return "SLA phải là số nguyên từ 0 đến 365 ngày làm việc.";
   }

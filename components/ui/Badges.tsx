@@ -108,9 +108,20 @@ export function ArisingBadge() {
   return <Pill className="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">Phát sinh</Pill>;
 }
 
-export function StepBadge({ order, label }: { order?: number; label: string }) {
+export function StepBadge({
+  order,
+  label,
+  color,
+}: {
+  order?: number;
+  label: string;
+  color?: string;
+}) {
   return (
-    <Pill className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+    <Pill
+      className={color ? "text-white shadow-sm" : "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"}
+      style={color ? { backgroundColor: color } : undefined}
+    >
       {order ? `${order}. ${label}` : label}
     </Pill>
   );

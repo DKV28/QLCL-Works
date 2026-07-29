@@ -10,10 +10,76 @@ import {
   type ActionResult,
 } from "@/lib/actions/settings";
 import type { WorkflowStepSetting } from "@/lib/types";
+import {
+  DEFAULT_WORKFLOW_STEP_COLOR,
+  WORKFLOW_STEP_COLOR_PRESETS,
+  workflowStepColorForRole,
+} from "@/lib/logic/van-hanh";
+
+function StepColorField({ initialColor }: { initialColor?: string }) {
+  const fallback = initialColor?.match(/^#[0-9a-f]{6}$/i)
+    ? initialColor
+    : DEFAULT_WORKFLOW_STEP_COLOR;
+  const [color, setColor] = useState(fallback);
+  const [draft, setDraft] = useState(fallback.toUpperCase());
+
+  function selectColor(next: string) {
+    setColor(next);
+    setDraft(next.toUpperCase());
+  }
+
+  return (
+    <div>
+      <label className="label">Màu bước</label>
+      <input type="hidden" name="color" value={color} />
+      <div className="flex flex-wrap items-center gap-2">
+        {WORKFLOW_STEP_COLOR_PRESETS.map((preset) => (
+          <button
+            key={preset.color}
+            type="button"
+            onClick={() => selectColor(preset.color)}
+            className={`h-8 w-8 rounded-md border-2 transition ${
+              color.toUpperCase() === preset.color
+                ? "border-gray-900 ring-2 ring-gray-300 dark:border-white dark:ring-gray-600"
+                : "border-transparent hover:scale-105"
+            }`}
+            style={{ backgroundColor: preset.color }}
+            aria-label={`Chọn màu ${preset.label}`}
+            title={preset.label}
+          />
+        ))}
+        <input
+          type="color"
+          value={color}
+          onChange={(event) => selectColor(event.target.value)}
+          className="h-8 w-9 cursor-pointer rounded-md border border-gray-200 bg-white p-0.5 dark:border-gray-700 dark:bg-gray-900"
+          aria-label="Chọn màu tùy chỉnh"
+          title="Chọn màu tùy chỉnh"
+        />
+        <input
+          value={draft}
+          onChange={(event) => {
+            const next = event.target.value.toUpperCase();
+            setDraft(next);
+            if (/^#[0-9A-F]{6}$/.test(next)) setColor(next);
+          }}
+          onBlur={() => {
+            if (!/^#[0-9A-F]{6}$/.test(draft)) {
+              setDraft(color.toUpperCase());
+            }
+          }}
+          className="input min-h-8 w-24 px-2 py-1 font-mono text-xs uppercase"
+          maxLength={7}
+          aria-label="Mã màu bước quy trình"
+        />
+      </div>
+    </div>
+  );
+}
 
 function StepFields({ step }: { step?: WorkflowStepSetting }) {
   return (
-    <div className="grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(150px,0.8fr)_110px_100px_auto]">
+    <div className="grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(150px,0.8fr)_minmax(230px,1fr)_110px_100px_auto]">
       <div>
         <label className="label">Tên bước</label>
         <input name="label" className="input" defaultValue={step?.label} required />
@@ -32,6 +98,11 @@ function StepFields({ step }: { step?: WorkflowStepSetting }) {
           placeholder="Ví dụ: P. QLCL"
         />
       </div>
+      <StepColorField
+        initialColor={
+          step?.color || workflowStepColorForRole(step?.role_label ?? "")
+        }
+      />
       <div>
         <label className="label">SLA (ngày)</label>
         <input
@@ -194,14 +265,34 @@ export function WorkflowStepsSettingsClient({
           {steps.filter((step) => step.is_active).length} đang bật
         </span>
       </div>
+      <div className="mb-4 grid gap-1.5 rounded-lg border border-gray-100 bg-gray-50 p-2.5 sm:grid-cols-2 lg:grid-cols-4 dark:border-gray-800 dark:bg-gray-950/30">
+        {WORKFLOW_STEP_COLOR_PRESETS.map((preset) => (
+          <div
+            key={preset.color}
+            className="rounded-md px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
+            style={{ backgroundColor: preset.color }}
+          >
+            {preset.label}
+          </div>
+        ))}
+      </div>
 
       <div className="space-y-2">
         {steps.map((step, index) => {
           const editing = editingCode === step.code;
+          const stepColor =
+            step.color || workflowStepColorForRole(step.role_label);
           return (
-            <div key={step.code} className="card overflow-hidden">
+            <div
+              key={step.code}
+              className="card overflow-hidden border-l-4"
+              style={{ borderLeftColor: stepColor }}
+            >
               <div className="grid items-center gap-3 p-3 sm:grid-cols-[44px_minmax(180px,1.3fr)_minmax(130px,0.8fr)_90px_90px_auto]">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                <span
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white shadow-sm"
+                  style={{ backgroundColor: stepColor }}
+                >
                   {index + 1}
                 </span>
                 <div className="min-w-0">

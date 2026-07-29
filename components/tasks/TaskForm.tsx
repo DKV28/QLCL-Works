@@ -18,7 +18,11 @@ import type { ActionResult } from "@/lib/actions/tasks";
 import { getTagsAction } from "@/lib/actions/tags";
 import { getWorkflowStepsAction } from "@/lib/actions/settings";
 import { todayISO } from "@/lib/logic/overdue";
-import { FIRST_STEP_CODE, VAN_HANH_STEPS } from "@/lib/logic/van-hanh";
+import {
+  FIRST_STEP_CODE,
+  VAN_HANH_STEPS,
+  workflowStepColorForRole,
+} from "@/lib/logic/van-hanh";
 import { addWorkingDays } from "@/lib/logic/working-days";
 
 export function TaskForm({
@@ -56,6 +60,7 @@ export function TaskForm({
       code: step.code,
       label: step.label,
       role_label: step.role,
+      color: workflowStepColorForRole(step.role),
       sla_days: step.slaDays,
       sort_order: step.order * 10,
       is_active: true,
@@ -92,6 +97,9 @@ export function TaskForm({
 
   const availableWorkflowSteps = workflowSteps.filter(
     (step) => step.is_active || step.code === task?.van_hanh_step,
+  );
+  const selectedWorkflowStep = workflowSteps.find(
+    (step) => step.code === vanHanhStep,
   );
 
   const priorityOptions =
@@ -342,6 +350,26 @@ export function TaskForm({
                 </option>
               ))}
             </select>
+            {selectedWorkflowStep && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <span
+                  className="rounded-full px-2.5 py-1 font-medium text-white shadow-sm"
+                  style={{
+                    backgroundColor:
+                      selectedWorkflowStep.color ||
+                      workflowStepColorForRole(
+                        selectedWorkflowStep.role_label,
+                      ),
+                  }}
+                >
+                  {selectedWorkflowStep.label}
+                </span>
+                <span>
+                  {selectedWorkflowStep.role_label || "Không có vai trò"} · SLA{" "}
+                  {selectedWorkflowStep.sla_days} ngày
+                </span>
+              </div>
+            )}
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Bấm “Bước tiếp theo” ở danh sách để tiến bước và tự tính lại deadline
               theo số ngày làm việc của bước kế.

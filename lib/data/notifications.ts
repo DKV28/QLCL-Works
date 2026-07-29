@@ -1,7 +1,6 @@
 // Data access: notifications (feed chung) + mốc đã xem + đếm cảnh báo.
 import { createClient } from "@/lib/supabase/server";
 import type { Notification } from "@/lib/types";
-import { todayISO } from "@/lib/logic/overdue";
 
 export interface NotificationInput {
   type: string;
@@ -29,6 +28,7 @@ export async function listRecentNotifications(
   const { data, error } = await supabase
     .from("notifications")
     .select("*")
+    .in("type", ["cong_viec_moi", "binh_luan_moi"])
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -61,32 +61,4 @@ export async function markSeen(): Promise<void> {
   await supabase
     .from("notification_seen")
     .upsert({ profile_id: user.id, last_seen_at: new Date().toISOString() });
-}
-
-/** Đếm việc quá hạn / cần bắt đầu (tính trực tiếp, không cần cron). */
-export async function getAlertCounts(): Promise<{
-  overdue: number;
-  needStart: number;
-}> {
-  const supabase = createClient();
-  const today = todayISO();
-
-  const overdueQ = supabase
-    .from("tasks")
-    .select("id", { count: "exact", head: true })
-    .is("deleted_at", null)
-    .is("completed_at", null)
-    .neq("status", "hoan_thanh")
-    .lt("due_date", today);
-
-  const needStartQ = supabase
-    .from("tasks")
-    .select("id", { count: "exact", head: true })
-    .is("deleted_at", null)
-    .is("completed_at", null)
-    .eq("status", "chua_bat_dau")
-    .lte("start_date", today);
-
-  const [ov, ns] = await Promise.all([overdueQ, needStartQ]);
-  return { overdue: ov.count ?? 0, needStart: ns.count ?? 0 };
 }

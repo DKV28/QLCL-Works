@@ -63,6 +63,7 @@ export interface WorkflowStepSetting {
   code: string;
   label: string;
   role_label: string;
+  color: string;
   sla_days: number;
   sort_order: number;
   is_active: boolean;

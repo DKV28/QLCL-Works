@@ -1,7 +1,6 @@
 "use server";
 
 import {
-  getAlertCounts,
   getLastSeen,
   listRecentNotifications,
   markSeen,
@@ -11,16 +10,14 @@ import type { Notification } from "@/lib/types";
 export interface NotificationState {
   items: Notification[];
   lastSeen: string | null;
-  alerts: { overdue: number; needStart: number };
 }
 
 export async function getNotificationsAction(): Promise<NotificationState> {
-  const [items, lastSeen, alerts] = await Promise.all([
+  const [items, lastSeen] = await Promise.all([
     listRecentNotifications(30),
     getLastSeen(),
-    getAlertCounts(),
   ]);
-  return { items, lastSeen, alerts };
+  return { items, lastSeen };
 }
 
 export async function markNotificationsSeenAction(): Promise<{ ok: true }> {
