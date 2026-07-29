@@ -18,24 +18,45 @@ export function ReportsClient({
   tasks,
   members,
   projects,
+  canViewWeekly,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
   projects: Pick<Project, "id" | "name">[];
+  canViewWeekly: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
+  const tabs = canViewWeekly
+    ? TABS
+    : TABS.filter(([id]) => id !== "weekly");
 
   return (
     <div>
-      <div className="no-print mb-6 inline-flex rounded-md border border-gray-300 p-0.5 dark:border-gray-700">
-        {TABS.map(([id, label]) => (
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Báo cáo</h1>
+          <p className="page-description">
+            Tổng hợp tiến độ, hiệu suất và các công việc cần chú ý.
+          </p>
+        </div>
+        <button
+          className="btn-secondary no-print"
+          onClick={() => window.print()}
+        >
+          Xuất PDF
+        </button>
+      </div>
+      <div className="segmented no-print mb-6" role="tablist" aria-label="Loại báo cáo">
+        {tabs.map(([id, label]) => (
           <button
             key={id}
+            role="tab"
+            aria-selected={tab === id}
             onClick={() => setTab(id)}
-            className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+            className={`segmented-item ${
               tab === id
-                ? "bg-brand text-white"
-                : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                ? "segmented-item-active"
+                : ""
             }`}
           >
             {label}
@@ -47,7 +68,9 @@ export function ReportsClient({
         <DashboardClient tasks={tasks} members={members} projects={projects} />
       )}
       {tab === "daily" && <DailyReport tasks={tasks} members={members} />}
-      {tab === "weekly" && <WeeklyReport tasks={tasks} members={members} />}
+      {canViewWeekly && tab === "weekly" && (
+        <WeeklyReport tasks={tasks} members={members} />
+      )}
     </div>
   );
 }

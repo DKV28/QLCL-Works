@@ -64,13 +64,6 @@ export function DashboardClient({
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Báo cáo</h1>
-        <button className="btn-secondary no-print" onClick={() => window.print()}>
-          Xuất PDF
-        </button>
-      </div>
-
       {/* Bộ lọc */}
       <div className="card no-print mb-6 p-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

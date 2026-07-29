@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
+import { ActionsMenu } from "@/components/ui/ActionsMenu";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   createTagAction,
   deleteTagAction,
@@ -93,6 +95,7 @@ export function TagsClient({ tags }: { tags: Tag[] }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Tag | null>(null);
   const [, startTransition] = useTransition();
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   function refresh() {
     setCreating(false);
@@ -100,9 +103,14 @@ export function TagsClient({ tags }: { tags: Tag[] }) {
     router.refresh();
   }
 
-  function remove(t: Tag) {
-    if (!confirm(`Xóa nhãn "${t.name}"? Nhãn sẽ bị gỡ khỏi mọi công việc.`))
-      return;
+  async function remove(t: Tag) {
+    const accepted = await confirm({
+      title: "Xóa nhãn",
+      message: `Nhãn “${t.name}” sẽ bị gỡ khỏi mọi công việc đang sử dụng.`,
+      confirmLabel: "Xóa nhãn",
+      danger: true,
+    });
+    if (!accepted) return;
     startTransition(async () => {
       await deleteTagAction(t.id);
       router.refresh();
@@ -111,15 +119,21 @@ export function TagsClient({ tags }: { tags: Tag[] }) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Nhãn</h1>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">Nhãn công việc</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Dùng nhãn để nhóm và tìm nhanh các công việc liên quan.
+          </p>
+        </div>
         <button className="btn-primary" onClick={() => setCreating(true)}>
-          Tạo nhãn
+          <span className="text-lg leading-none">+</span>
+          Nhãn
         </button>
       </div>
 
       {tags.length === 0 ? (
-        <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
+        <div className="empty-state">
           Chưa có nhãn nào.
         </div>
       ) : (
@@ -132,20 +146,13 @@ export function TagsClient({ tags }: { tags: Tag[] }) {
               >
                 {t.name}
               </span>
-              <div className="flex gap-2">
-                <button
-                  className="btn-secondary text-xs"
-                  onClick={() => setEditing(t)}
-                >
-                  Sửa
-                </button>
-                <button
-                  className="btn-danger text-xs"
-                  onClick={() => remove(t)}
-                >
-                  Xóa
-                </button>
-              </div>
+              <ActionsMenu
+                label={`Thao tác với nhãn ${t.name}`}
+                items={[
+                  { label: "Sửa", onClick: () => setEditing(t) },
+                  { label: "Xóa", onClick: () => remove(t), danger: true },
+                ]}
+              />
             </div>
           ))}
         </div>
@@ -167,6 +174,7 @@ export function TagsClient({ tags }: { tags: Tag[] }) {
           />
         )}
       </Modal>
+      {confirmDialog}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
+import { ActionsMenu } from "@/components/ui/ActionsMenu";
 import {
   createMemberAction,
   toggleMemberActiveAction,
@@ -147,8 +148,13 @@ export function MembersClient({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Nhân sự</h1>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Nhân sự</h1>
+          <p className="page-description">
+            Quản lý thành viên và cơ cấu phân công theo team.
+          </p>
+        </div>
         {canEdit && (
           <button className="btn-primary" onClick={() => setCreating(true)}>
             Thêm nhân sự
@@ -164,7 +170,7 @@ export function MembersClient({
       )}
 
       {members.length === 0 ? (
-        <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
+        <div className="empty-state">
           Chưa có nhân sự nào. Bấm &quot;Thêm nhân sự&quot; để bắt đầu.
         </div>
       ) : (
@@ -203,20 +209,17 @@ export function MembersClient({
                         </td>
                         <td className="p-3 text-right">
                           {canEdit && (
-                            <div className="flex justify-end gap-2">
-                              <button
-                                className="btn-secondary text-xs"
-                                onClick={() => setEditing(m)}
-                              >
-                                Sửa
-                              </button>
-                              <button
-                                className="btn-secondary text-xs"
-                                onClick={() => handleToggleActive(m)}
-                              >
-                                {m.is_active ? "Ngừng" : "Kích hoạt"}
-                              </button>
-                            </div>
+                            <ActionsMenu
+                              label={`Thao tác với ${m.full_name}`}
+                              items={[
+                                { label: "Sửa thông tin", onClick: () => setEditing(m) },
+                                {
+                                  label: m.is_active ? "Ngừng hoạt động" : "Kích hoạt lại",
+                                  onClick: () => handleToggleActive(m),
+                                  danger: m.is_active,
+                                },
+                              ]}
+                            />
                           )}
                         </td>
                       </tr>

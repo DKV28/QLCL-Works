@@ -2,10 +2,75 @@
 
 export type Role = "admin" | "manager" | "staff";
 
+// Phân quyền cấu hình được (lưu ở bảng role_permissions, admin chỉnh trong Cài đặt)
+export type PermissionResource = "project" | "task";
+export type EditScope = "all" | "own" | "none";
+
+export interface RolePermission {
+  resource: PermissionResource;
+  role: Role;
+  edit_scope: EditScope;
+  can_create: boolean;
+  updated_at: string;
+}
+
+export const EDIT_SCOPE_LABEL: Record<EditScope, string> = {
+  all: "Tất cả",
+  own: "Chỉ mục của mình",
+  none: "Không được sửa",
+};
+
+export const PERMISSION_RESOURCE_LABEL: Record<PermissionResource, string> = {
+  project: "Dự án",
+  task: "Công việc",
+};
+
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: "Quản trị viên",
+  manager: "Quản lý",
+  staff: "Thành viên",
+};
+
 export type ProjectStatus = "dang_thuc_hien" | "hoan_thanh" | "tam_dung";
-export type TaskPriority = "cao" | "trung_binh" | "thap";
-export type TaskStatus = "chua_bat_dau" | "dang_lam" | "hoan_thanh";
+export type TaskPriority = string;
+export type TaskStatus = string;
 export type TaskRepeat = "none" | "daily" | "weekly" | "monthly";
+
+export interface TaskPrioritySetting {
+  code: TaskPriority;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+  is_default: boolean;
+  is_system: boolean;
+  updated_at: string;
+}
+
+export interface TaskStatusSetting {
+  code: TaskStatus;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+  is_default: boolean;
+  is_terminal: boolean;
+  is_system: boolean;
+  updated_at: string;
+}
+
+export interface WorkflowStepSetting {
+  code: string;
+  label: string;
+  role_label: string;
+  color: string;
+  sla_days: number;
+  sort_order: number;
+  is_active: boolean;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Profile {
   id: string;
@@ -65,6 +130,9 @@ export interface Task {
   status: TaskStatus;
   repeat: TaskRepeat;
   is_arising: boolean;
+  // Bước hiện tại của quy trình vận hành (null = công việc thường).
+  // Danh mục bước: lib/logic/van-hanh.ts
+  van_hanh_step: string | null;
   completed_at: string | null;
   created_by: string | null;
   created_at: string;
@@ -101,6 +169,26 @@ export interface TaskWithAssignees extends Task {
   subtasks: Subtask[];
   attachments: Attachment[];
   tags: Pick<Tag, "id" | "name" | "color">[];
+}
+
+export interface TaskWorkLog {
+  id: string;
+  task_id: string;
+  member_id: string;
+  work_date: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface TaskDailyNote {
+  id: string;
+  task_id: string;
+  member_id: string;
+  note_date: string;
+  note: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export const ATTACHMENTS_BUCKET = "task-attachments";
@@ -156,13 +244,13 @@ export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
   tam_dung: "Tạm dừng",
 };
 
-export const TASK_PRIORITY_LABEL: Record<TaskPriority, string> = {
+export const TASK_PRIORITY_LABEL: Record<string, string> = {
   cao: "Cao",
   trung_binh: "Trung bình",
   thap: "Thấp",
 };
 
-export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
+export const TASK_STATUS_LABEL: Record<string, string> = {
   chua_bat_dau: "Chưa bắt đầu",
   dang_lam: "Đang làm",
   hoan_thanh: "Hoàn thành",

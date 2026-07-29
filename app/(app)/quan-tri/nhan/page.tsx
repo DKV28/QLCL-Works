@@ -1,9 +1,5 @@
-import { TagsClient } from "@/components/admin/TagsClient";
-import { listTags } from "@/lib/data/tags";
-
-export const dynamic = "force-dynamic";
+import { redirect } from "next/navigation";
 
 export default async function TagsPage() {
-  const tags = await listTags();
-  return <TagsClient tags={tags} />;
+  redirect("/cai-dat?tab=nhan");
 }

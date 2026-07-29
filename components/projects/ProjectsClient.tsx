@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ProjectStatusBadge } from "@/components/ui/Badges";
+import { ActionsMenu } from "@/components/ui/ActionsMenu";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProjectForm } from "./ProjectForm";
 import {
   createProjectAction,
@@ -19,6 +21,7 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
   const [pendingDelete, startDelete] = useTransition();
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   function refresh() {
     setCreating(false);
@@ -26,17 +29,27 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
     router.refresh();
   }
 
-  function handleDelete(p: Project) {
-    if (!confirm(`Xóa dự án "${p.name}"? Công việc bên trong cũng sẽ bị ẩn.`))
-      return;
+  async function handleDelete(p: Project) {
+    const accepted = await confirm({
+      title: "Xóa dự án",
+      message: `Dự án “${p.name}” và các công việc bên trong sẽ được ẩn khỏi hệ thống.`,
+      confirmLabel: "Xóa dự án",
+      danger: true,
+    });
+    if (!accepted) return;
     startDelete(async () => {
       await deleteProjectAction(p.id);
       router.refresh();
     });
   }
 
-  function handleDuplicate(p: Project) {
-    if (!confirm(`Nhân bản dự án "${p.name}" cùng toàn bộ công việc?`)) return;
+  async function handleDuplicate(p: Project) {
+    const accepted = await confirm({
+      title: "Nhân bản dự án",
+      message: `Tạo một bản sao của “${p.name}” cùng toàn bộ công việc?`,
+      confirmLabel: "Nhân bản",
+    });
+    if (!accepted) return;
     startDelete(async () => {
       await duplicateProjectAction(p.id);
       router.refresh();
@@ -45,21 +58,31 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dự án</h1>
-        <button className="btn-primary" onClick={() => setCreating(true)}>
-          Tạo dự án
-        </button>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Dự án</h1>
+          <p className="page-description">
+            Tổ chức công việc theo mục tiêu, phạm vi và thời hạn.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/thu-vien-mau" className="btn-secondary">
+            Thư viện mẫu
+          </Link>
+          <button className="btn-primary" onClick={() => setCreating(true)}>
+            Tạo dự án
+          </button>
+        </div>
       </div>
 
       {projects.length === 0 ? (
-        <div className="card p-10 text-center text-gray-500 dark:text-gray-400">
+        <div className="empty-state">
           Chưa có dự án nào. Bấm &quot;Tạo dự án&quot; để bắt đầu.
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((p) => (
-            <div key={p.id} className="card flex flex-col p-5">
+            <div key={p.id} className="card flex min-h-52 flex-col p-5 transition hover:border-gray-300 dark:hover:border-gray-700">
               <div className="mb-2 flex items-start justify-between gap-2">
                 <Link
                   href={`/du-an/${p.id}`}
@@ -72,27 +95,18 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
               <p className="mb-4 flex-1 text-sm text-gray-600 line-clamp-3 dark:text-gray-400">
                 {p.description || "—"}
               </p>
-              <div className="flex justify-end gap-2">
-                <button
-                  className="btn-secondary text-xs"
-                  onClick={() => setEditing(p)}
-                >
-                  Sửa
-                </button>
-                <button
-                  className="btn-secondary text-xs"
-                  onClick={() => handleDuplicate(p)}
-                  disabled={pendingDelete}
-                >
-                  Nhân bản
-                </button>
-                <button
-                  className="btn-danger text-xs"
-                  onClick={() => handleDelete(p)}
-                  disabled={pendingDelete}
-                >
-                  Xóa
-                </button>
+              <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
+                <Link href={`/du-an/${p.id}`} className="text-sm font-semibold text-brand hover:underline">
+                  Mở dự án
+                </Link>
+                <ActionsMenu
+                  label={`Thao tác với ${p.name}`}
+                  items={[
+                    { label: "Sửa", onClick: () => setEditing(p) },
+                    { label: "Nhân bản", onClick: () => handleDuplicate(p) },
+                    { label: "Xóa", onClick: () => handleDelete(p), danger: true },
+                  ]}
+                />
               </div>
             </div>
           ))}
@@ -120,6 +134,7 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
           />
         )}
       </Modal>
+      {confirmDialog}
     </div>
   );
 }

@@ -4,43 +4,82 @@ import {
   TASK_STATUS_LABEL,
   type ProjectStatus,
   type TaskPriority,
+  type TaskPrioritySetting,
   type TaskStatus,
+  type TaskStatusSetting,
 } from "@/lib/types";
 
 function Pill({
   children,
   className,
+  style,
 }: {
   children: React.ReactNode;
   className: string;
+  style?: React.CSSProperties;
 }) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${className}`}
+      style={style}
     >
       {children}
     </span>
   );
 }
 
-const PRIORITY_STYLE: Record<TaskPriority, string> = {
+const PRIORITY_STYLE: Record<string, string> = {
   cao: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
   trung_binh: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
   thap: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
 };
 
-export function PriorityBadge({ value }: { value: TaskPriority }) {
-  return <Pill className={PRIORITY_STYLE[value]}>{TASK_PRIORITY_LABEL[value]}</Pill>;
+export function PriorityBadge({
+  value,
+  setting,
+}: {
+  value: TaskPriority;
+  setting?: TaskPrioritySetting;
+}) {
+  if (setting) {
+    return (
+      <Pill className="text-white" style={{ backgroundColor: setting.color }}>
+        {setting.label}
+      </Pill>
+    );
+  }
+  return (
+    <Pill className={PRIORITY_STYLE[value] ?? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}>
+      {TASK_PRIORITY_LABEL[value] ?? value}
+    </Pill>
+  );
 }
 
-const TASK_STATUS_STYLE: Record<TaskStatus, string> = {
+const TASK_STATUS_STYLE: Record<string, string> = {
   chua_bat_dau: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
   dang_lam: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
   hoan_thanh: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
 };
 
-export function StatusBadge({ value }: { value: TaskStatus }) {
-  return <Pill className={TASK_STATUS_STYLE[value]}>{TASK_STATUS_LABEL[value]}</Pill>;
+export function StatusBadge({
+  value,
+  setting,
+}: {
+  value: TaskStatus;
+  setting?: TaskStatusSetting;
+}) {
+  if (setting) {
+    return (
+      <Pill className="text-white" style={{ backgroundColor: setting.color }}>
+        {setting.label}
+      </Pill>
+    );
+  }
+  return (
+    <Pill className={TASK_STATUS_STYLE[value] ?? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}>
+      {TASK_STATUS_LABEL[value] ?? value}
+    </Pill>
+  );
 }
 
 const PROJECT_STATUS_STYLE: Record<ProjectStatus, string> = {
@@ -63,4 +102,27 @@ export function OverdueBadge() {
 
 export function NeedStartBadge() {
   return <Pill className="bg-orange-500 text-white">Cần bắt đầu</Pill>;
+}
+
+export function ArisingBadge() {
+  return <Pill className="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">Phát sinh</Pill>;
+}
+
+export function StepBadge({
+  order,
+  label,
+  color,
+}: {
+  order?: number;
+  label: string;
+  color?: string;
+}) {
+  return (
+    <Pill
+      className={color ? "text-white shadow-sm" : "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"}
+      style={color ? { backgroundColor: color } : undefined}
+    >
+      {order ? `${order}. ${label}` : label}
+    </Pill>
+  );
 }

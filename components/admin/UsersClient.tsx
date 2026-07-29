@@ -7,10 +7,16 @@ import { createUserAction, updateUserRoleAction } from "@/lib/actions/admin";
 import type { Profile, Role } from "@/lib/types";
 
 const ROLE_OPTIONS: [Role, string][] = [
-  ["staff", "Nhân viên"],
+  ["staff", "Thành viên"],
   ["manager", "Quản lý"],
   ["admin", "Quản trị viên"],
 ];
+
+function displayIdentity(email: string | null): string {
+  if (!email) return "—";
+  const suffix = "@users.qlcl.local";
+  return email.endsWith(suffix) ? email.slice(0, -suffix.length) : email;
+}
 
 export function UsersClient({ users }: { users: Profile[] }) {
   const router = useRouter();
@@ -40,10 +46,16 @@ export function UsersClient({ users }: { users: Profile[] }) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Người dùng</h1>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">Người dùng</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Quản lý tài khoản và vai trò truy cập hệ thống.
+          </p>
+        </div>
         <button className="btn-primary" onClick={() => setCreating(true)}>
-          Tạo tài khoản
+          <span className="text-lg leading-none">+</span>
+          Tài khoản
         </button>
       </div>
 
@@ -52,7 +64,7 @@ export function UsersClient({ users }: { users: Profile[] }) {
           <thead>
             <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
               <th className="p-3">Họ tên</th>
-              <th className="p-3">Email</th>
+              <th className="p-3">Tên đăng nhập / Email</th>
               <th className="p-3">Vai trò</th>
             </tr>
           </thead>
@@ -64,7 +76,7 @@ export function UsersClient({ users }: { users: Profile[] }) {
               >
                 <td className="p-3 font-medium">{u.full_name || "—"}</td>
                 <td className="p-3 text-gray-600 dark:text-gray-400">
-                  {u.email}
+                  {displayIdentity(u.email)}
                 </td>
                 <td className="p-3">
                   <select
@@ -89,8 +101,9 @@ export function UsersClient({ users }: { users: Profile[] }) {
       </div>
 
       <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-        Đổi vai trò áp dụng ngay. Vai trò hiện chưa giới hạn quyền xem dữ liệu
-        (sẽ bật ở phiên bản sau).
+        Đổi vai trò áp dụng ngay. Mọi vai trò đều xem chung toàn bộ dữ liệu.
+        Quyền tạo và sửa/xóa của từng vai trò được điều chỉnh ở mục “Phân quyền
+        theo vai trò” bên dưới.
       </p>
 
       <Modal

@@ -8,6 +8,7 @@ import {
   updateProject,
 } from "@/lib/data/projects";
 import { getCurrentProfile } from "@/lib/data/profiles";
+import { canWriteProject } from "@/lib/data/permissions";
 import { recordActivity } from "@/lib/data/activity";
 import type { ProjectStatus } from "@/lib/types";
 
@@ -43,6 +44,8 @@ export async function updateProjectAction(
 ): Promise<ActionResult> {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { ok: false, error: "Tên dự án không được để trống." };
+  if (!(await canWriteProject(id)))
+    return { ok: false, error: "Bạn chỉ sửa được dự án do mình tạo." };
 
   try {
     await updateProject(id, {
@@ -100,6 +103,8 @@ export async function createFromTemplateAction(
 }
 
 export async function deleteProjectAction(id: string): Promise<ActionResult> {
+  if (!(await canWriteProject(id)))
+    return { ok: false, error: "Bạn chỉ xóa được dự án do mình tạo." };
   try {
     await softDeleteProject(id);
   } catch (e) {

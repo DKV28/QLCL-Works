@@ -1,5 +1,5 @@
 // Logic báo cáo ngày (A/B/C/D) và báo cáo tuần — hàm thuần.
-import type { MemberLite, TaskWithAssignees } from "@/lib/types";
+import type { MemberLite, TaskWithAssignees, TaskWorkLog } from "@/lib/types";
 import { isDone } from "./stats";
 import { todayISO } from "./overdue";
 
@@ -27,29 +27,44 @@ export interface DailyReport {
 }
 
 /**
- * "Việc thực hiện trong hôm nay" của một người (phụ trách chính):
- *  - đã hoàn thành hôm nay, HOẶC
- *  - chưa hoàn thành và đã tới ngày làm (start_date <= hôm nay hoặc không có start).
+ * Báo cáo ngày của một người gồm công việc phụ trách chính/hỗ trợ:
+ *  - được chọn vào My day, HOẶC
+ *  - có deadline đúng ngày báo cáo.
  */
 export function dailyReportFor(
   tasks: TaskWithAssignees[],
   member: MemberLite,
-  today = todayISO(),
+  reportDate = todayISO(),
+  workLogs: TaskWorkLog[] = [],
 ): DailyReport {
-  const tomorrow = addDaysISO(today, 1);
-  const mine = tasks.filter((t) => t.primary?.id === member.id);
+  const tomorrow = addDaysISO(reportDate, 1);
+  const mine = tasks.filter(
+    (task) =>
+      task.primary?.id === member.id ||
+      task.supporters.some((supporter) => supporter.id === member.id),
+  );
+  const loggedIds = new Set(
+    workLogs
+      .filter(
+        (log) =>
+          log.member_id === member.id && log.work_date === reportDate,
+      )
+      .map((log) => log.task_id),
+  );
+  const todayTasks = mine.filter(
+    (task) => task.due_date === reportDate || loggedIds.has(task.id),
+  );
 
-  const todayTasks = mine.filter((t) => {
-    if (isDone(t)) return completedDate(t) === today;
-    return !t.start_date || t.start_date <= today;
-  });
-
-  const b = todayTasks.filter((t) => isDone(t)).length;
+  const b = todayTasks.filter(
+    (task) =>
+      completedDate(task) === reportDate ||
+      (reportDate === todayISO() && isDone(task) && !task.completed_at),
+  ).length;
   const c = todayTasks.length - b;
 
   const tomorrowNew = mine.filter(
     (t) =>
-      !isDone(t) &&
+      (!completedDate(t) || completedDate(t)! > reportDate) &&
       (t.start_date === tomorrow || t.due_date === tomorrow) &&
       !todayTasks.includes(t),
   );
@@ -66,23 +81,38 @@ export function dailyReportFor(
   };
 }
 
-export function dailyReportText(r: DailyReport): string {
-  return [
-    `A = Tổng số công việc trong ngày = ${r.a}`,
+export function dailyReportText(
+  r: DailyReport,
+  notes: Record<string, string> = {},
+): string {
+  const lines = [
+    `A = Công việc My day hoặc có deadline trong ngày = ${r.a}`,
     `B = Tổng số công việc trong ngày đã hoàn thành = ${r.b}`,
     `C = Tổng số công việc trong ngày chưa hoàn thành = ${r.c}`,
     `D = Số công việc mới (ngày mai) + chưa hoàn thành hôm nay = ${r.d}`,
-  ].join("\n");
+  ];
+  const notedTasks = r.todayTasks.filter((task) => notes[task.id]);
+  if (notedTasks.length) {
+    lines.push(
+      "",
+      "Ghi chú:",
+      ...notedTasks.map((task) => `- ${task.title}: ${notes[task.id]}`),
+    );
+  }
+  return lines.join("\n");
 }
 
 // ---------- Báo cáo tuần ----------
 
-/** Thứ Hai của tuần chứa ngày iso. */
+/**
+ * Ngày bắt đầu của kỳ báo cáo tuần đã đóng gần nhất.
+ * Kỳ chạy từ Thứ Bảy đến Thứ Sáu; báo cáo được chốt vào Thứ Bảy.
+ */
 export function weekStartOf(iso: string): string {
   const d = new Date(iso + "T00:00:00Z");
-  const dow = d.getUTCDay(); // 0=CN..6=T7
-  const diff = dow === 0 ? -6 : 1 - dow; // về thứ Hai
-  d.setUTCDate(d.getUTCDate() + diff);
+  const dow = d.getUTCDay(); // 0=CN..5=T6..6=T7
+  const daysSinceFriday = (dow - 5 + 7) % 7;
+  d.setUTCDate(d.getUTCDate() - daysSinceFriday - 6);
   return d.toISOString().slice(0, 10);
 }
 

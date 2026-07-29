@@ -9,15 +9,29 @@ import {
   type MemberLite,
   type Project,
   type Tag,
+  type TaskPrioritySetting,
+  type TaskStatusSetting,
   type TaskWithAssignees,
+  type WorkflowStepSetting,
 } from "@/lib/types";
 import type { ActionResult } from "@/lib/actions/tasks";
 import { getTagsAction } from "@/lib/actions/tags";
+import { getWorkflowStepsAction } from "@/lib/actions/settings";
+import { todayISO } from "@/lib/logic/overdue";
+import {
+  FIRST_STEP_CODE,
+  VAN_HANH_STEPS,
+  workflowStepColorForRole,
+} from "@/lib/logic/van-hanh";
+import { addWorkingDays } from "@/lib/logic/working-days";
 
 export function TaskForm({
   task,
   members,
   projects,
+  tags,
+  prioritySettings,
+  statusSettings,
   onSubmit,
   onDone,
 }: {
@@ -25,17 +39,100 @@ export function TaskForm({
   members: MemberLite[];
   // Khi truyền vào (từ trang Danh sách tổng), form hiện ô chọn dự án.
   projects?: Pick<Project, "id" | "name">[];
+  tags?: Tag[];
+  prioritySettings?: TaskPrioritySetting[];
+  statusSettings?: TaskStatusSetting[];
   onSubmit: (formData: FormData) => Promise<ActionResult>;
   onDone: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [primaryId, setPrimaryId] = useState(task?.primary?.id ?? "");
-  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>(tags ?? []);
+  // Quy trình vận hành: bật/tắt, bước hiện tại, và deadline (điều khiển được để
+  // tự điền mặc định khi bật quy trình lúc tạo mới).
+  const [isVanHanh, setIsVanHanh] = useState(!!task?.van_hanh_step);
+  const [vanHanhStep, setVanHanhStep] = useState(
+    task?.van_hanh_step ?? FIRST_STEP_CODE,
+  );
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStepSetting[]>(
+    VAN_HANH_STEPS.map((step) => ({
+      code: step.code,
+      label: step.label,
+      role_label: step.role,
+      color: workflowStepColorForRole(step.role),
+      sla_days: step.slaDays,
+      sort_order: step.order * 10,
+      is_active: true,
+      is_system: true,
+      created_at: "",
+      updated_at: "",
+    })),
+  );
+  const [dueDate, setDueDate] = useState(task?.due_date ?? "");
+
+  function toggleVanHanh(on: boolean) {
+    setIsVanHanh(on);
+    // Khi bật quy trình cho công việc mới, lấy SLA của bước đang chọn.
+    if (on && !task && !dueDate) {
+      const selected = workflowSteps.find((step) => step.code === vanHanhStep);
+      setDueDate(addWorkingDays(selected?.sla_days ?? 1));
+    }
+  }
 
   useEffect(() => {
-    getTagsAction().then(setAllTags);
-  }, []);
+    if (!tags) getTagsAction().then(setAllTags);
+  }, [tags]);
+
+  useEffect(() => {
+    getWorkflowStepsAction().then((steps) => {
+      if (steps.length === 0) return;
+      setWorkflowSteps(steps);
+      if (!task) {
+        const firstActive = steps.find((step) => step.is_active);
+        if (firstActive) setVanHanhStep(firstActive.code);
+      }
+    });
+  }, [task]);
+
+  const availableWorkflowSteps = workflowSteps.filter(
+    (step) => step.is_active || step.code === task?.van_hanh_step,
+  );
+  const selectedWorkflowStep = workflowSteps.find(
+    (step) => step.code === vanHanhStep,
+  );
+
+  const priorityOptions =
+    prioritySettings && prioritySettings.length > 0
+      ? prioritySettings.filter((item) => item.is_active || item.code === task?.priority)
+      : TASK_PRIORITY_OPTIONS.map(([code, label], index) => ({
+          code,
+          label,
+          color: "",
+          sort_order: index,
+          is_active: true,
+          is_default: code === "trung_binh",
+          is_system: true,
+          updated_at: "",
+        }));
+  const statusOptions =
+    statusSettings && statusSettings.length > 0
+      ? statusSettings.filter((item) => item.is_active || item.code === task?.status)
+      : TASK_STATUS_OPTIONS.map(([code, label], index) => ({
+          code,
+          label,
+          color: "",
+          sort_order: index,
+          is_active: true,
+          is_default: code === "chua_bat_dau",
+          is_terminal: code === "hoan_thanh",
+          is_system: true,
+          updated_at: "",
+        }));
+  const defaultPriority =
+    priorityOptions.find((item) => item.is_default)?.code ?? "trung_binh";
+  const defaultStatus =
+    statusOptions.find((item) => item.is_default)?.code ?? "chua_bat_dau";
 
   const initialTagIds = useMemo(
     () => new Set((task?.tags ?? []).map((t) => t.id)),
@@ -205,7 +302,7 @@ export function TaskForm({
             id="start_date"
             name="start_date"
             type="date"
-            defaultValue={task?.start_date ?? ""}
+            defaultValue={task ? task.start_date ?? "" : todayISO()}
             className="input"
           />
         </div>
@@ -217,30 +314,82 @@ export function TaskForm({
             id="due_date"
             name="due_date"
             type="date"
-            defaultValue={task?.due_date ?? ""}
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
             className="input"
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="label" htmlFor="priority">
-            Mức độ quan trọng
-          </label>
-          <select
-            id="priority"
-            name="priority"
-            defaultValue={task?.priority ?? "trung_binh"}
-            className="input"
-          >
-            {TASK_PRIORITY_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+          <input
+            type="checkbox"
+            checked={isVanHanh}
+            onChange={(e) => toggleVanHanh(e.target.checked)}
+            className="h-4 w-4 accent-brand"
+          />
+          Quy trình vận hành (kiểm soát tài liệu theo từng bước)
+        </label>
+        {isVanHanh && (
+          <div className="mt-3">
+            <label className="label" htmlFor="van_hanh_step">
+              Bước hiện tại
+            </label>
+            <select
+              id="van_hanh_step"
+              value={vanHanhStep}
+              onChange={(e) => setVanHanhStep(e.target.value)}
+              className="input"
+            >
+              {availableWorkflowSteps.map((step, index) => (
+                <option key={step.code} value={step.code}>
+                  {index + 1}. {step.label}
+                  {step.role_label ? ` · ${step.role_label}` : ""}
+                  {` · SLA ${step.sla_days} ngày`}
+                </option>
+              ))}
+            </select>
+            {selectedWorkflowStep && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <span
+                  className="rounded-full px-2.5 py-1 font-medium text-white shadow-sm"
+                  style={{
+                    backgroundColor:
+                      selectedWorkflowStep.color ||
+                      workflowStepColorForRole(
+                        selectedWorkflowStep.role_label,
+                      ),
+                  }}
+                >
+                  {selectedWorkflowStep.label}
+                </span>
+                <span>
+                  {selectedWorkflowStep.role_label || "Không có vai trò"} · SLA{" "}
+                  {selectedWorkflowStep.sla_days} ngày
+                </span>
+              </div>
+            )}
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Bấm “Bước tiếp theo” ở danh sách để tiến bước và tự tính lại deadline
+              theo số ngày làm việc của bước kế.
+            </p>
+          </div>
+        )}
+      </div>
+      {/* Rỗng khi tắt quy trình → server lưu null (công việc thường). */}
+      <input
+        type="hidden"
+        name="van_hanh_step"
+        value={isVanHanh ? vanHanhStep : ""}
+      />
+
+      <input
+        type="hidden"
+        name="priority"
+        value={task?.priority ?? defaultPriority}
+      />
+      <div className="grid grid-cols-2 items-end gap-4">
         <div>
           <label className="label" htmlFor="status">
             Trạng thái
@@ -248,16 +397,25 @@ export function TaskForm({
           <select
             id="status"
             name="status"
-            defaultValue={task?.status ?? "chua_bat_dau"}
+            defaultValue={task?.status ?? defaultStatus}
             className="input"
           >
-            {TASK_STATUS_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
+            {statusOptions.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.label}
               </option>
             ))}
           </select>
         </div>
+        <label className="flex h-10 items-center gap-2 rounded-md border border-gray-300 px-3 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300">
+          <input
+            type="checkbox"
+            name="is_arising"
+            defaultChecked={task?.is_arising ?? false}
+            className="h-4 w-4 accent-brand"
+          />
+          Công việc phát sinh (ngoài kế hoạch)
+        </label>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -299,16 +457,6 @@ export function TaskForm({
           </div>
         )}
       </div>
-
-      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input
-          type="checkbox"
-          name="is_arising"
-          defaultChecked={task?.is_arising ?? false}
-          className="h-4 w-4 accent-brand"
-        />
-        Công việc phát sinh (ngoài kế hoạch)
-      </label>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

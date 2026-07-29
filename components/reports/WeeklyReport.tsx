@@ -8,6 +8,7 @@ import {
   weekStartOf,
 } from "@/lib/logic/reports";
 import { todayISO } from "@/lib/logic/overdue";
+import { formatFriendlyDate } from "@/lib/logic/dates";
 import type { MemberLite, TaskWithAssignees } from "@/lib/types";
 
 function addDays(iso: string, days: number): string {
@@ -63,8 +64,9 @@ export function WeeklyReport({
 
   return (
     <div>
-      <div className="card no-print mb-6 flex flex-wrap items-end gap-4 p-4">
-        <div>
+      <div className="card no-print mb-6 p-4">
+        <div className="flex flex-wrap items-end gap-4">
+        <div className="min-w-48 flex-1 sm:flex-none">
           <label className="label">Team</label>
           <select
             className="input"
@@ -79,23 +81,27 @@ export function WeeklyReport({
             ))}
           </select>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">
           <button
             className="btn-secondary text-sm"
             onClick={() => setWeekStart(addDays(weekStart, -7))}
           >
-            ← Tuần trước
+            ← Kỳ trước
           </button>
-          <span className="text-sm text-gray-600 dark:text-gray-300">
-            {r.weekStart} → {r.weekEnd}
+          <span className="min-w-40 flex-1 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 sm:flex-none">
+            {formatFriendlyDate(r.weekStart)} – {formatFriendlyDate(r.weekEnd)}
           </span>
           <button
             className="btn-secondary text-sm"
             onClick={() => setWeekStart(addDays(weekStart, 7))}
           >
-            Tuần sau →
+            Kỳ sau →
           </button>
         </div>
+        </div>
+        <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+          Báo cáo chốt vào Thứ Bảy, tính công việc từ Thứ Bảy tuần trước đến hết Thứ Sáu.
+        </p>
       </div>
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -120,10 +126,13 @@ export function WeeklyReport({
           <h3 className="mb-2 text-sm font-semibold">
             Hoạch định ({r.planned.length})
           </h3>
-          <ul className="space-y-1 text-sm">
+          <ul className="divide-y divide-gray-100 text-sm dark:divide-gray-800">
             {r.planned.map((t) => (
-              <li key={t.id} className="text-gray-800 dark:text-gray-200">
-                {t.title}
+              <li key={t.id} className="flex items-start justify-between gap-3 py-2.5 text-gray-800 dark:text-gray-200">
+                <span>{t.title}</span>
+                <span className="shrink-0 text-xs text-gray-400">
+                  {formatFriendlyDate(t.due_date)}
+                </span>
               </li>
             ))}
             {r.planned.length === 0 && (
@@ -135,10 +144,13 @@ export function WeeklyReport({
           <h3 className="mb-2 text-sm font-semibold">
             Phát sinh ({r.arising.length})
           </h3>
-          <ul className="space-y-1 text-sm">
+          <ul className="divide-y divide-gray-100 text-sm dark:divide-gray-800">
             {r.arising.map((t) => (
-              <li key={t.id} className="text-gray-800 dark:text-gray-200">
-                {t.title}
+              <li key={t.id} className="flex items-start justify-between gap-3 py-2.5 text-gray-800 dark:text-gray-200">
+                <span>{t.title}</span>
+                <span className="shrink-0 text-xs text-gray-400">
+                  {formatFriendlyDate(t.due_date)}
+                </span>
               </li>
             ))}
             {r.arising.length === 0 && (

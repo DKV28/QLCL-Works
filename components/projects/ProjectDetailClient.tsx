@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
@@ -8,32 +8,55 @@ import { ProjectStatusBadge } from "@/components/ui/Badges";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskTable } from "@/components/tasks/TaskTable";
 import { createTaskAction } from "@/lib/actions/tasks";
-import type { MemberLite, Project, TaskWithAssignees } from "@/lib/types";
+import type {
+  MemberLite,
+  Project,
+  Tag,
+  TaskPrioritySetting,
+  TaskStatusSetting,
+  TaskWithAssignees,
+} from "@/lib/types";
 
 export function ProjectDetailClient({
   project,
   tasks,
   members,
+  tags,
+  prioritySettings,
+  statusSettings,
 }: {
   project: Project;
   tasks: TaskWithAssignees[];
   members: MemberLite[];
+  tags: Tag[];
+  prioritySettings: TaskPrioritySetting[];
+  statusSettings: TaskStatusSetting[];
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const [localTasks, setLocalTasks] = useState(tasks);
+  useEffect(() => setLocalTasks(tasks), [tasks]);
+
+  function replaceTask(next: TaskWithAssignees) {
+    setLocalTasks((current) =>
+      current.some((task) => task.id === next.id)
+        ? current.map((task) => (task.id === next.id ? next : task))
+        : [...current, next],
+    );
+  }
 
   return (
     <div>
-      <div className="mb-2">
+      <div className="mb-3">
         <Link href="/du-an" className="text-sm text-brand hover:underline">
-          Quay lại danh sách dự án
+          ← Dự án
         </Link>
       </div>
 
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="page-header">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{project.name}</h1>
+            <h1 className="page-title">{project.name}</h1>
             <ProjectStatusBadge value={project.status} />
           </div>
           {project.description && (
@@ -43,11 +66,22 @@ export function ProjectDetailClient({
           )}
         </div>
         <button className="btn-primary shrink-0" onClick={() => setCreating(true)}>
-          Thêm công việc
+          <span className="text-lg leading-none">+</span>
+          Công việc
         </button>
       </div>
 
-      <TaskTable tasks={tasks} members={members} />
+      <TaskTable
+        tasks={localTasks}
+        members={members}
+        tags={tags}
+        prioritySettings={prioritySettings}
+        statusSettings={statusSettings}
+        onTaskChange={replaceTask}
+        onTaskRemove={(id) =>
+          setLocalTasks((current) => current.filter((task) => task.id !== id))
+        }
+      />
 
       <Modal
         open={creating}
@@ -56,6 +90,9 @@ export function ProjectDetailClient({
       >
         <TaskForm
           members={members}
+          tags={tags}
+          prioritySettings={prioritySettings}
+          statusSettings={statusSettings}
           onSubmit={(fd) => createTaskAction(project.id, fd)}
           onDone={() => {
             setCreating(false);
