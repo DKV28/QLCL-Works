@@ -8,7 +8,7 @@ import {
   weekStartOf,
 } from "@/lib/logic/reports";
 import { todayISO } from "@/lib/logic/overdue";
-import { formatFriendlyDate } from "@/lib/logic/dates";
+import { formatDMY, formatFriendlyDate } from "@/lib/logic/dates";
 import type { MemberLite, TaskWithAssignees } from "@/lib/types";
 
 function addDays(iso: string, days: number): string {
@@ -34,6 +34,32 @@ function CopyButton({ text }: { text: string }) {
     >
       {copied ? "Đã sao chép" : "Sao chép"}
     </button>
+  );
+}
+
+function TaskLines({ tasks }: { tasks: TaskWithAssignees[] }) {
+  if (tasks.length === 0) {
+    return <li className="py-2.5 text-gray-400">Không có.</li>;
+  }
+  return (
+    <>
+      {tasks.map((t) => (
+        <li
+          key={t.id}
+          className="flex items-start justify-between gap-3 py-2.5 text-gray-800 dark:text-gray-200"
+        >
+          <span>
+            {t.title}
+            {t.is_arising && (
+              <span className="text-xs text-orange-500"> (phát sinh)</span>
+            )}
+          </span>
+          <span className="shrink-0 text-xs text-gray-400">
+            {t.due_date ? formatFriendlyDate(t.due_date) : ""}
+          </span>
+        </li>
+      ))}
+    </>
   );
 }
 
@@ -66,49 +92,60 @@ export function WeeklyReport({
     <div>
       <div className="card no-print mb-6 p-4">
         <div className="flex flex-wrap items-end gap-4">
-        <div className="min-w-48 flex-1 sm:flex-none">
-          <label className="label">Team</label>
-          <select
-            className="input"
-            value={teamId}
-            onChange={(e) => setTeamId(e.target.value)}
-          >
-            <option value="">Tất cả</option>
-            {teamOptions.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">
-          <button
-            className="btn-secondary text-sm"
-            onClick={() => setWeekStart(addDays(weekStart, -7))}
-          >
-            ← Kỳ trước
-          </button>
-          <span className="min-w-40 flex-1 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 sm:flex-none">
-            {formatFriendlyDate(r.weekStart)} – {formatFriendlyDate(r.weekEnd)}
-          </span>
-          <button
-            className="btn-secondary text-sm"
-            onClick={() => setWeekStart(addDays(weekStart, 7))}
-          >
-            Kỳ sau →
-          </button>
-        </div>
+          <div className="min-w-48 flex-1 sm:flex-none">
+            <label className="label">Team</label>
+            <select
+              className="input"
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+            >
+              <option value="">Tất cả</option>
+              {teamOptions.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">
+            <button
+              className="btn-secondary text-sm"
+              onClick={() => setWeekStart(addDays(weekStart, -7))}
+            >
+              ← Kỳ trước
+            </button>
+            <span className="min-w-40 flex-1 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 sm:flex-none">
+              {formatFriendlyDate(r.weekStart)} – {formatFriendlyDate(r.weekEnd)}
+            </span>
+            <button
+              className="btn-secondary text-sm"
+              onClick={() => setWeekStart(addDays(weekStart, 7))}
+            >
+              Kỳ sau →
+            </button>
+          </div>
         </div>
         <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
-          Báo cáo chốt vào Thứ Bảy, tính công việc từ Thứ Bảy tuần trước đến hết Thứ Sáu.
+          Tuần chạy Thứ Bảy → Thứ Sáu. A/B/C tính theo task có deadline trong tuần;
+          D là task chưa hoàn thành có deadline đến hết Thứ Sáu tuần kế.
         </p>
       </div>
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Hoạch định" value={r.planned.length} tone="blue" />
-        <StatCard label="Phát sinh" value={r.arising.length} tone="orange" />
-        <StatCard label="Hoàn thành" value={r.done} tone="green" />
-        <StatCard label="Chưa hoàn thành" value={r.notDone} tone="red" />
+        <StatCard
+          label="A · Có deadline trong tuần"
+          value={r.a}
+          tone="blue"
+          sub={`Phát sinh: ${r.arisingCount} (${Math.round(r.arisingPct * 100)}%)`}
+        />
+        <StatCard label="B · Đã hoàn thành" value={r.b} tone="green" />
+        <StatCard label="C · Chưa hoàn thành" value={r.c} tone="red" />
+        <StatCard
+          label="D · Kế hoạch tuần kế"
+          value={r.d}
+          tone="orange"
+          sub={`Đến T6 ${formatDMY(r.nextWeekEnd)}`}
+        />
       </div>
 
       <div className="card mb-4 p-4">
@@ -124,38 +161,18 @@ export function WeeklyReport({
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card p-4">
           <h3 className="mb-2 text-sm font-semibold">
-            Hoạch định ({r.planned.length})
+            C · Chưa hoàn thành trong tuần ({r.c})
           </h3>
           <ul className="divide-y divide-gray-100 text-sm dark:divide-gray-800">
-            {r.planned.map((t) => (
-              <li key={t.id} className="flex items-start justify-between gap-3 py-2.5 text-gray-800 dark:text-gray-200">
-                <span>{t.title}</span>
-                <span className="shrink-0 text-xs text-gray-400">
-                  {formatFriendlyDate(t.due_date)}
-                </span>
-              </li>
-            ))}
-            {r.planned.length === 0 && (
-              <li className="text-gray-400">Không có.</li>
-            )}
+            <TaskLines tasks={r.cTasks} />
           </ul>
         </div>
         <div className="card p-4">
           <h3 className="mb-2 text-sm font-semibold">
-            Phát sinh ({r.arising.length})
+            D · Kế hoạch tuần kế ({r.d})
           </h3>
           <ul className="divide-y divide-gray-100 text-sm dark:divide-gray-800">
-            {r.arising.map((t) => (
-              <li key={t.id} className="flex items-start justify-between gap-3 py-2.5 text-gray-800 dark:text-gray-200">
-                <span>{t.title}</span>
-                <span className="shrink-0 text-xs text-gray-400">
-                  {formatFriendlyDate(t.due_date)}
-                </span>
-              </li>
-            ))}
-            {r.arising.length === 0 && (
-              <li className="text-gray-400">Không có.</li>
-            )}
+            <TaskLines tasks={r.dTasks} />
           </ul>
         </div>
       </div>
