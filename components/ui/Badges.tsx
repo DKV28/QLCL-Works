@@ -108,6 +108,14 @@ export function ArisingBadge() {
   return <Pill className="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">Phát sinh</Pill>;
 }
 
+export function DepartmentWideBadge() {
+  return (
+    <Pill className="bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+      Chung toàn phòng
+    </Pill>
+  );
+}
+
 export function StepBadge({
   order,
   label,

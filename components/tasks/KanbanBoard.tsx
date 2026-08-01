@@ -12,6 +12,7 @@ import {
 } from "@dnd-kit/core";
 import {
   ArisingBadge,
+  DepartmentWideBadge,
   NeedStartBadge,
   OverdueBadge,
 } from "@/components/ui/Badges";
@@ -123,6 +124,7 @@ function KanbanCard({
       )}
       <div className="flex flex-wrap items-center gap-1.5">
         {task.is_arising && <ArisingBadge />}
+        {task.is_department_wide && <DepartmentWideBadge />}
         {overdue && <OverdueBadge />}
         {startLate && !overdue && <NeedStartBadge />}
         {task.subtasks.length > 0 && (

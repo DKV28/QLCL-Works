@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArisingBadge,
+  DepartmentWideBadge,
   NeedStartBadge,
   OverdueBadge,
   StatusBadge,
@@ -402,6 +403,7 @@ export function TaskTable({
                   setting={statusSettings.find((item) => item.code === task.status)}
                 />
                 {task.is_arising && <ArisingBadge />}
+                {task.is_department_wide && <DepartmentWideBadge />}
                 {overdue && <OverdueBadge />}
                 {startLate && !overdue && <NeedStartBadge />}
                 {task.van_hanh_step && (
@@ -556,6 +558,11 @@ export function TaskTable({
                   {t.tags.length > 0 && (
                     <div className="mt-1">
                       <TagChips tags={t.tags} />
+                    </div>
+                  )}
+                  {t.is_department_wide && (
+                    <div className="mt-1">
+                      <DepartmentWideBadge />
                     </div>
                   )}
                   <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">

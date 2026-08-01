@@ -1,6 +1,6 @@
 // Kiểu dữ liệu domain dùng chung toàn app.
 
-export type Role = "admin" | "manager" | "staff";
+export type Role = "admin" | "manager" | "team_lead" | "staff";
 
 // Phân quyền cấu hình được (lưu ở bảng role_permissions, admin chỉnh trong Cài đặt)
 export type PermissionResource = "project" | "task";
@@ -28,6 +28,7 @@ export const PERMISSION_RESOURCE_LABEL: Record<PermissionResource, string> = {
 export const ROLE_LABEL: Record<Role, string> = {
   admin: "Quản trị viên",
   manager: "Quản lý",
+  team_lead: "Teamlead",
   staff: "Thành viên",
 };
 
@@ -130,6 +131,7 @@ export interface Task {
   status: TaskStatus;
   repeat: TaskRepeat;
   is_arising: boolean;
+  is_department_wide: boolean;
   // Bước hiện tại của quy trình vận hành (null = công việc thường).
   // Danh mục bước: lib/logic/van-hanh.ts
   van_hanh_step: string | null;

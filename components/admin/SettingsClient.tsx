@@ -88,7 +88,7 @@ export function SettingsClient({
       {tab === "co-cau" && <TeamsClient teams={teams} />}
       {tab === "nguoi-dung" && (
         <>
-          <UsersClient users={users} />
+          <UsersClient users={users} teams={teams} />
           <RolePermissionsClient permissions={rolePermissions} />
         </>
       )}

@@ -9,7 +9,7 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 
 const SCOPES: EditScope[] = ["all", "own", "none"];
 const RESOURCES: PermissionResource[] = ["project", "task"];
-const ROLES: Role[] = ["admin", "manager", "staff"];
+const ROLES: Role[] = ["admin", "manager", "team_lead", "staff"];
 
 export async function updateRolePermissionAction(
   resource: PermissionResource,

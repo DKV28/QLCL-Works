@@ -43,6 +43,7 @@ function parseTaskForm(formData: FormData) {
       "chua_bat_dau") as TaskStatus,
     repeat: (String(formData.get("repeat") ?? "none") || "none") as TaskRepeat,
     is_arising: formData.get("is_arising") === "on",
+    is_department_wide: formData.get("is_department_wide") === "on",
     van_hanh_step: String(formData.get("van_hanh_step") ?? "").trim() || null,
     primary_member_id: String(formData.get("primary_member_id") ?? "") || null,
     support_member_ids: formData

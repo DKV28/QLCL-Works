@@ -6,6 +6,7 @@ import { getCurrentProfile } from "@/lib/data/profiles";
 import type { Role } from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+const VALID_ROLES: Role[] = ["admin", "manager", "team_lead", "staff"];
 
 async function requireAdmin(): Promise<ActionResult> {
   const me = await getCurrentProfile();
@@ -26,9 +27,13 @@ export async function createUserAction(
   const password = String(formData.get("password") ?? "");
   const fullName = String(formData.get("full_name") ?? "").trim();
   const role = (String(formData.get("role") ?? "staff") || "staff") as Role;
+  const teamId = String(formData.get("team_id") ?? "") || null;
 
   if (!email || !password) {
     return { ok: false, error: "Vui lòng nhập email và mật khẩu." };
+  }
+  if (!VALID_ROLES.includes(role)) {
+    return { ok: false, error: "Vai trò không hợp lệ." };
   }
   if (password.length < 6) {
     return { ok: false, error: "Mật khẩu phải từ 6 ký tự trở lên." };
@@ -51,10 +56,10 @@ export async function createUserAction(
     };
   }
 
-  if (data.user && role !== "staff") {
+  if (data.user) {
     const { error: roleError } = await admin
       .from("profiles")
-      .update({ role })
+      .update({ role, team_id: teamId })
       .eq("id", data.user.id);
     if (roleError) {
       return {
@@ -65,6 +70,7 @@ export async function createUserAction(
   }
 
   revalidatePath("/quan-tri/nguoi-dung");
+  revalidatePath("/cai-dat");
   return { ok: true };
 }
 
@@ -75,6 +81,9 @@ export async function updateUserRoleAction(
 ): Promise<ActionResult> {
   const guard = await requireAdmin();
   if (!guard.ok) return guard;
+  if (!VALID_ROLES.includes(role)) {
+    return { ok: false, error: "Vai trò không hợp lệ." };
+  }
 
   const admin = createAdminClient();
   const { error } = await admin
@@ -85,5 +94,29 @@ export async function updateUserRoleAction(
   if (error) return { ok: false, error: "Không cập nhật được vai trò." };
 
   revalidatePath("/quan-tri/nguoi-dung");
+  revalidatePath("/cai-dat");
+  revalidatePath("/cong-viec");
+  revalidatePath("/bao-cao");
+  return { ok: true };
+}
+
+/** Gán tài khoản vào team (chỉ admin). Team trống = chỉ xem việc chung toàn phòng. */
+export async function updateUserTeamAction(
+  userId: string,
+  teamId: string | null,
+): Promise<ActionResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({ team_id: teamId })
+    .eq("id", userId);
+
+  if (error) return { ok: false, error: "Không cập nhật được team của tài khoản." };
+
+  revalidatePath("/cai-dat");
+  revalidatePath("/cong-viec");
+  revalidatePath("/bao-cao");
   return { ok: true };
 }
