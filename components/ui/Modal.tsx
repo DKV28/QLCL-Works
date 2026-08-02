@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { X } from "@phosphor-icons/react";
 
 export function Modal({
   open,
@@ -87,9 +88,7 @@ export function Modal({
             className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-800 dark:hover:text-gray-100"
             aria-label="Đóng"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-            </svg>
+            <X size={20} weight="bold" aria-hidden="true" />
           </button>
         </div>
         <div className="overflow-y-auto p-5">{children}</div>

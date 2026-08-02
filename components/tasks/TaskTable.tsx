@@ -444,7 +444,7 @@ export function TaskTable({
                         aria-label="Thêm công việc vào My day"
                       />
                     ) : (
-                      <span className="text-gray-300">—</span>
+                      <span className="text-gray-300">Chưa có</span>
                     )}
                   </td>
                 )}
@@ -498,7 +498,7 @@ export function TaskTable({
                       )}
                     </div>
                   ) : (
-                    "—"
+                    "Chưa có"
                   )}
                 </td>
                 <td className="p-3 align-top">
@@ -526,11 +526,11 @@ export function TaskTable({
                       }
                     />
                   ) : (
-                    <span className="text-gray-300">—</span>
+                    <span className="text-gray-300">Chưa có</span>
                   )}
                 </td>
                 <td className="p-3 align-top">
-                  {t.is_arising ? <ArisingBadge /> : <span className="text-gray-300">—</span>}
+                  {t.is_arising ? <ArisingBadge /> : <span className="text-gray-300">Không</span>}
                 </td>
                 <td className="p-3 align-top">
                   <StatusBadge

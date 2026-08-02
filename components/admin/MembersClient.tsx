@@ -60,7 +60,7 @@ function MemberForm({
           defaultValue={member?.team_id ?? ""}
           className="input"
         >
-          <option value="">— Chưa phân nhóm —</option>
+          <option value="">Chưa phân nhóm</option>
           {teamOptions.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}

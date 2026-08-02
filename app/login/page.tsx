@@ -1,12 +1,15 @@
 import { LoginForm } from "@/components/auth/LoginForm";
+import { AuthShell } from "@/components/auth/AuthShell";
 import Link from "next/link";
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-10 dark:bg-gray-950">
-      <div className="w-full max-w-md">
-        <div className="mb-7 text-center">
-          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-lg font-bold text-white shadow-sm">
+    <AuthShell
+      title="Không gian quản lý công việc của Phòng QLCL"
+      description="Theo dõi công việc, dự án và tiến độ chung trong một hệ thống thống nhất."
+    >
+        <div className="mb-7 lg:hidden">
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-lg font-bold text-white shadow-sm">
             Q
           </div>
           <h1 className="text-2xl font-bold tracking-tight">QLCL Works</h1>
@@ -15,7 +18,12 @@ export default function LoginPage() {
           </p>
         </div>
         <div className="card p-6 sm:p-8">
-          <h2 className="mb-5 text-lg font-semibold">Đăng nhập</h2>
+          <div className="mb-6">
+            <h2 className="text-xl font-bold tracking-tight">Đăng nhập</h2>
+            <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+              Sử dụng tài khoản nội bộ của bạn để tiếp tục.
+            </p>
+          </div>
           <LoginForm />
         </div>
         <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -24,7 +32,6 @@ export default function LoginPage() {
             Đăng ký Thành viên
           </Link>
         </p>
-      </div>
-    </main>
+    </AuthShell>
   );
 }

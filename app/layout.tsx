@@ -3,8 +3,8 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "QLCL Works — Quản lý Dự án & Công việc",
-  description: "App quản lý dự án và công việc — Phòng Quản lý Chất lượng",
+  title: "QLCL Works | Quản lý Dự án & Công việc",
+  description: "App quản lý dự án và công việc của Phòng Quản lý Chất lượng",
 };
 
 export default function RootLayout({

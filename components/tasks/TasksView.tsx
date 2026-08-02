@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarCheck, Funnel, X } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -216,29 +217,27 @@ export function TasksView({
   return (
     <div>
       <div className="page-header">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">Công việc</h1>
           <p className="page-description">
             Theo dõi tiến độ, người phụ trách và deadline trong một nơi.
           </p>
-          <div className="segmented mt-3">
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
+          <div className="segmented mr-auto lg:mr-2" role="tablist" aria-label="Chế độ xem công việc">
             {VIEW_LABELS.map(([mode, label]) => (
               <button
                 key={mode}
+                role="tab"
+                aria-selected={view === mode}
                 onClick={() => setView(mode)}
-                className={`segmented-item ${
-                  view === mode
-                    ? "segmented-item-active"
-                    : ""
-                }`}
+                className={`segmented-item ${view === mode ? "segmented-item-active" : ""}`}
               >
                 {label}
               </button>
             ))}
           </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <span className="mr-1 text-sm text-gray-500 dark:text-gray-400">
+          <span className="hidden text-sm tabular-nums text-slate-500 xl:inline dark:text-slate-400">
             {visible.length}/{localTasks.length} công việc
           </span>
           <button
@@ -252,9 +251,7 @@ export function TasksView({
             aria-expanded={filtersOpen}
             aria-controls="task-filters"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden="true">
-              <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
-            </svg>
+            <Funnel size={14} weight="regular" aria-hidden="true" />
             Lọc
             {activeFilterCount > 0 && (
               <span className="rounded-full bg-brand px-1.5 py-0.5 text-[10px] leading-none text-white">
@@ -274,10 +271,7 @@ export function TasksView({
               aria-expanded={myDayOpen}
               aria-controls="task-my-day"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden="true">
-                <path d="M8 3v3M16 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="m9 15 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <CalendarCheck size={14} weight="regular" aria-hidden="true" />
               My day
             </button>
           )}
@@ -487,9 +481,7 @@ export function TasksView({
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
               aria-label="Đóng My day"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden="true">
-                <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
-              </svg>
+              <X size={16} weight="bold" aria-hidden="true" />
             </button>
           </div>
           <div className="flex flex-wrap items-end gap-3">
@@ -500,7 +492,7 @@ export function TasksView({
                 value={workMemberId}
                 onChange={(e) => setWorkMemberId(e.target.value)}
               >
-                <option value="">— Chọn nhân sự để hiện dấu tick —</option>
+                <option value="">Chọn nhân sự để hiện dấu tick</option>
                 {members.map((member) => (
                   <option key={member.id} value={member.id}>
                     {member.full_name}

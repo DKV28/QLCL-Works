@@ -301,7 +301,7 @@ export function WorkflowStepsSettingsClient({
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-300">
                   <span className="mr-1 text-xs text-gray-400 sm:hidden">Vai trò:</span>
-                  {step.role_label || "—"}
+                  {step.role_label || "Chưa có"}
                 </div>
                 <div className="text-sm">
                   <span className="mr-1 text-xs text-gray-400 sm:hidden">SLA:</span>

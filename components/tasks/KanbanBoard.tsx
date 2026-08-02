@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { DotsSixVertical } from "@phosphor-icons/react";
 import {
   DndContext,
   DragEndEvent,
@@ -91,11 +92,7 @@ function KanbanCard({
           aria-label={`Kéo để di chuyển ${task.title}`}
           title="Kéo để đổi trạng thái"
         >
-          <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-            <circle cx="5" cy="4" r="1" /><circle cx="11" cy="4" r="1" />
-            <circle cx="5" cy="8" r="1" /><circle cx="11" cy="8" r="1" />
-            <circle cx="5" cy="12" r="1" /><circle cx="11" cy="12" r="1" />
-          </svg>
+          <DotsSixVertical size={16} weight="bold" aria-hidden="true" />
         </button>
       </div>
       {canLog && (

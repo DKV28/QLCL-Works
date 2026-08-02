@@ -77,7 +77,7 @@ function TeamForm({
             className="input"
             defaultValue={team?.parent_id ?? ""}
           >
-            <option value="">— Cấp cao nhất —</option>
+            <option value="">Cấp cao nhất</option>
             {teams
               .filter((candidate) => candidate.id !== team?.id)
               .map((candidate) => (
@@ -137,7 +137,7 @@ export function TeamsClient({ teams }: { teams: Team[] }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Team | null>(null);
   const parentName = (parentId: string | null) =>
-    parentId ? teams.find((team) => team.id === parentId)?.name ?? "—" : "Cấp cao nhất";
+    parentId ? teams.find((team) => team.id === parentId)?.name ?? "Chưa có" : "Cấp cao nhất";
 
   return (
     <div>
