@@ -509,7 +509,9 @@ export function TaskTable({
               <tr
                 key={t.id}
                 className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${
-                  done
+                  editingId === t.id
+                    ? "bg-brand/5 shadow-[inset_3px_0_0_var(--tw-shadow-color)] shadow-brand"
+                    : done
                     ? "bg-green-50 dark:bg-green-950/30"
                     : attention
                       ? "bg-red-50 dark:bg-red-950/30"
@@ -540,7 +542,14 @@ export function TaskTable({
                     )}
                   </td>
                 )}
-                <td className="p-3 align-top">
+                <td className="p-0 align-top">
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(t.id)}
+                    aria-label={`Chỉnh sửa công việc ${t.title}`}
+                    aria-expanded={editingId === t.id}
+                    className="block w-full p-3 text-left outline-none transition hover:bg-brand/[0.035] focus-visible:bg-brand/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40"
+                  >
                   <div
                     className={`font-medium ${
                       done
@@ -577,6 +586,7 @@ export function TaskTable({
                       <span>{t.attachments.length} tệp đính kèm</span>
                     )}
                   </div>
+                  </button>
                 </td>
                 <td className="p-3 align-top text-gray-700 dark:text-gray-300">
                   {t.primary ? (
