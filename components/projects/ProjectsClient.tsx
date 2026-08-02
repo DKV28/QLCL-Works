@@ -93,7 +93,7 @@ export function ProjectsClient({ projects }: { projects: Project[] }) {
                 <ProjectStatusBadge value={p.status} />
               </div>
               <p className="mb-4 flex-1 text-sm text-gray-600 line-clamp-3 dark:text-gray-400">
-                {p.description || "—"}
+                {p.description || "Chưa có mô tả"}
               </p>
               <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
                 <Link href={`/du-an/${p.id}`} className="text-sm font-semibold text-brand hover:underline">

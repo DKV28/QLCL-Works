@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { Bell, ChatCircle, Info, Plus } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import {
   getNotificationsAction,
@@ -21,35 +22,21 @@ function notificationAppearance(type: string): {
   className: string;
   icon: ReactNode;
 } {
-  const iconClass = "h-4 w-4";
   if (type === "cong_viec_moi") {
     return {
       className: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
-          <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-        </svg>
-      ),
+      icon: <Plus size={16} weight="regular" aria-hidden="true" />,
     };
   }
   if (type === "binh_luan_moi") {
     return {
       className: "bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
-          <path d="M20 15a3 3 0 0 1-3 3H9l-5 3V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3Z" strokeLinejoin="round" />
-        </svg>
-      ),
+      icon: <ChatCircle size={16} weight="regular" aria-hidden="true" />,
     };
   }
   return {
     className: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass} aria-hidden="true">
-        <circle cx="12" cy="12" r="8" />
-        <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
-      </svg>
-    ),
+    icon: <Info size={16} weight="regular" aria-hidden="true" />,
   };
 }
 
@@ -106,9 +93,7 @@ export function NotificationBell() {
         aria-label="Thông báo"
         title="Thông báo"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-[18px] w-[18px]" aria-hidden="true">
-          <path d="M18 8a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <Bell size={18} weight="regular" aria-hidden="true" />
         {unread > 0 && (
           <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-semibold text-white">
             {unread}

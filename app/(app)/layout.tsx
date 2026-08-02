@@ -13,9 +13,9 @@ export default async function AppLayout({
   if (!profile) redirect("/login");
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
-      <aside className="hidden w-64 shrink-0 border-r border-gray-200/80 bg-white md:block dark:border-gray-800 dark:bg-gray-900">
-        <div className="flex h-16 items-center border-b border-gray-200/80 px-5 dark:border-gray-800">
+    <div className="flex min-h-[100dvh] bg-slate-50 dark:bg-gray-950">
+      <aside className="hidden w-64 shrink-0 border-r border-slate-200/80 bg-white md:block dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex h-16 items-center border-b border-slate-200/80 px-5 dark:border-slate-800">
           <Link href="/" className="flex items-center gap-2.5 font-bold tracking-tight text-gray-950 dark:text-white">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-sm text-white">
               Q
@@ -28,10 +28,10 @@ export default async function AppLayout({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar profile={profile} />
-        <div className="border-b border-gray-200 bg-white md:hidden dark:border-gray-800 dark:bg-gray-900">
+        <div className="border-b border-slate-200 bg-white md:hidden dark:border-slate-800 dark:bg-slate-900">
           <Sidebar isAdmin={profile.role === "admin"} compact />
         </div>
-        <main className="flex-1 overflow-x-hidden p-3 sm:p-5 md:p-7">
+        <main className="flex-1 overflow-x-hidden p-3 sm:p-5 md:p-7 lg:p-8">
           <div className="mx-auto w-full max-w-[1680px]">{children}</div>
         </main>
       </div>

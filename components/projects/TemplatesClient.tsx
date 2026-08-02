@@ -83,7 +83,7 @@ export function TemplatesClient({ templates }: { templates: Project[] }) {
             <div key={p.id} className="card flex min-h-48 flex-col p-5 transition hover:border-gray-300 dark:hover:border-gray-700">
               <div className="mb-2 text-lg font-semibold">{p.name}</div>
               <p className="mb-4 flex-1 text-sm text-gray-600 line-clamp-3 dark:text-gray-400">
-                {p.description || "—"}
+                {p.description || "Chưa có mô tả"}
               </p>
               <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
                 <button

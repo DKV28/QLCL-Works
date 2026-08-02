@@ -219,7 +219,7 @@ export function TaskForm({
           onChange={(e) => setPrimaryId(e.target.value)}
           className="input"
         >
-          <option value="">— Chọn người phụ trách chính —</option>
+          <option value="">Chọn người phụ trách chính</option>
           {groups.map(([team, ms]) => (
             <optgroup key={team} label={team}>
               {ms.map((m) => (
@@ -447,7 +447,7 @@ export function TaskForm({
               defaultValue={task?.project_id ?? ""}
               className="input"
             >
-              <option value="">— Không thuộc dự án —</option>
+              <option value="">Không thuộc dự án</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}

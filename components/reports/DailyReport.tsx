@@ -241,7 +241,7 @@ export function DailyReport({
               value={memberId}
               onChange={(e) => setMemberId(e.target.value)}
             >
-              <option value="">— Xem tất cả —</option>
+              <option value="">Xem tất cả</option>
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.full_name}

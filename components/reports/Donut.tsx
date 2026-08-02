@@ -1,4 +1,4 @@
-// Biểu đồ tròn (donut) tự vẽ bằng SVG — không dùng thư viện.
+// Biểu đồ tròn (donut) tự vẽ bằng SVG, không dùng thư viện.
 export interface DonutSegment {
   label: string;
   value: number;

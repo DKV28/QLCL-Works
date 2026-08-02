@@ -11,6 +11,23 @@ body {
   font-family:
     Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+:root {
+  --surface-canvas: 248 250 252;
+  --surface-panel: 255 255 255;
+  --surface-raised: 255 255 255;
+  --line-subtle: 226 232 240;
+  --text-muted: 71 85 105;
+}
+
+.dark {
+  --surface-canvas: 3 7 18;
+  --surface-panel: 15 23 42;
+  --surface-raised: 17 24 39;
+  --line-subtle: 51 65 85;
+  --text-muted: 148 163 184;
 }
 
 ::selection {
@@ -23,7 +40,7 @@ body {
 
 /* Thành phần nền tảng */
 .btn {
-  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition duration-150 disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-semibold transition duration-150 disabled:cursor-not-allowed disabled:opacity-50;
 }
 .btn-primary {
   @apply btn border border-transparent bg-brand text-white shadow-sm hover:bg-brand-dark active:translate-y-px;
@@ -43,19 +60,19 @@ body {
 }
 
 .card {
-  @apply rounded-xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-gray-800 dark:bg-gray-900 dark:shadow-none;
+  @apply rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.025)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none;
 }
 
 .page-header {
-  @apply mb-6 flex flex-wrap items-start justify-between gap-4;
+  @apply mb-7 flex flex-wrap items-start justify-between gap-5 border-b border-slate-200/80 pb-5 dark:border-slate-800;
 }
 
 .page-title {
-  @apply text-2xl font-bold tracking-tight text-gray-950 dark:text-white;
+  @apply text-[1.75rem] font-bold leading-tight tracking-[-0.035em] text-slate-950 dark:text-white;
 }
 
 .page-description {
-  @apply mt-1 max-w-2xl text-sm leading-6 text-gray-500 dark:text-gray-400;
+  @apply mt-1.5 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400;
 }
 
 .section-title {
@@ -63,7 +80,7 @@ body {
 }
 
 .segmented {
-  @apply inline-flex gap-1 rounded-lg border border-gray-200 bg-gray-100/80 p-1 dark:border-gray-700 dark:bg-gray-900;
+  @apply inline-flex gap-1 rounded-lg border border-slate-200 bg-slate-100/80 p-1 dark:border-slate-700 dark:bg-slate-900;
 }
 
 .segmented-item {
@@ -87,7 +104,51 @@ body {
 }
 
 .empty-state {
-  @apply card px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400;
+  @apply card px-6 py-14 text-center text-sm leading-6 text-slate-500 dark:text-slate-400;
+}
+
+.auth-shell {
+  @apply relative grid min-h-[100dvh] bg-slate-100 p-3 sm:p-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(28rem,1.1fr)] dark:bg-gray-950;
+}
+
+.auth-brand-panel {
+  @apply relative hidden overflow-hidden rounded-xl bg-slate-950 p-10 text-white lg:flex lg:flex-col lg:justify-between;
+  background-image:
+    radial-gradient(circle at 82% 12%, rgb(20 184 166 / 0.16), transparent 32%),
+    linear-gradient(145deg, rgb(15 118 110 / 0.12), transparent 48%);
+}
+
+.auth-form-panel {
+  @apply flex items-start justify-center px-1 py-8 sm:px-8 lg:items-center lg:px-14;
+}
+
+.auth-enter {
+  animation: auth-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes auth-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .card table thead {

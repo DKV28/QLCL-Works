@@ -13,7 +13,7 @@ const ROLE_OPTIONS: [Role, string][] = [
 ];
 
 function displayIdentity(email: string | null): string {
-  if (!email) return "—";
+  if (!email) return "Chưa có";
   const suffix = "@users.qlcl.local";
   return email.endsWith(suffix) ? email.slice(0, -suffix.length) : email;
 }
@@ -74,7 +74,7 @@ export function UsersClient({ users }: { users: Profile[] }) {
                 key={u.id}
                 className="border-b border-gray-100 last:border-0 dark:border-gray-800"
               >
-                <td className="p-3 font-medium">{u.full_name || "—"}</td>
+                <td className="p-3 font-medium">{u.full_name || "Chưa có"}</td>
                 <td className="p-3 text-gray-600 dark:text-gray-400">
                   {displayIdentity(u.email)}
                 </td>
