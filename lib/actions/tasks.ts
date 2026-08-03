@@ -31,6 +31,18 @@ import { todayISO } from "@/lib/logic/overdue";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+function taskSaveError(error: unknown, fallback: string): string {
+  const value = error as { code?: string; message?: string } | null;
+  const message = value?.message ?? "";
+  if (value?.code === "42501" || message.toLowerCase().includes("row-level security")) {
+    return "Tài khoản chưa được gán team hoặc không có quyền tạo công việc trong phạm vi này.";
+  }
+  if (message.includes("is_department_wide")) {
+    return "Cơ sở dữ liệu chưa được cập nhật migration phân quyền team.";
+  }
+  return fallback;
+}
+
 function parseTaskForm(formData: FormData) {
   return {
     title: String(formData.get("title") ?? "").trim(),
@@ -84,7 +96,7 @@ export async function createTaskAction(
       }),
     ]);
   } catch (e) {
-    return { ok: false, error: "Không tạo được công việc." };
+    return { ok: false, error: taskSaveError(e, "Không tạo được công việc.") };
   }
 
   if (projectId) revalidatePath(`/du-an/${projectId}`);
@@ -122,7 +134,7 @@ export async function updateTaskAction(
       detail: fields.title,
     });
   } catch (e) {
-    return { ok: false, error: "Không cập nhật được công việc." };
+    return { ok: false, error: taskSaveError(e, "Không cập nhật được công việc.") };
   }
 
   if (projectId) revalidatePath(`/du-an/${projectId}`);

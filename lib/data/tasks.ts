@@ -172,16 +172,35 @@ export interface TaskInput {
   tag_ids?: string[]; // nhãn (tùy chọn)
 }
 
+function isMissingDepartmentWideColumn(error: {
+  code?: string;
+  message?: string;
+} | null): boolean {
+  return !!error && (
+    error.code === "PGRST204" ||
+    error.message?.includes("is_department_wide") === true
+  );
+}
+
 export async function createTask(input: TaskInput): Promise<Task> {
   const supabase = createClient();
   const { primary_member_id, support_member_ids, tag_ids, ...taskFields } =
     input;
 
-  const { data, error } = await supabase
+  let result = await supabase
     .from("tasks")
     .insert(taskFields)
     .select("*")
     .single();
+  if (isMissingDepartmentWideColumn(result.error)) {
+    const { is_department_wide: _ignored, ...legacyTaskFields } = taskFields;
+    result = await supabase
+      .from("tasks")
+      .insert(legacyTaskFields)
+      .select("*")
+      .single();
+  }
+  const { data, error } = result;
   if (error) throw error;
 
   const task = data as Task;
@@ -200,12 +219,22 @@ export async function updateTask(
   const { primary_member_id, support_member_ids, tag_ids, ...taskFields } =
     input;
 
-  const { data, error } = await supabase
+  let result = await supabase
     .from("tasks")
     .update(taskFields)
     .eq("id", id)
     .select("*")
     .single();
+  if (isMissingDepartmentWideColumn(result.error)) {
+    const { is_department_wide: _ignored, ...legacyTaskFields } = taskFields;
+    result = await supabase
+      .from("tasks")
+      .update(legacyTaskFields)
+      .eq("id", id)
+      .select("*")
+      .single();
+  }
+  const { data, error } = result;
   if (error) throw error;
 
   // Chỉ cập nhật người phụ trách khi form có gửi lên.
