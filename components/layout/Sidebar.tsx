@@ -42,9 +42,11 @@ function NavIcon({ href }: { href: string }) {
 export function Sidebar({
   isAdmin,
   compact = false,
+  collapsed = false,
 }: {
   isAdmin: boolean;
   compact?: boolean;
+  collapsed?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -52,7 +54,8 @@ export function Sidebar({
     pathname === href || pathname.startsWith(href + "/");
 
   const linkClass = (href: string) =>
-    `flex min-h-10 items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+    `flex min-h-10 items-center gap-3 whitespace-nowrap rounded-lg py-2 text-sm font-medium transition-colors ${
+      collapsed ? "justify-center px-2" : "px-3"} ${
       isActive(href)
         ? "bg-brand/10 text-brand dark:bg-brand/15 dark:text-brand-light"
         : "text-gray-600 hover:bg-gray-100 hover:text-gray-950 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
@@ -74,25 +77,35 @@ export function Sidebar({
   return (
     <nav className="flex flex-col gap-1 p-3">
       {NAV.map((item) => (
-        <Link key={item.href} href={item.href} className={linkClass(item.href)}>
+        <Link
+          key={item.href}
+          href={item.href}
+          className={linkClass(item.href)}
+          title={collapsed ? item.label : undefined}
+          aria-label={collapsed ? item.label : undefined}
+        >
           <NavIcon href={item.href} />
-          {item.label}
+          {!collapsed && item.label}
         </Link>
       ))}
 
       {isAdmin && (
         <>
-          <div className="mb-1 mt-5 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
-            Quản trị
-          </div>
+          {!collapsed && (
+            <div className="mb-1 mt-5 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
+              Quản trị
+            </div>
+          )}
           {ADMIN_NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={linkClass(item.href)}
+              title={collapsed ? item.label : undefined}
+              aria-label={collapsed ? item.label : undefined}
             >
               <NavIcon href={item.href} />
-              {item.label}
+              {!collapsed && item.label}
             </Link>
           ))}
         </>

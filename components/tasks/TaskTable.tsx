@@ -80,6 +80,9 @@ export function TaskTable({
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<TaskGroup["id"]>>(
+    new Set(),
+  );
   const { confirm, confirmDialog } = useConfirmDialog();
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStepSetting[]>(
     VAN_HANH_STEPS.map((step) => ({
@@ -204,6 +207,32 @@ export function TaskTable({
       setSortKey(key);
       setSortDirection("asc");
     }
+  }
+
+  function toggleGroup(groupId: TaskGroup["id"]) {
+    setCollapsedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  }
+
+  function GroupChevron({ collapsed }: { collapsed: boolean }) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={`h-4 w-4 transition-transform ${collapsed ? "-rotate-90" : ""}`}
+        aria-hidden="true"
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    );
   }
 
   function SortHeader({
@@ -334,7 +363,12 @@ export function TaskTable({
       <div className="space-y-5 md:hidden">
         {taskGroups.map((group) => (
           <section key={group.id}>
-            <div className="mb-2 flex items-center gap-2 px-1">
+            <button
+              type="button"
+              onClick={() => toggleGroup(group.id)}
+              className="mb-2 flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-expanded={!collapsedGroups.has(group.id)}
+            >
               <span className={`h-2.5 w-2.5 rounded-full ${group.dotClass}`} />
               <h2 className="text-sm font-semibold">{group.label}</h2>
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-300">
@@ -343,8 +377,9 @@ export function TaskTable({
               <span className="ml-auto hidden text-[11px] text-gray-400 sm:inline">
                 {group.helper}
               </span>
-            </div>
-            <div className="space-y-2">
+              <GroupChevron collapsed={collapsedGroups.has(group.id)} />
+            </button>
+            {!collapsedGroups.has(group.id) && <div className="space-y-2">
         {group.tasks.map((task) => {
           const overdue = isOverdue(task);
           const startLate = needsToStart(task);
@@ -452,7 +487,7 @@ export function TaskTable({
             </article>
           );
         })}
-            </div>
+            </div>}
           </section>
         ))}
       </div>
@@ -480,7 +515,12 @@ export function TaskTable({
                   colSpan={workMemberId ? 9 : 8}
                   className="px-3 py-2"
                 >
-                  <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.id)}
+                    className="flex w-full items-center gap-2 text-left"
+                    aria-expanded={!collapsedGroups.has(group.id)}
+                  >
                     <span className={`h-2.5 w-2.5 rounded-full ${group.dotClass}`} />
                     <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
                       {group.label}
@@ -491,10 +531,11 @@ export function TaskTable({
                     <span className="text-[11px] text-gray-400">
                       {group.helper}
                     </span>
-                  </div>
+                    <GroupChevron collapsed={collapsedGroups.has(group.id)} />
+                  </button>
                 </td>
               </tr>
-          {group.tasks.map((t) => {
+          {!collapsedGroups.has(group.id) && group.tasks.map((t) => {
             const overdue = isOverdue(t);
             const startLate = needsToStart(t);
             const attention = needsAttention(t);
