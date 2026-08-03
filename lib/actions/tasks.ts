@@ -31,18 +31,6 @@ import { todayISO } from "@/lib/logic/overdue";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-function taskSaveError(error: unknown, fallback: string): string {
-  const value = error as { code?: string; message?: string } | null;
-  const message = value?.message ?? "";
-  if (value?.code === "42501" || message.toLowerCase().includes("row-level security")) {
-    return "Tài khoản chưa được gán team hoặc không có quyền tạo công việc trong phạm vi này.";
-  }
-  if (message.includes("is_department_wide")) {
-    return "Cơ sở dữ liệu chưa được cập nhật migration phân quyền team.";
-  }
-  return fallback;
-}
-
 function parseTaskForm(formData: FormData) {
   return {
     title: String(formData.get("title") ?? "").trim(),
@@ -55,7 +43,6 @@ function parseTaskForm(formData: FormData) {
       "chua_bat_dau") as TaskStatus,
     repeat: (String(formData.get("repeat") ?? "none") || "none") as TaskRepeat,
     is_arising: formData.get("is_arising") === "on",
-    is_department_wide: formData.get("is_department_wide") === "on",
     van_hanh_step: String(formData.get("van_hanh_step") ?? "").trim() || null,
     primary_member_id: String(formData.get("primary_member_id") ?? "") || null,
     support_member_ids: formData
@@ -96,7 +83,7 @@ export async function createTaskAction(
       }),
     ]);
   } catch (e) {
-    return { ok: false, error: taskSaveError(e, "Không tạo được công việc.") };
+    return { ok: false, error: "Không tạo được công việc." };
   }
 
   if (projectId) revalidatePath(`/du-an/${projectId}`);
@@ -134,7 +121,7 @@ export async function updateTaskAction(
       detail: fields.title,
     });
   } catch (e) {
-    return { ok: false, error: taskSaveError(e, "Không cập nhật được công việc.") };
+    return { ok: false, error: "Không cập nhật được công việc." };
   }
 
   if (projectId) revalidatePath(`/du-an/${projectId}`);

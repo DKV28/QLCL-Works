@@ -14,7 +14,7 @@ import {
 } from "@/lib/types";
 
 // Chỉ cho chỉnh Quản lý và Thành viên; Quản trị viên luôn toàn quyền.
-const EDITABLE_ROLES: Role[] = ["manager", "team_lead", "staff"];
+const EDITABLE_ROLES: Role[] = ["manager", "staff"];
 const RESOURCES: PermissionResource[] = ["project", "task"];
 const SCOPES: EditScope[] = ["all", "own", "none"];
 
@@ -132,8 +132,8 @@ export function RolePermissionsClient({
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
         <b>Tất cả</b>: sửa/xóa mọi mục. <b>Chỉ mục của mình</b>: chỉ sửa/xóa dự án
-        mình sở hữu và công việc mình tạo. <b>Không được sửa</b>: chỉ xem. Phạm vi
-        dữ liệu xem được vẫn tuân theo team của tài khoản.
+        mình sở hữu và công việc mình tạo. <b>Không được sửa</b>: chỉ xem. Mọi vai
+        trò vẫn xem chung toàn bộ dữ liệu.
       </p>
     </div>
   );

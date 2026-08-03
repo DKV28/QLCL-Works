@@ -3,16 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
-import {
-  createUserAction,
-  updateUserRoleAction,
-  updateUserTeamAction,
-} from "@/lib/actions/admin";
-import type { Profile, Role, Team } from "@/lib/types";
+import { createUserAction, updateUserRoleAction } from "@/lib/actions/admin";
+import type { Profile, Role } from "@/lib/types";
 
 const ROLE_OPTIONS: [Role, string][] = [
   ["staff", "Thành viên"],
-  ["team_lead", "Teamlead"],
   ["manager", "Quản lý"],
   ["admin", "Quản trị viên"],
 ];
@@ -23,7 +18,7 @@ function displayIdentity(email: string | null): string {
   return email.endsWith(suffix) ? email.slice(0, -suffix.length) : email;
 }
 
-export function UsersClient({ users, teams }: { users: Profile[]; teams: Team[] }) {
+export function UsersClient({ users }: { users: Profile[] }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,14 +45,6 @@ export function UsersClient({ users, teams }: { users: Profile[]; teams: Team[] 
     });
   }
 
-  function handleTeamChange(userId: string, teamId: string) {
-    startTransition(async () => {
-      const res = await updateUserTeamAction(userId, teamId || null);
-      if (!res.ok) setError(res.error);
-      router.refresh();
-    });
-  }
-
   return (
     <div>
       <div className="mb-4 flex items-start justify-between gap-4">
@@ -74,13 +61,12 @@ export function UsersClient({ users, teams }: { users: Profile[]; teams: Team[] 
       </div>
 
       <div className="card overflow-x-auto">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[560px] text-sm">
           <thead>
             <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
               <th className="p-3">Họ tên</th>
               <th className="p-3">Tên đăng nhập / Email</th>
               <th className="p-3">Vai trò</th>
-              <th className="p-3">Team</th>
             </tr>
           </thead>
           <tbody>
@@ -109,21 +95,6 @@ export function UsersClient({ users, teams }: { users: Profile[]; teams: Team[] 
                     ))}
                   </select>
                 </td>
-                <td className="p-3">
-                  <select
-                    className="input min-w-[180px]"
-                    value={u.team_id ?? ""}
-                    disabled={pending}
-                    onChange={(e) => handleTeamChange(u.id, e.target.value)}
-                  >
-                    <option value="">Chưa gán team</option>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -131,9 +102,9 @@ export function UsersClient({ users, teams }: { users: Profile[]; teams: Team[] 
       </div>
 
       <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-        Đổi vai trò hoặc team áp dụng ngay. Quản lý và Quản trị xem mọi team;
-        Teamlead và Thành viên chỉ xem team được gán cùng công việc chung toàn phòng.
-        Quyền tạo và sửa/xóa được điều chỉnh ở mục “Phân quyền theo vai trò” bên dưới.
+        Đổi vai trò áp dụng ngay. Mọi vai trò đều xem chung toàn bộ dữ liệu.
+        Quyền tạo và sửa/xóa của từng vai trò được điều chỉnh ở mục “Phân quyền
+        theo vai trò” bên dưới.
       </p>
 
       <Modal
@@ -186,23 +157,6 @@ export function UsersClient({ users, teams }: { users: Profile[]; teams: Team[] 
               ))}
             </select>
           </div>
-          <div>
-            <label className="label" htmlFor="team_id">
-              Team
-            </label>
-            <select id="team_id" name="team_id" defaultValue="" className="input">
-              <option value="">Chưa gán team</option>
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Tài khoản chưa gán team chỉ thấy công việc chung toàn phòng.
-            </p>
-          </div>
-
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex justify-end gap-2 pt-2">

@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { listTeams, teamDisplayName } from "./teams";
 import { setTaskTags } from "./tags";
 import { todayISO } from "@/lib/logic/overdue";
-import { getCurrentProfile } from "./profiles";
 import type {
   Attachment,
   MemberLite,
@@ -88,27 +87,13 @@ function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
   };
 }
 
-function isVisibleToCurrentTeam(
-  row: TaskRow,
-  profile: Awaited<ReturnType<typeof getCurrentProfile>>,
-): boolean {
-  if (!profile) return false;
-  if (profile.role === "admin" || profile.role === "manager") return true;
-  if (row.is_department_wide) return true;
-  if (!profile.team_id) return false;
-  return (row.task_assignees ?? []).some(
-    (assignee) => assignee.members?.team_id === profile.team_id,
-  );
-}
-
 /** Danh sách công việc của 1 dự án. */
 export async function listTasksByProject(
   projectId: string,
 ): Promise<TaskWithAssignees[]> {
   const supabase = createClient();
-  const [teams, profile, res] = await Promise.all([
+  const [teams, res] = await Promise.all([
     listTeams(),
-    getCurrentProfile(),
     supabase
       .from("tasks")
       .select(SELECT_WITH_ASSIGNEES)
@@ -118,9 +103,7 @@ export async function listTasksByProject(
   ]);
 
   if (res.error) throw res.error;
-  return ((res.data as unknown as TaskRow[]) ?? [])
-    .filter((row) => isVisibleToCurrentTeam(row, profile))
-    .map((r) => mapRow(r, teams));
+  return ((res.data as unknown as TaskRow[]) ?? []).map((r) => mapRow(r, teams));
 }
 
 /** Toàn bộ công việc vận hành (loại công việc thuộc dự án mẫu). */
@@ -137,9 +120,8 @@ export async function listAllTasks(): Promise<TaskWithAssignees[]> {
     ((tpl as { id: string }[]) ?? []).map((r) => r.id),
   );
 
-  const [teams, profile, res] = await Promise.all([
+  const [teams, res] = await Promise.all([
     listTeams(),
-    getCurrentProfile(),
     supabase
       .from("tasks")
       .select(SELECT_WITH_ASSIGNEES)
@@ -151,7 +133,6 @@ export async function listAllTasks(): Promise<TaskWithAssignees[]> {
   // Lọc ở JS để KHÔNG loại nhầm công việc không thuộc dự án (project_id = null).
   return ((res.data as unknown as TaskRow[]) ?? [])
     .filter((r) => !r.project_id || !templateIds.has(r.project_id))
-    .filter((row) => isVisibleToCurrentTeam(row, profile))
     .map((r) => mapRow(r, teams));
 }
 
@@ -165,21 +146,10 @@ export interface TaskInput {
   status?: TaskStatus;
   repeat?: TaskRepeat;
   is_arising?: boolean; // công việc phát sinh (ngoài kế hoạch)
-  is_department_wide?: boolean; // hiển thị cho mọi team trong phòng
   van_hanh_step?: string | null; // bước quy trình vận hành (null = công việc thường)
   primary_member_id?: string | null; // người phụ trách chính (bắt buộc khi tạo)
   support_member_ids?: string[]; // người hỗ trợ (tùy chọn)
   tag_ids?: string[]; // nhãn (tùy chọn)
-}
-
-function isMissingDepartmentWideColumn(error: {
-  code?: string;
-  message?: string;
-} | null): boolean {
-  return !!error && (
-    error.code === "PGRST204" ||
-    error.message?.includes("is_department_wide") === true
-  );
 }
 
 export async function createTask(input: TaskInput): Promise<Task> {
@@ -187,20 +157,11 @@ export async function createTask(input: TaskInput): Promise<Task> {
   const { primary_member_id, support_member_ids, tag_ids, ...taskFields } =
     input;
 
-  let result = await supabase
+  const { data, error } = await supabase
     .from("tasks")
     .insert(taskFields)
     .select("*")
     .single();
-  if (isMissingDepartmentWideColumn(result.error)) {
-    const { is_department_wide: _ignored, ...legacyTaskFields } = taskFields;
-    result = await supabase
-      .from("tasks")
-      .insert(legacyTaskFields)
-      .select("*")
-      .single();
-  }
-  const { data, error } = result;
   if (error) throw error;
 
   const task = data as Task;
@@ -219,22 +180,12 @@ export async function updateTask(
   const { primary_member_id, support_member_ids, tag_ids, ...taskFields } =
     input;
 
-  let result = await supabase
+  const { data, error } = await supabase
     .from("tasks")
     .update(taskFields)
     .eq("id", id)
     .select("*")
     .single();
-  if (isMissingDepartmentWideColumn(result.error)) {
-    const { is_department_wide: _ignored, ...legacyTaskFields } = taskFields;
-    result = await supabase
-      .from("tasks")
-      .update(legacyTaskFields)
-      .eq("id", id)
-      .select("*")
-      .single();
-  }
-  const { data, error } = result;
   if (error) throw error;
 
   // Chỉ cập nhật người phụ trách khi form có gửi lên.
@@ -314,7 +265,6 @@ export async function createNextRecurrence(taskId: string): Promise<void> {
       status: "chua_bat_dau",
       repeat: src.repeat,
       is_arising: src.is_arising,
-      is_department_wide: src.is_department_wide,
       completed_at: null,
     })
     .select("id")
@@ -468,7 +418,6 @@ export async function duplicateTask(
       priority: src.priority,
       status: "chua_bat_dau",
       is_arising: src.is_arising,
-      is_department_wide: src.is_department_wide,
       completed_at: null,
     })
     .select("*")

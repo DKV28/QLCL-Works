@@ -418,21 +418,6 @@ export function TaskForm({
         </label>
       </div>
 
-      <label className="flex min-h-10 items-center gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200">
-        <input
-          type="checkbox"
-          name="is_department_wide"
-          defaultChecked={task?.is_department_wide ?? false}
-          className="h-4 w-4 accent-brand"
-        />
-        <span>
-          <span className="font-medium">Công việc chung toàn phòng</span>
-          <span className="ml-1 text-xs opacity-80">
-            (mọi team đều có thể xem)
-          </span>
-        </span>
-      </label>
-
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="label" htmlFor="repeat">

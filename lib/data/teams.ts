@@ -1,20 +1,16 @@
 // Data access: teams (có phân cấp parent_id). Chỉ chứa query Supabase.
 import { createClient } from "@/lib/supabase/server";
 import type { Team } from "@/lib/types";
-import { getCurrentProfile } from "./profiles";
 
 export async function listTeams(): Promise<Team[]> {
   const supabase = createClient();
-  const [me, result] = await Promise.all([
-    getCurrentProfile(),
-    supabase.from("teams").select("*").order("name", { ascending: true }),
-  ]);
+  const { data, error } = await supabase
+    .from("teams")
+    .select("*")
+    .order("name", { ascending: true });
 
-  if (result.error) throw result.error;
-  const teams = (result.data as Team[]) ?? [];
-  if (me?.role === "admin" || me?.role === "manager") return teams;
-  if (!me?.team_id) return [];
-  return teams.filter((team) => team.id === me.team_id);
+  if (error) throw error;
+  return (data as Team[]) ?? [];
 }
 
 export async function createTeam(input: {

@@ -22,17 +22,11 @@ export async function getCurrentProfile(): Promise<Profile | null> {
 /** Toàn bộ danh bạ người dùng (để chọn người phụ trách, lọc...). */
 export async function listProfiles(): Promise<Profile[]> {
   const supabase = createClient();
-  const [me, result] = await Promise.all([
-    getCurrentProfile(),
-    supabase.from("profiles").select("*").order("full_name", { ascending: true }),
-  ]);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("full_name", { ascending: true });
 
-  if (result.error) throw result.error;
-  const profiles = (result.data as Profile[]) ?? [];
-  if (me?.role === "admin" || me?.role === "manager") return profiles;
-  return profiles.filter(
-    (profile) =>
-      profile.id === me?.id ||
-      (!!me?.team_id && profile.team_id === me.team_id),
-  );
+  if (error) throw error;
+  return (data as Profile[]) ?? [];
 }

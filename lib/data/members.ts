@@ -2,21 +2,17 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Member, MemberLite } from "@/lib/types";
 import { listTeams, teamDisplayName } from "./teams";
-import { getCurrentProfile } from "./profiles";
 
 /** Toàn bộ nhân sự (kèm cờ hoạt động) — dùng cho trang quản lý Nhân sự. */
 export async function listMembers(): Promise<Member[]> {
   const supabase = createClient();
-  const [me, result] = await Promise.all([
-    getCurrentProfile(),
-    supabase.from("members").select("*").order("full_name", { ascending: true }),
-  ]);
+  const { data, error } = await supabase
+    .from("members")
+    .select("*")
+    .order("full_name", { ascending: true });
 
-  if (result.error) throw result.error;
-  const members = (result.data as Member[]) ?? [];
-  if (me?.role === "admin" || me?.role === "manager") return members;
-  if (!me?.team_id) return [];
-  return members.filter((member) => member.team_id === me.team_id);
+  if (error) throw error;
+  return (data as Member[]) ?? [];
 }
 
 /**
