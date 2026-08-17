@@ -1,19 +1,31 @@
 // Logic thuần liên quan tới hạn công việc — không phụ thuộc Supabase/UI, dễ test.
 import type { Task } from "@/lib/types";
 
+const VN_DATE_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Ho_Chi_Minh",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * Đổi một thời điểm (Date hoặc chuỗi ISO/UTC) sang ngày YYYY-MM-DD theo giờ
+ * Việt Nam (Asia/Ho_Chi_Minh). Dùng để so ngày nhất quán với todayISO(),
+ * tránh lệch ngày do completed_at lưu theo UTC.
+ */
+export function toVNDate(instant: Date | string): string {
+  const date = typeof instant === "string" ? new Date(instant) : instant;
+  const parts = VN_DATE_FORMAT.formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
 /**
  * Ngày hôm nay dạng YYYY-MM-DD, LUÔN theo giờ Việt Nam (Asia/Ho_Chi_Minh) —
  * nhất quán giữa máy chủ (Vercel chạy UTC) và trình duyệt.
  */
 export function todayISO(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${value.year}-${value.month}-${value.day}`;
+  return toVNDate(new Date());
 }
 
 /** Công việc quá hạn: có deadline < hôm nay và chưa hoàn thành. */

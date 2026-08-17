@@ -5,6 +5,7 @@ import { StatCard } from "./StatCard";
 import {
   dailyReportFor,
   dailyReportText,
+  isDoneOnReport,
   type DailyReport as DR,
 } from "@/lib/logic/reports";
 import {
@@ -333,20 +334,18 @@ export function DailyReport({
                   Ghi chú được tự động lưu khi bạn rời khỏi ô nhập.
                 </p>
                 <ul className="space-y-2 text-sm">
-                  {selected.todayTasks.map((t) => (
+                  {selected.todayTasks.map((t) => {
+                    const done = isDoneOnReport(t, reportDate);
+                    return (
                     <li
                       key={t.id}
                       className="grid gap-2 rounded-md border border-gray-100 p-2 sm:grid-cols-[minmax(0,1fr)_minmax(240px,40%)] sm:items-center dark:border-gray-800"
                     >
                       <div className="flex min-w-0 items-start gap-2">
                         <span
-                          className={
-                            t.completed_at?.slice(0, 10) === reportDate
-                              ? "text-green-600"
-                              : "text-gray-400"
-                          }
+                          className={done ? "text-green-600" : "text-gray-400"}
                         >
-                          {t.completed_at?.slice(0, 10) === reportDate ? "✓" : "○"}
+                          {done ? "✓" : "○"}
                         </span>
                         <div className="min-w-0">
                           <div className="break-words text-gray-800 dark:text-gray-200">
@@ -363,7 +362,7 @@ export function DailyReport({
                         value={noteByTaskId[t.id] ?? ""}
                         maxLength={2000}
                         placeholder={
-                          t.completed_at
+                          done
                             ? "Ghi chú thêm..."
                             : "Lý do chưa hoàn thành hoặc ghi chú..."
                         }
@@ -372,7 +371,8 @@ export function DailyReport({
                         aria-label={`Ghi chú cho ${t.title}`}
                       />
                     </li>
-                  ))}
+                    );
+                  })}
                   {selected.todayTasks.length === 0 && (
                     <li className="text-gray-400">Không có việc nào.</li>
                   )}
