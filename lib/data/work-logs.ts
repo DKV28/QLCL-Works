@@ -44,6 +44,35 @@ export async function setTaskWorkLog(input: {
   if (error) throw error;
 }
 
+export async function setTaskWorkLogs(input: {
+  taskIds: string[];
+  memberId: string;
+  workDate: string;
+  enabled: boolean;
+}): Promise<void> {
+  if (input.taskIds.length === 0) return;
+  const supabase = createClient();
+  if (input.enabled) {
+    const { error } = await supabase.from("task_work_logs").upsert(
+      input.taskIds.map((taskId) => ({
+        task_id: taskId,
+        member_id: input.memberId,
+        work_date: input.workDate,
+      })),
+      { onConflict: "task_id,member_id,work_date" },
+    );
+    if (error) throw error;
+    return;
+  }
+  const { error } = await supabase
+    .from("task_work_logs")
+    .delete()
+    .eq("member_id", input.memberId)
+    .eq("work_date", input.workDate)
+    .in("task_id", input.taskIds);
+  if (error) throw error;
+}
+
 export async function listTaskDailyNotes(
   noteDate: string,
   memberId?: string,

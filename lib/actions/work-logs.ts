@@ -1,12 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { todayISO } from "@/lib/logic/overdue";
 import {
   listTaskDailyNotes,
   listTaskWorkLogs,
   setTaskDailyNote,
   setTaskWorkLog,
+  setTaskWorkLogs,
 } from "@/lib/data/work-logs";
 import { createClient } from "@/lib/supabase/server";
 import type { TaskDailyNote, TaskWorkLog } from "@/lib/types";
@@ -67,8 +67,51 @@ export async function toggleTaskWorkLogAction(input: {
 
   try {
     await setTaskWorkLog(input);
-    revalidatePath("/cong-viec");
-    revalidatePath("/bao-cao");
+    // Không revalidate: UI đã cập nhật optimistic; revalidate /bao-cao (force-dynamic)
+    // sẽ tải lại toàn bộ task gây lag ~3s.
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Không cập nhật được ghi nhận công việc." };
+  }
+}
+
+export async function toggleTaskWorkLogsBatchAction(input: {
+  taskIds: string[];
+  memberId: string;
+  workDate: string;
+  enabled: boolean;
+}): Promise<WorkLogResult> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.workDate) || input.workDate > todayISO()) {
+    return { ok: false, error: "Không thể ghi nhận công việc cho ngày tương lai." };
+  }
+  const taskIds = Array.from(new Set(input.taskIds.filter(Boolean)));
+  if (taskIds.length === 0) return { ok: true };
+
+  const supabase = createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, error: "Bạn cần đăng nhập." };
+
+  // Tất cả task phải thuộc phân công của nhân sự này.
+  const { data: rows, error } = await supabase
+    .from("task_assignees")
+    .select("task_id")
+    .eq("member_id", input.memberId)
+    .in("task_id", taskIds);
+  if (error) {
+    return { ok: false, error: "Không cập nhật được ghi nhận công việc." };
+  }
+  const assigned = new Set((rows ?? []).map((r) => (r as { task_id: string }).task_id));
+  if (assigned.size !== taskIds.length) {
+    return { ok: false, error: "Nhân sự này không được phân công vào công việc." };
+  }
+
+  try {
+    await setTaskWorkLogs({
+      taskIds,
+      memberId: input.memberId,
+      workDate: input.workDate,
+      enabled: input.enabled,
+    });
     return { ok: true };
   } catch {
     return { ok: false, error: "Không cập nhật được ghi nhận công việc." };
@@ -101,7 +144,7 @@ export async function saveTaskDailyNoteAction(input: {
   }
   try {
     await setTaskDailyNote({ ...input, note });
-    revalidatePath("/bao-cao");
+    // Không revalidate: ghi chú đã hiển thị optimistic; tránh tải lại /bao-cao.
     return { ok: true };
   } catch {
     return { ok: false, error: "Không lưu được ghi chú báo cáo." };
