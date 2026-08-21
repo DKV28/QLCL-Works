@@ -1,5 +1,6 @@
 // Data access: activity_log (lịch sử hoạt động).
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "./profiles";
 import type { ActivityEntry } from "@/lib/types";
 
 export interface ActivityInput {
@@ -12,14 +13,12 @@ export interface ActivityInput {
 /** Ghi một dòng lịch sử với người thao tác là tài khoản đang đăng nhập. */
 export async function recordActivity(input: ActivityInput): Promise<void> {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const actorId = await getSessionUserId();
 
   await supabase.from("activity_log").insert({
     task_id: input.task_id ?? null,
     project_id: input.project_id ?? null,
-    actor_id: user?.id ?? null,
+    actor_id: actorId,
     action: input.action,
     detail: input.detail ?? null,
   });

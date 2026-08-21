@@ -161,13 +161,16 @@ export interface Attachment {
 }
 
 // Task kèm người phụ trách (join task_assignees -> members):
-// 1 người phụ trách chính (primary) + nhiều người hỗ trợ (supporters),
-// nhiệm vụ con (subtasks) và tệp đính kèm (attachments).
+// 1 người phụ trách chính (primary) + nhiều người hỗ trợ (supporters).
+// Nhiệm vụ con / tệp đính kèm chỉ mang SỐ ĐẾM cho danh sách (badge); dữ liệu
+// đầy đủ được tải riêng khi mở chi tiết (getSubtasksAction/getAttachmentsAction)
+// để danh sách/refetch không phải kéo toàn bộ hàng.
 export interface TaskWithAssignees extends Task {
   primary: MemberLite | null;
   supporters: MemberLite[];
-  subtasks: Subtask[];
-  attachments: Attachment[];
+  subtaskTotal: number;
+  subtaskDone: number;
+  attachmentCount: number;
   tags: Pick<Tag, "id" | "name" | "color">[];
 }
 

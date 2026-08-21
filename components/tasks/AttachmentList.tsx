@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   createAttachmentAction,
   deleteAttachmentAction,
+  getAttachmentsAction,
 } from "@/lib/actions/attachments";
 import { ATTACHMENTS_BUCKET, type Attachment } from "@/lib/types";
 
@@ -22,19 +23,27 @@ function sanitize(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-export function AttachmentList({
-  taskId,
-  attachments,
-}: {
-  taskId: string;
-  attachments: Attachment[];
-}) {
+export function AttachmentList({ taskId }: { taskId: string }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  async function load() {
+    const data = await getAttachmentsAction(taskId);
+    setAttachments(data);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    setLoading(true);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId]);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -75,7 +84,8 @@ export function AttachmentList({
       setError(res.error);
       return;
     }
-    router.refresh();
+    await load();
+    router.refresh(); // cập nhật badge đếm ở danh sách
   }
 
   async function view(att: Attachment) {
@@ -94,6 +104,7 @@ export function AttachmentList({
         setError(result.error);
         return;
       }
+      await load();
       router.refresh();
     });
   }

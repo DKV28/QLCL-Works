@@ -1,6 +1,7 @@
 // Data access: projects. Chỉ chứa query Supabase, không JSX.
 import { createClient } from "@/lib/supabase/server";
 import { duplicateTask } from "./tasks";
+import { getSessionUserId } from "./profiles";
 import type { Project, ProjectStatus } from "@/lib/types";
 
 /** Dự án vận hành (không gồm dự án mẫu). */
@@ -94,9 +95,9 @@ export async function updateProject(
 export async function duplicateProject(id: string): Promise<Project> {
   const supabase = createClient();
 
-  const [{ data: src, error }, { data: auth }] = await Promise.all([
+  const [{ data: src, error }, actorId] = await Promise.all([
     supabase.from("projects").select("*").eq("id", id).single(),
-    supabase.auth.getUser(),
+    getSessionUserId(),
   ]);
   if (error) throw error;
   const source = src as Project;
@@ -107,7 +108,7 @@ export async function duplicateProject(id: string): Promise<Project> {
       name: `${source.name} (bản sao)`,
       description: source.description,
       // Người thực hiện nhân bản làm chủ dự án mới (để sửa được theo RLS).
-      owner_id: auth.user?.id ?? source.owner_id,
+      owner_id: actorId ?? source.owner_id,
       status: source.status,
     })
     .select("*")

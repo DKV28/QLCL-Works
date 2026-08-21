@@ -459,13 +459,12 @@ export function TaskTable({
                 )}
               </div>
 
-              {(task.tags.length > 0 || task.subtasks.length > 0) && (
+              {(task.tags.length > 0 || task.subtaskTotal > 0) && (
                 <div className="mt-3 border-t border-gray-100 pt-3 dark:border-gray-800">
                   {task.tags.length > 0 && <TagChips tags={task.tags} />}
-                  {task.subtasks.length > 0 && (
+                  {task.subtaskTotal > 0 && (
                     <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {task.subtasks.filter((subtask) => subtask.is_done).length}/
-                      {task.subtasks.length} nhiệm vụ con
+                      {task.subtaskDone}/{task.subtaskTotal} nhiệm vụ con
                     </div>
                   )}
                 </div>
@@ -609,15 +608,13 @@ export function TaskTable({
                     </div>
                   )}
                   <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">
-                    {t.subtasks.length > 0 && (
+                    {t.subtaskTotal > 0 && (
                       <span>
-                        Nhiệm vụ con:{" "}
-                        {t.subtasks.filter((s) => s.is_done).length}/
-                        {t.subtasks.length}
+                        Nhiệm vụ con: {t.subtaskDone}/{t.subtaskTotal}
                       </span>
                     )}
-                    {t.attachments.length > 0 && (
-                      <span>{t.attachments.length} tệp đính kèm</span>
+                    {t.attachmentCount > 0 && (
+                      <span>{t.attachmentCount} tệp đính kèm</span>
                     )}
                   </div>
                   </button>

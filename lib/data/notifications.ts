@@ -1,5 +1,6 @@
 // Data access: notifications (feed chung) + mốc đã xem + đếm cảnh báo.
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "./profiles";
 import type { Notification } from "@/lib/types";
 
 export interface NotificationInput {
@@ -37,28 +38,24 @@ export async function listRecentNotifications(
 
 /** Mốc "đã xem" của tài khoản hiện tại (null nếu chưa từng xem). */
 export async function getLastSeen(): Promise<string | null> {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const userId = await getSessionUserId();
+  if (!userId) return null;
 
+  const supabase = createClient();
   const { data } = await supabase
     .from("notification_seen")
     .select("last_seen_at")
-    .eq("profile_id", user.id)
+    .eq("profile_id", userId)
     .maybeSingle();
   return data?.last_seen_at ?? null;
 }
 
 export async function markSeen(): Promise<void> {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
+  const userId = await getSessionUserId();
+  if (!userId) return;
 
+  const supabase = createClient();
   await supabase
     .from("notification_seen")
-    .upsert({ profile_id: user.id, last_seen_at: new Date().toISOString() });
+    .upsert({ profile_id: userId, last_seen_at: new Date().toISOString() });
 }

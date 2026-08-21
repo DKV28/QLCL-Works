@@ -29,6 +29,7 @@ import {
 import { addWorkingDays } from "@/lib/logic/working-days";
 import { todayISO } from "@/lib/logic/overdue";
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/data/profiles";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -87,8 +88,8 @@ export async function createTaskAction(
     return { ok: false, error: "Không tạo được công việc." };
   }
 
-  if (projectId) revalidatePath(`/du-an/${projectId}`);
-  revalidatePath("/cong-viec");
+  // Không revalidate ở đây: client gọi router.refresh() sau khi đóng modal,
+  // nên refetch chạy nền thay vì giữ promise action chờ re-render.
   return { ok: true };
 }
 
@@ -125,8 +126,7 @@ export async function updateTaskAction(
     return { ok: false, error: "Không cập nhật được công việc." };
   }
 
-  if (projectId) revalidatePath(`/du-an/${projectId}`);
-  revalidatePath("/cong-viec");
+  // Không revalidate ở đây: client gọi router.refresh() sau khi đóng modal.
   return { ok: true };
 }
 
@@ -218,9 +218,9 @@ export async function toggleTaskCompleteForReportAction(input: {
   memberId: string;
   completed: boolean;
 }): Promise<ActionResult> {
+  const userId = await getSessionUserId();
+  if (!userId) return { ok: false, error: "Bạn cần đăng nhập." };
   const supabase = createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Bạn cần đăng nhập." };
 
   const { count, error } = await supabase
     .from("task_assignees")

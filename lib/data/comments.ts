@@ -1,5 +1,6 @@
 // Data access: comments (bình luận trên công việc).
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "./profiles";
 import type { Comment } from "@/lib/types";
 
 interface CommentRow {
@@ -35,13 +36,11 @@ export async function createComment(
   body: string,
 ): Promise<void> {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const authorId = await getSessionUserId();
 
   const { error } = await supabase.from("comments").insert({
     task_id: taskId,
-    author_id: user?.id ?? null,
+    author_id: authorId,
     body,
   });
   if (error) throw error;

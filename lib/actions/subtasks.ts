@@ -4,14 +4,25 @@ import { revalidatePath } from "next/cache";
 import {
   createSubtask,
   deleteSubtask,
+  listSubtasksByTask,
   toggleSubtask,
 } from "@/lib/data/subtasks";
+import type { Subtask } from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 function revalidate() {
   revalidatePath("/cong-viec");
   revalidatePath("/du-an", "layout");
+}
+
+/** Tải nhiệm vụ con của một công việc (dùng khi mở chi tiết). */
+export async function getSubtasksAction(taskId: string): Promise<Subtask[]> {
+  try {
+    return await listSubtasksByTask(taskId);
+  } catch {
+    return [];
+  }
 }
 
 export async function createSubtaskAction(

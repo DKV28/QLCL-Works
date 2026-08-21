@@ -17,7 +17,9 @@ import type {
   TaskWithAssignees,
 } from "@/lib/types";
 
-// Hàng trả về từ Supabase khi join lồng
+// Hàng trả về từ Supabase khi join lồng. Subtasks chỉ lấy is_done (đủ tính
+// done/total cho badge), attachments chỉ lấy count — dữ liệu đầy đủ tải riêng
+// khi mở chi tiết công việc.
 interface TaskRow extends Task {
   task_assignees:
     | {
@@ -29,8 +31,8 @@ interface TaskRow extends Task {
         } | null;
       }[]
     | null;
-  subtasks: Subtask[] | null;
-  attachments: Attachment[] | null;
+  subtasks: { is_done: boolean }[] | null;
+  attachments: { count: number }[] | null;
   task_tags: { tags: Pick<Tag, "id" | "name" | "color"> | null }[] | null;
 }
 
@@ -40,8 +42,8 @@ const SELECT_WITH_ASSIGNEES = `
     is_primary,
     members ( id, full_name, team_id )
   ),
-  subtasks ( id, task_id, title, is_done, sort_order, created_at, updated_at ),
-  attachments ( id, task_id, file_name, storage_path, mime_type, size_bytes, created_at ),
+  subtasks ( is_done ),
+  attachments ( count ),
   task_tags ( tags ( id, name, color ) )
 `;
 
@@ -65,13 +67,9 @@ function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
 
   supporters.sort((a, b) => a.full_name.localeCompare(b.full_name, "vi"));
 
-  const sortedSubtasks = [...(subtasks ?? [])].sort(
-    (a, b) => a.sort_order - b.sort_order,
-  );
-
-  const sortedAttachments = [...(attachments ?? [])].sort((a, b) =>
-    a.created_at.localeCompare(b.created_at),
-  );
+  const subtaskTotal = subtasks?.length ?? 0;
+  const subtaskDone = (subtasks ?? []).filter((s) => s.is_done).length;
+  const attachmentCount = attachments?.[0]?.count ?? 0;
 
   const tags = (task_tags ?? [])
     .map((tt) => tt.tags)
@@ -81,8 +79,9 @@ function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
     ...(task as Task),
     primary,
     supporters,
-    subtasks: sortedSubtasks,
-    attachments: sortedAttachments,
+    subtaskTotal,
+    subtaskDone,
+    attachmentCount,
     tags,
   };
 }
@@ -110,17 +109,13 @@ export async function listTasksByProject(
 export async function listAllTasks(): Promise<TaskWithAssignees[]> {
   const supabase = createClient();
 
-  // Lấy id dự án mẫu để loại công việc của chúng khỏi màn hình vận hành.
-  const { data: tpl } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("is_template", true)
-    .is("deleted_at", null);
-  const templateIds = new Set(
-    ((tpl as { id: string }[]) ?? []).map((r) => r.id),
-  );
-
-  const [teams, res] = await Promise.all([
+  // Chạy song song: id dự án mẫu (để loại việc của chúng), teams, và danh sách task.
+  const [tplRes, teams, res] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("id")
+      .eq("is_template", true)
+      .is("deleted_at", null),
     listTeams(),
     supabase
       .from("tasks")
@@ -128,6 +123,10 @@ export async function listAllTasks(): Promise<TaskWithAssignees[]> {
       .is("deleted_at", null)
       .order("due_date", { ascending: true, nullsFirst: false }),
   ]);
+
+  const templateIds = new Set(
+    ((tplRes.data as { id: string }[]) ?? []).map((r) => r.id),
+  );
 
   if (res.error) throw res.error;
   // Lọc ở JS để KHÔNG loại nhầm công việc không thuộc dự án (project_id = null).

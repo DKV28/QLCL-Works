@@ -9,6 +9,7 @@ import {
   setTaskWorkLogs,
 } from "@/lib/data/work-logs";
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/data/profiles";
 import type { TaskDailyNote, TaskWorkLog } from "@/lib/types";
 
 export type WorkLogResult =
@@ -52,9 +53,9 @@ export async function toggleTaskWorkLogAction(input: {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.workDate) || input.workDate > todayISO()) {
     return { ok: false, error: "Không thể ghi nhận công việc cho ngày tương lai." };
   }
+  const userId = await getSessionUserId();
+  if (!userId) return { ok: false, error: "Bạn cần đăng nhập." };
   const supabase = createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Bạn cần đăng nhập." };
 
   const { count, error } = await supabase
     .from("task_assignees")
@@ -87,9 +88,9 @@ export async function toggleTaskWorkLogsBatchAction(input: {
   const taskIds = Array.from(new Set(input.taskIds.filter(Boolean)));
   if (taskIds.length === 0) return { ok: true };
 
+  const userId = await getSessionUserId();
+  if (!userId) return { ok: false, error: "Bạn cần đăng nhập." };
   const supabase = createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Bạn cần đăng nhập." };
 
   // Tất cả task phải thuộc phân công của nhân sự này.
   const { data: rows, error } = await supabase
@@ -131,9 +132,9 @@ export async function saveTaskDailyNoteAction(input: {
   if (note.length > 2000) {
     return { ok: false, error: "Ghi chú không được vượt quá 2.000 ký tự." };
   }
+  const userId = await getSessionUserId();
+  if (!userId) return { ok: false, error: "Bạn cần đăng nhập." };
   const supabase = createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Bạn cần đăng nhập." };
   const { count, error } = await supabase
     .from("task_assignees")
     .select("task_id", { count: "exact", head: true })
