@@ -94,10 +94,10 @@ export function TaskEditModal({
             }}
           />
           <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
-            <SubtaskList taskId={task.id} subtasks={task.subtasks} />
+            <SubtaskList taskId={task.id} />
           </div>
           <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
-            <AttachmentList taskId={task.id} attachments={task.attachments} />
+            <AttachmentList taskId={task.id} />
           </div>
           <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
             <TaskThread taskId={task.id} />

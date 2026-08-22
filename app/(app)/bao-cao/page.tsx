@@ -1,17 +1,22 @@
+import { redirect } from "next/navigation";
 import { ReportsClient } from "@/components/reports/ReportsClient";
 import { listAllTasks } from "@/lib/data/tasks";
-import { listActiveMemberLites } from "@/lib/data/members";
+import { getMyMemberId, listActiveMemberLites } from "@/lib/data/members";
 import { listProjects } from "@/lib/data/projects";
-import { getCurrentProfile } from "@/lib/data/profiles";
+import { reportScope } from "@/lib/data/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportPage() {
-  const [tasks, members, projects, profile] = await Promise.all([
+  const scope = await reportScope();
+  // Không có chức năng báo cáo -> đưa về trang chủ.
+  if (scope === "none") redirect("/");
+
+  const [tasks, members, projects, myMemberId] = await Promise.all([
     listAllTasks(),
     listActiveMemberLites(),
     listProjects(),
-    getCurrentProfile(),
+    scope === "own" ? getMyMemberId() : Promise.resolve(null),
   ]);
 
   const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }));
@@ -21,9 +26,8 @@ export default async function ReportPage() {
       tasks={tasks}
       members={members}
       projects={projectOptions}
-      canViewWeekly={
-        profile?.role === "manager" || profile?.role === "admin"
-      }
+      scope={scope}
+      myMemberId={myMemberId}
     />
   );
 }

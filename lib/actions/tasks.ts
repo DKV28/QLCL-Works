@@ -8,6 +8,7 @@ import {
   getTaskStepInfo,
   isTaskCompleted,
   setStatus,
+  setTaskCompletedAt,
   softDeleteTask,
   toggleComplete,
   updateTask,
@@ -28,6 +29,8 @@ import {
 } from "@/lib/types";
 import { addWorkingDays } from "@/lib/logic/working-days";
 import { todayISO } from "@/lib/logic/overdue";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/data/profiles";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -86,8 +89,8 @@ export async function createTaskAction(
     return { ok: false, error: "Không tạo được công việc." };
   }
 
-  if (projectId) revalidatePath(`/du-an/${projectId}`);
-  revalidatePath("/cong-viec");
+  // Không revalidate ở đây: client gọi router.refresh() sau khi đóng modal,
+  // nên refetch chạy nền thay vì giữ promise action chờ re-render.
   return { ok: true };
 }
 
@@ -113,19 +116,32 @@ export async function updateTaskAction(
     return { ok: false, error: "Bạn chỉ sửa được công việc do mình tạo." };
 
   try {
+    // Phát hiện chuyển trạng thái hoàn thành ngay trong form sửa, để đồng bộ
+    // completed_at và sinh việc lặp kế tiếp (trước đây bị bỏ sót ở luồng này).
+    const wasDone = await isTaskCompleted(id);
+    const willBeDone = fields.status === "hoan_thanh";
+
     await updateTask(id, fields);
-    await recordActivity({
-      task_id: id,
-      project_id: projectId,
-      action: "cap_nhat_cong_viec",
-      detail: fields.title,
-    });
+
+    if (willBeDone !== wasDone) {
+      await setTaskCompletedAt(id, willBeDone ? new Date().toISOString() : null);
+    }
+
+    await Promise.all([
+      recordActivity({
+        task_id: id,
+        project_id: projectId,
+        action: "cap_nhat_cong_viec",
+        detail: fields.title,
+      }),
+      // Chuyển sang hoàn thành lần đầu -> sinh lần lặp kế tiếp.
+      willBeDone && !wasDone ? createNextRecurrence(id) : Promise.resolve(),
+    ]);
   } catch (e) {
     return { ok: false, error: "Không cập nhật được công việc." };
   }
 
-  if (projectId) revalidatePath(`/du-an/${projectId}`);
-  revalidatePath("/cong-viec");
+  // Không revalidate ở đây: client gọi router.refresh() sau khi đóng modal.
   return { ok: true };
 }
 
@@ -198,6 +214,52 @@ export async function toggleCompleteAction(
       completed && !wasDone ? createNextRecurrence(id) : Promise.resolve(),
     ]);
   } catch (e) {
+    return { ok: false, error: "Không cập nhật được trạng thái." };
+  }
+  revalidatePath("/cong-viec");
+  revalidatePath("/du-an", "layout");
+  return { ok: true };
+}
+
+/**
+ * Bật/tắt hoàn thành công việc TỪ MÀN BÁO CÁO NGÀY.
+ * Ủy quyền theo phân công: chỉ cần đăng nhập và `memberId` (nhân sự đang được
+ * báo cáo) thuộc phân công của công việc — vì bảng members độc lập với auth nên
+ * không dùng canWriteTask (chỉ người tạo). KHÔNG revalidate /bao-cao để tránh
+ * tải lại toàn bộ (gây lag); UI dùng optimistic update.
+ */
+export async function toggleTaskCompleteForReportAction(input: {
+  taskId: string;
+  memberId: string;
+  completed: boolean;
+}): Promise<ActionResult> {
+  const userId = await getSessionUserId();
+  if (!userId) return { ok: false, error: "Bạn cần đăng nhập." };
+  const supabase = createClient();
+
+  const { count, error } = await supabase
+    .from("task_assignees")
+    .select("task_id", { count: "exact", head: true })
+    .eq("task_id", input.taskId)
+    .eq("member_id", input.memberId);
+  if (error || !count) {
+    return { ok: false, error: "Nhân sự này không được phân công vào công việc." };
+  }
+
+  try {
+    // Chỉ sinh việc lặp khi CHUYỂN sang hoàn thành (tránh nhân đôi).
+    const wasDone = input.completed ? await isTaskCompleted(input.taskId) : false;
+    await toggleComplete(input.taskId, input.completed);
+    await Promise.all([
+      recordActivity({
+        task_id: input.taskId,
+        action: input.completed ? "danh_dau_hoan_thanh" : "mo_lai",
+      }),
+      input.completed && !wasDone
+        ? createNextRecurrence(input.taskId)
+        : Promise.resolve(),
+    ]);
+  } catch {
     return { ok: false, error: "Không cập nhật được trạng thái." };
   }
   revalidatePath("/cong-viec");

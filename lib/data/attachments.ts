@@ -10,6 +10,20 @@ export interface AttachmentInput {
   size_bytes?: number | null;
 }
 
+/** Tệp đính kèm của một công việc (tải khi mở chi tiết). */
+export async function listAttachmentsByTask(
+  taskId: string,
+): Promise<Attachment[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("attachments")
+    .select("*")
+    .eq("task_id", taskId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as Attachment[]) ?? [];
+}
+
 export async function createAttachment(
   input: AttachmentInput,
 ): Promise<Attachment> {

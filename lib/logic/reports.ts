@@ -1,7 +1,7 @@
 // Logic báo cáo ngày (A/B/C/D) và báo cáo tuần — hàm thuần.
 import type { MemberLite, TaskWithAssignees, TaskWorkLog } from "@/lib/types";
 import { isDone } from "./stats";
-import { todayISO } from "./overdue";
+import { todayISO, toVNDate } from "./overdue";
 import { formatDMY } from "./dates";
 
 function addDaysISO(iso: string, days: number): string {
@@ -11,7 +11,24 @@ function addDaysISO(iso: string, days: number): string {
 }
 
 function completedDate(t: TaskWithAssignees): string | null {
-  return t.completed_at ? t.completed_at.slice(0, 10) : null;
+  // completed_at lưu theo UTC → quy về ngày giờ Việt Nam để so cho khớp reportDate.
+  return t.completed_at ? toVNDate(t.completed_at) : null;
+}
+
+/**
+ * Công việc được xem là "đã hoàn thành" trong báo cáo ngày `reportDate` khi:
+ *  - mốc completed_at rơi đúng ngày reportDate (theo giờ VN), HOẶC
+ *  - đã đánh dấu hoàn thành (status hoàn thành) nhưng thiếu mốc completed_at,
+ *    và đang xem báo cáo của hôm nay.
+ * Dùng chung cho bộ đếm B và dấu tick ✓ để hai nơi luôn nhất quán.
+ */
+export function isDoneOnReport(
+  t: TaskWithAssignees,
+  reportDate: string,
+): boolean {
+  const done = completedDate(t);
+  if (done) return done === reportDate;
+  return reportDate === todayISO() && isDone(t);
 }
 
 // ---------- Báo cáo ngày ----------
@@ -56,11 +73,7 @@ export function dailyReportFor(
     (task) => task.due_date === reportDate || loggedIds.has(task.id),
   );
 
-  const b = todayTasks.filter(
-    (task) =>
-      completedDate(task) === reportDate ||
-      (reportDate === todayISO() && isDone(task) && !task.completed_at),
-  ).length;
+  const b = todayTasks.filter((task) => isDoneOnReport(task, reportDate)).length;
   const c = todayTasks.length - b;
 
   const tomorrowNew = mine.filter(
@@ -152,16 +165,17 @@ function inRange(d: string | null, start: string, end: string): boolean {
 export function weeklyReport(
   tasks: TaskWithAssignees[],
   weekStart: string,
-  teamId?: string,
+  opts: { teamId?: string; memberId?: string } = {},
 ): WeeklyReport {
+  const { teamId, memberId } = opts;
   const weekEnd = weekEndOf(weekStart);
   const nextWeekEnd = addDaysISO(weekEnd, 7);
 
   const scoped = tasks.filter((t) => {
-    if (teamId) {
-      const people = t.primary ? [t.primary, ...t.supporters] : t.supporters;
-      if (!people.some((p) => p.team_id === teamId)) return false;
-    }
+    const people = t.primary ? [t.primary, ...t.supporters] : t.supporters;
+    // Lọc theo cá nhân: chỉ việc mà người đó là phụ trách chính hoặc hỗ trợ.
+    if (memberId && !people.some((p) => p.id === memberId)) return false;
+    if (teamId && !people.some((p) => p.team_id === teamId)) return false;
     return true;
   });
 

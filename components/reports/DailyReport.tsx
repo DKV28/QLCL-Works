@@ -5,6 +5,7 @@ import { StatCard } from "./StatCard";
 import {
   dailyReportFor,
   dailyReportText,
+  isDoneOnReport,
   type DailyReport as DR,
 } from "@/lib/logic/reports";
 import {
@@ -12,16 +13,21 @@ import {
   getTaskWorkLogsAction,
   saveTaskDailyNoteAction,
   toggleTaskWorkLogAction,
+  toggleTaskWorkLogsBatchAction,
 } from "@/lib/actions/work-logs";
+import { toggleTaskCompleteForReportAction } from "@/lib/actions/tasks";
 import { Modal } from "@/components/ui/Modal";
 import { todayISO } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
 import type {
   MemberLite,
   TaskDailyNote,
+  TaskStatus,
   TaskWithAssignees,
   TaskWorkLog,
 } from "@/lib/types";
+
+type CompletionOverride = { completed_at: string | null; status: TaskStatus };
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -54,11 +60,13 @@ function normalizeSearch(value: string): string {
 export function DailyReport({
   tasks,
   members,
+  lockMemberId,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
+  lockMemberId?: string;
 }) {
-  const [memberId, setMemberId] = useState("");
+  const [memberId, setMemberId] = useState(lockMemberId ?? "");
   const [reportDate, setReportDate] = useState(todayISO());
   const [workLogs, setWorkLogs] = useState<TaskWorkLog[]>([]);
   const [dailyNotes, setDailyNotes] = useState<TaskDailyNote[]>([]);
@@ -66,6 +74,12 @@ export function DailyReport({
   const [detailTab, setDetailTab] = useState<"today" | "tomorrow">("today");
   const [myDayOpen, setMyDayOpen] = useState(false);
   const [myDayQuery, setMyDayQuery] = useState("");
+  const [completionOverrides, setCompletionOverrides] = useState<
+    Record<string, CompletionOverride>
+  >({});
+  const [pendingComplete, setPendingComplete] = useState<Set<string>>(new Set());
+  const [bulkPending, setBulkPending] = useState(false);
+  const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
   const currentDateRef = useRef(todayISO());
 
   useEffect(() => {
@@ -106,15 +120,49 @@ export function DailyReport({
     };
   }, [reportDate]);
 
+  // Áp trạng thái hoàn thành đang chờ server (optimistic) lên danh sách task,
+  // để dấu tick, bộ đếm B/C và danh sách đổi tức thì khi bấm tick.
+  const effectiveTasks = useMemo(() => {
+    if (Object.keys(completionOverrides).length === 0) return tasks;
+    return tasks.map((task) => {
+      const override = completionOverrides[task.id];
+      return override
+        ? { ...task, completed_at: override.completed_at, status: override.status }
+        : task;
+    });
+  }, [tasks, completionOverrides]);
+
+  // Dọn override khi dữ liệu server tải mới đã khớp trạng thái (tránh chồng data).
+  useEffect(() => {
+    setCompletionOverrides((current) => {
+      if (Object.keys(current).length === 0) return current;
+      let changed = false;
+      const next = { ...current };
+      for (const task of tasks) {
+        const override = next[task.id];
+        if (!override) continue;
+        const serverDone =
+          !!task.completed_at || task.status === "hoan_thanh";
+        if (serverDone === !!override.completed_at) {
+          delete next[task.id];
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [tasks]);
+
+  const canToggleComplete = reportDate === todayISO();
+
   const allReports = useMemo(
-    () => members.map((m) => dailyReportFor(tasks, m, reportDate, workLogs)),
-    [tasks, members, reportDate, workLogs],
+    () => members.map((m) => dailyReportFor(effectiveTasks, m, reportDate, workLogs)),
+    [effectiveTasks, members, reportDate, workLogs],
   );
   const selected: DR | null = memberId
     ? (allReports.find((r) => r.memberId === memberId) ?? null)
     : null;
   const assignedTasks = memberId
-    ? tasks.filter(
+    ? effectiveTasks.filter(
         (task) =>
           task.primary?.id === memberId ||
           task.supporters.some((member) => member.id === memberId),
@@ -137,6 +185,9 @@ export function DailyReport({
       .filter((log) => log.member_id === memberId)
       .map((log) => log.task_id),
   );
+  const selectedInFilteredCount = filteredAssignedTasks.filter((task) =>
+    loggedTaskIds.has(task.id),
+  ).length;
   const noteByTaskId = Object.fromEntries(
     dailyNotes
       .filter((note) => note.member_id === memberId)
@@ -230,25 +281,96 @@ export function DailyReport({
     });
   }
 
+  function toggleComplete(taskId: string, done: boolean) {
+    if (!memberId) return;
+    const override: CompletionOverride = done
+      ? { completed_at: new Date().toISOString(), status: "hoan_thanh" }
+      : { completed_at: null, status: "dang_lam" };
+    setError(null);
+    setPendingComplete((current) => new Set(current).add(taskId));
+    setCompletionOverrides((current) => ({ ...current, [taskId]: override }));
+    toggleTaskCompleteForReportAction({ taskId, memberId, completed: done }).then(
+      (result) => {
+        setPendingComplete((current) => {
+          const next = new Set(current);
+          next.delete(taskId);
+          return next;
+        });
+        if (!result.ok) {
+          setCompletionOverrides((current) => {
+            const next = { ...current };
+            delete next[taskId];
+            return next;
+          });
+          setError(result.error);
+        }
+      },
+    );
+  }
+
+  function setAllLogs(enabled: boolean) {
+    if (!memberId) return;
+    const ids = filteredAssignedTasks.map((task) => task.id);
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const previous = workLogs;
+    setError(null);
+    setBulkPending(true);
+    setWorkLogs((current) => {
+      const others = current.filter(
+        (log) =>
+          !(
+            log.member_id === memberId &&
+            log.work_date === reportDate &&
+            idSet.has(log.task_id)
+          ),
+      );
+      if (!enabled) return others;
+      const added = ids.map((taskId) => ({
+        id: `optimistic-${taskId}-${memberId}-${reportDate}`,
+        task_id: taskId,
+        member_id: memberId,
+        work_date: reportDate,
+        created_by: "",
+        created_at: new Date().toISOString(),
+      }));
+      return [...others, ...added];
+    });
+    toggleTaskWorkLogsBatchAction({
+      taskIds: ids,
+      memberId,
+      workDate: reportDate,
+      enabled,
+    }).then((result) => {
+      setBulkPending(false);
+      if (!result.ok) {
+        setWorkLogs(previous);
+        setError(result.error);
+      }
+    });
+  }
+
   return (
     <div>
       <div className="card no-print mb-6 p-4">
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="label">Nhân viên</label>
-            <select
-              className="input"
-              value={memberId}
-              onChange={(e) => setMemberId(e.target.value)}
-            >
-              <option value="">— Xem tất cả —</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!lockMemberId && (
+            <div>
+              <label className="label">Nhân viên</label>
+              <select
+                className="input"
+                value={memberId}
+                onChange={(e) => setMemberId(e.target.value)}
+              >
+                <option value="">— Xem tất cả —</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="label">Ngày báo cáo</label>
             <input
@@ -333,21 +455,39 @@ export function DailyReport({
                   Ghi chú được tự động lưu khi bạn rời khỏi ô nhập.
                 </p>
                 <ul className="space-y-2 text-sm">
-                  {selected.todayTasks.map((t) => (
+                  {selected.todayTasks.map((t) => {
+                    const done = isDoneOnReport(t, reportDate);
+                    return (
                     <li
                       key={t.id}
                       className="grid gap-2 rounded-md border border-gray-100 p-2 sm:grid-cols-[minmax(0,1fr)_minmax(240px,40%)] sm:items-center dark:border-gray-800"
                     >
                       <div className="flex min-w-0 items-start gap-2">
-                        <span
-                          className={
-                            t.completed_at?.slice(0, 10) === reportDate
-                              ? "text-green-600"
-                              : "text-gray-400"
-                          }
-                        >
-                          {t.completed_at?.slice(0, 10) === reportDate ? "✓" : "○"}
-                        </span>
+                        {canToggleComplete ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleComplete(t.id, !done)}
+                            disabled={pendingComplete.has(t.id)}
+                            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-sm leading-none transition hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800 ${
+                              done ? "text-green-600" : "text-gray-400"
+                            }`}
+                            aria-pressed={done}
+                            aria-label={
+                              done
+                                ? `Bỏ hoàn thành: ${t.title}`
+                                : `Đánh dấu hoàn thành: ${t.title}`
+                            }
+                            title={done ? "Bỏ hoàn thành" : "Đánh dấu hoàn thành"}
+                          >
+                            {done ? "✓" : "○"}
+                          </button>
+                        ) : (
+                          <span
+                            className={`mt-0.5 ${done ? "text-green-600" : "text-gray-400"}`}
+                          >
+                            {done ? "✓" : "○"}
+                          </span>
+                        )}
                         <div className="min-w-0">
                           <div className="break-words text-gray-800 dark:text-gray-200">
                             {t.title}
@@ -358,21 +498,30 @@ export function DailyReport({
                         </div>
                       </div>
                       <textarea
-                        className="input min-h-16 w-full resize-y text-sm"
-                        rows={2}
+                        className={`input w-full resize-y text-sm transition-[min-height] ${
+                          focusedNoteId === t.id ? "min-h-16" : "min-h-9"
+                        }`}
+                        rows={focusedNoteId === t.id ? 3 : 1}
                         value={noteByTaskId[t.id] ?? ""}
                         maxLength={2000}
                         placeholder={
-                          t.completed_at
+                          done
                             ? "Ghi chú thêm..."
                             : "Lý do chưa hoàn thành hoặc ghi chú..."
                         }
                         onChange={(event) => changeNote(t.id, event.target.value)}
-                        onBlur={() => saveNote(t.id)}
+                        onFocus={() => setFocusedNoteId(t.id)}
+                        onBlur={() => {
+                          setFocusedNoteId((current) =>
+                            current === t.id ? null : current,
+                          );
+                          saveNote(t.id);
+                        }}
                         aria-label={`Ghi chú cho ${t.title}`}
                       />
                     </li>
-                  ))}
+                    );
+                  })}
                   {selected.todayTasks.length === 0 && (
                     <li className="text-gray-400">Không có việc nào.</li>
                   )}
@@ -444,6 +593,29 @@ export function DailyReport({
                 </button>
               )}
             </div>
+            {filteredAssignedTasks.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAllLogs(true)}
+                  disabled={bulkPending || selectedInFilteredCount === filteredAssignedTasks.length}
+                  className="btn-secondary text-xs disabled:opacity-50"
+                >
+                  Chọn tất cả đã làm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAllLogs(false)}
+                  disabled={bulkPending || selectedInFilteredCount === 0}
+                  className="btn-secondary text-xs disabled:opacity-50"
+                >
+                  Bỏ chọn tất cả
+                </button>
+                <span className="ml-auto text-xs text-gray-400">
+                  Đã chọn {selectedInFilteredCount}/{filteredAssignedTasks.length}
+                </span>
+              </div>
+            )}
             <div className="mb-1 hidden grid-cols-[40px_minmax(0,1fr)_120px] gap-2 px-2 text-xs font-semibold uppercase tracking-wide text-gray-400 sm:grid">
               <span />
               <span>
@@ -460,7 +632,7 @@ export function DailyReport({
               {filteredAssignedTasks.map((task) => (
                 <label
                   key={task.id}
-                  className="grid cursor-pointer gap-2 rounded border border-gray-100 p-3 text-sm sm:grid-cols-[40px_minmax(0,1fr)_120px] sm:items-center dark:border-gray-800"
+                  className="grid cursor-pointer gap-2 rounded border border-gray-100 p-2 text-sm sm:grid-cols-[40px_minmax(0,1fr)_120px] sm:items-center dark:border-gray-800"
                 >
                   <input
                     type="checkbox"

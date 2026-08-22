@@ -2,6 +2,18 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Subtask } from "@/lib/types";
 
+/** Nhiệm vụ con của một công việc (tải khi mở chi tiết). */
+export async function listSubtasksByTask(taskId: string): Promise<Subtask[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("subtasks")
+    .select("*")
+    .eq("task_id", taskId)
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return (data as Subtask[]) ?? [];
+}
+
 export async function createSubtask(
   taskId: string,
   title: string,

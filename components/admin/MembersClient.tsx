@@ -6,12 +6,14 @@ import { Modal } from "@/components/ui/Modal";
 import { ActionsMenu } from "@/components/ui/ActionsMenu";
 import {
   createMemberAction,
+  linkMemberProfileAction,
   toggleMemberActiveAction,
   updateMemberAction,
 } from "@/lib/actions/members";
 import type { Member } from "@/lib/types";
 
 type TeamOption = { id: string; name: string };
+type AccountOption = { id: string; label: string };
 
 function MemberForm({
   member,
@@ -103,19 +105,39 @@ export function MembersClient({
   members,
   teamOptions,
   canEdit,
+  isAdmin = false,
+  accounts = [],
 }: {
   members: Member[];
   teamOptions: TeamOption[];
   canEdit: boolean;
+  isAdmin?: boolean;
+  accounts?: AccountOption[];
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
+  const [linking, setLinking] = useState<Member | null>(null);
   const [, startTransition] = useTransition();
 
   const teamNameById = useMemo(
     () => new Map(teamOptions.map((t) => [t.id, t.name])),
     [teamOptions],
+  );
+
+  const accountLabelById = useMemo(
+    () => new Map(accounts.map((a) => [a.id, a.label])),
+    [accounts],
+  );
+  // Tài khoản đã gắn với nhân sự khác (để không cho gắn trùng).
+  const takenProfileIds = useMemo(
+    () =>
+      new Map(
+        members
+          .filter((m) => m.profile_id)
+          .map((m) => [m.profile_id as string, m.full_name]),
+      ),
+    [members],
   );
 
   // Nhóm nhân sự theo team để hiển thị.
@@ -203,6 +225,16 @@ export function MembersClient({
                               (ngừng hoạt động)
                             </span>
                           )}
+                          {isAdmin && (
+                            <div className="mt-0.5 text-xs text-gray-400">
+                              {m.profile_id
+                                ? `Tài khoản: ${
+                                    accountLabelById.get(m.profile_id) ??
+                                    "(không rõ)"
+                                  }`
+                                : "Chưa liên kết tài khoản"}
+                            </div>
+                          )}
                         </td>
                         <td className="p-3 text-gray-500 dark:text-gray-400">
                           {m.note || ""}
@@ -213,6 +245,14 @@ export function MembersClient({
                               label={`Thao tác với ${m.full_name}`}
                               items={[
                                 { label: "Sửa thông tin", onClick: () => setEditing(m) },
+                                ...(isAdmin
+                                  ? [
+                                      {
+                                        label: "Liên kết tài khoản",
+                                        onClick: () => setLinking(m),
+                                      },
+                                    ]
+                                  : []),
                                 {
                                   label: m.is_active ? "Ngừng hoạt động" : "Kích hoạt lại",
                                   onClick: () => handleToggleActive(m),
@@ -258,6 +298,100 @@ export function MembersClient({
           />
         )}
       </Modal>
+
+      <Modal
+        open={linking !== null}
+        onClose={() => setLinking(null)}
+        title="Liên kết tài khoản"
+      >
+        {linking && (
+          <LinkAccountForm
+            member={linking}
+            accounts={accounts}
+            takenProfileIds={takenProfileIds}
+            onDone={refresh}
+          />
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+function LinkAccountForm({
+  member,
+  accounts,
+  takenProfileIds,
+  onDone,
+}: {
+  member: Member;
+  accounts: AccountOption[];
+  takenProfileIds: Map<string, string>;
+  onDone: () => void;
+}) {
+  const [value, setValue] = useState(member.profile_id ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function save() {
+    setError(null);
+    startTransition(async () => {
+      const res = await linkMemberProfileAction(member.id, value || null);
+      if (res.ok) onDone();
+      else setError(res.error);
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-600 dark:text-gray-300">
+        Gán nhân sự <b>{member.full_name}</b> với một tài khoản đăng nhập. Tài khoản
+        này khi ở mức báo cáo &quot;Chỉ cá nhân&quot; sẽ chỉ xem báo cáo của nhân sự
+        này.
+      </p>
+      <div>
+        <label className="label" htmlFor="account">
+          Tài khoản
+        </label>
+        <select
+          id="account"
+          className="input"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        >
+          <option value="">— Không liên kết —</option>
+          {accounts.map((a) => {
+            const takenBy = takenProfileIds.get(a.id);
+            const takenByOther = takenBy && a.id !== member.profile_id;
+            return (
+              <option key={a.id} value={a.id} disabled={!!takenByOther}>
+                {a.label}
+                {takenByOther ? ` — đã gắn: ${takenBy}` : ""}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={onDone}
+          disabled={pending}
+        >
+          Hủy
+        </button>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={save}
+          disabled={pending}
+        >
+          {pending ? "Đang lưu..." : "Lưu"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -41,14 +41,21 @@ function NavIcon({ href }: { href: string }) {
 
 export function Sidebar({
   isAdmin,
+  canViewReports = true,
   compact = false,
   collapsed = false,
 }: {
   isAdmin: boolean;
+  canViewReports?: boolean;
   compact?: boolean;
   collapsed?: boolean;
 }) {
   const pathname = usePathname();
+
+  // Ẩn mục Báo cáo khi vai trò không có chức năng báo cáo.
+  const nav = canViewReports
+    ? NAV
+    : NAV.filter((item) => item.href !== "/bao-cao");
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
@@ -64,7 +71,7 @@ export function Sidebar({
   if (compact) {
     return (
       <nav className="flex gap-1 overflow-x-auto px-3 py-2">
-        {[...NAV, ...(isAdmin ? ADMIN_NAV : [])].map((item) => (
+        {[...nav, ...(isAdmin ? ADMIN_NAV : [])].map((item) => (
           <Link key={item.href} href={item.href} className={linkClass(item.href)}>
             <NavIcon href={item.href} />
             {item.label}
@@ -76,7 +83,7 @@ export function Sidebar({
 
   return (
     <nav className="flex flex-col gap-1 p-3">
-      {NAV.map((item) => (
+      {nav.map((item) => (
         <Link
           key={item.href}
           href={item.href}

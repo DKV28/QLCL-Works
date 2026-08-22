@@ -3,7 +3,7 @@
 export type Role = "admin" | "manager" | "staff";
 
 // Phân quyền cấu hình được (lưu ở bảng role_permissions, admin chỉnh trong Cài đặt)
-export type PermissionResource = "project" | "task";
+export type PermissionResource = "project" | "task" | "report";
 export type EditScope = "all" | "own" | "none";
 
 export interface RolePermission {
@@ -23,6 +23,14 @@ export const EDIT_SCOPE_LABEL: Record<EditScope, string> = {
 export const PERMISSION_RESOURCE_LABEL: Record<PermissionResource, string> = {
   project: "Dự án",
   task: "Công việc",
+  report: "Báo cáo",
+};
+
+// Nhãn riêng cho mức quyền báo cáo (tái dùng EditScope: all/own/none).
+export const REPORT_SCOPE_LABEL: Record<EditScope, string> = {
+  all: "Đầy đủ",
+  own: "Chỉ cá nhân",
+  none: "Không có",
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -95,6 +103,7 @@ export interface Member {
   team_id: string | null;
   is_active: boolean;
   note: string | null;
+  profile_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -161,13 +170,16 @@ export interface Attachment {
 }
 
 // Task kèm người phụ trách (join task_assignees -> members):
-// 1 người phụ trách chính (primary) + nhiều người hỗ trợ (supporters),
-// nhiệm vụ con (subtasks) và tệp đính kèm (attachments).
+// 1 người phụ trách chính (primary) + nhiều người hỗ trợ (supporters).
+// Nhiệm vụ con / tệp đính kèm chỉ mang SỐ ĐẾM cho danh sách (badge); dữ liệu
+// đầy đủ được tải riêng khi mở chi tiết (getSubtasksAction/getAttachmentsAction)
+// để danh sách/refetch không phải kéo toàn bộ hàng.
 export interface TaskWithAssignees extends Task {
   primary: MemberLite | null;
   supporters: MemberLite[];
-  subtasks: Subtask[];
-  attachments: Attachment[];
+  subtaskTotal: number;
+  subtaskDone: number;
+  attachmentCount: number;
   tags: Pick<Tag, "id" | "name" | "color">[];
 }
 

@@ -1,26 +1,35 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createSubtaskAction,
   deleteSubtaskAction,
+  getSubtasksAction,
   toggleSubtaskAction,
 } from "@/lib/actions/subtasks";
 import type { Subtask } from "@/lib/types";
 
-export function SubtaskList({
-  taskId,
-  subtasks,
-}: {
-  taskId: string;
-  subtasks: Subtask[];
-}) {
+export function SubtaskList({ taskId }: { taskId: string }) {
   const router = useRouter();
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [pending, startTransition] = useTransition();
 
   const doneCount = subtasks.filter((s) => s.is_done).length;
+
+  async function load() {
+    const data = await getSubtasksAction(taskId);
+    setSubtasks(data);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    setLoading(true);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId]);
 
   function add() {
     const clean = title.trim();
@@ -28,13 +37,15 @@ export function SubtaskList({
     startTransition(async () => {
       await createSubtaskAction(taskId, clean);
       setTitle("");
-      router.refresh();
+      await load();
+      router.refresh(); // cập nhật badge đếm ở danh sách
     });
   }
 
   function toggle(s: Subtask) {
     startTransition(async () => {
       await toggleSubtaskAction(s.id, !s.is_done);
+      await load();
       router.refresh();
     });
   }
@@ -42,6 +53,7 @@ export function SubtaskList({
   function remove(s: Subtask) {
     startTransition(async () => {
       await deleteSubtaskAction(s.id);
+      await load();
       router.refresh();
     });
   }
@@ -56,6 +68,10 @@ export function SubtaskList({
           </span>
         )}
       </div>
+
+      {loading && (
+        <p className="text-xs text-gray-400">Đang tải...</p>
+      )}
 
       <div className="space-y-1">
         {subtasks.map((s) => (

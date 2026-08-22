@@ -6,6 +6,7 @@ import { updateRolePermissionAction } from "@/lib/actions/permissions";
 import {
   EDIT_SCOPE_LABEL,
   PERMISSION_RESOURCE_LABEL,
+  REPORT_SCOPE_LABEL,
   ROLE_LABEL,
   type EditScope,
   type PermissionResource,
@@ -129,11 +130,69 @@ export function RolePermissionsClient({
         ))}
       </div>
 
+      {/* Quyền báo cáo: Đầy đủ / Chỉ cá nhân / Không có */}
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div className="card overflow-x-auto">
+          <div className="border-b border-gray-100 px-4 py-3 font-medium dark:border-gray-800">
+            {PERMISSION_RESOURCE_LABEL.report}
+          </div>
+          <table className="w-full min-w-[320px] text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <th className="p-3">Vai trò</th>
+                <th className="p-3">Quyền báo cáo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-gray-100 text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <td className="p-3 font-medium">{ROLE_LABEL.admin}</td>
+                <td className="p-3">{REPORT_SCOPE_LABEL.all}</td>
+              </tr>
+              {EDITABLE_ROLES.map((role) => {
+                const scope = get("report", role)?.edit_scope ?? "all";
+                return (
+                  <tr
+                    key={role}
+                    className="border-b border-gray-100 last:border-0 dark:border-gray-800"
+                  >
+                    <td className="p-3 font-medium">{ROLE_LABEL[role]}</td>
+                    <td className="p-3">
+                      <select
+                        className="input max-w-[180px]"
+                        value={scope}
+                        disabled={pending}
+                        onChange={(e) =>
+                          save("report", role, {
+                            edit_scope: e.target.value as EditScope,
+                            can_create: false,
+                          })
+                        }
+                      >
+                        {SCOPES.map((s) => (
+                          <option key={s} value={s}>
+                            {REPORT_SCOPE_LABEL[s]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
         <b>Tất cả</b>: sửa/xóa mọi mục. <b>Chỉ mục của mình</b>: chỉ sửa/xóa dự án
         mình sở hữu và công việc mình tạo. <b>Không được sửa</b>: chỉ xem. Mọi vai
         trò vẫn xem chung toàn bộ dữ liệu.
+      </p>
+      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+        Báo cáo — <b>Đầy đủ</b>: xem báo cáo mọi người. <b>Chỉ cá nhân</b>: chỉ xem
+        báo cáo của chính mình (cần liên kết tài khoản với nhân sự trong trang Nhân
+        sự). <b>Không có</b>: ẩn hoàn toàn mục Báo cáo.
       </p>
     </div>
   );

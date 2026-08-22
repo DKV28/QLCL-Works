@@ -27,9 +27,11 @@ function ChevronIcon({ collapsed }: { collapsed: boolean }) {
 
 export function AppShell({
   profile,
+  canViewReports = true,
   children,
 }: {
   profile: Profile;
+  canViewReports?: boolean;
   children: React.ReactNode;
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -80,13 +82,21 @@ export function AppShell({
             <ChevronIcon collapsed={sidebarCollapsed} />
           </button>
         </div>
-        <Sidebar isAdmin={profile.role === "admin"} collapsed={sidebarCollapsed} />
+        <Sidebar
+          isAdmin={profile.role === "admin"}
+          canViewReports={canViewReports}
+          collapsed={sidebarCollapsed}
+        />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar profile={profile} />
         <div className="border-b border-gray-200 bg-white md:hidden dark:border-gray-800 dark:bg-gray-900">
-          <Sidebar isAdmin={profile.role === "admin"} compact />
+          <Sidebar
+            isAdmin={profile.role === "admin"}
+            canViewReports={canViewReports}
+            compact
+          />
         </div>
         <main className="flex-1 overflow-x-hidden p-3 sm:p-5 md:p-7">
           <div className="mx-auto w-full max-w-[1680px]">{children}</div>

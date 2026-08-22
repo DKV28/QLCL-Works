@@ -125,10 +125,9 @@ function KanbanCard({
         {task.is_arising && <ArisingBadge />}
         {overdue && <OverdueBadge />}
         {startLate && !overdue && <NeedStartBadge />}
-        {task.subtasks.length > 0 && (
+        {task.subtaskTotal > 0 && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            {task.subtasks.filter((s) => s.is_done).length}/
-            {task.subtasks.length} việc con
+            {task.subtaskDone}/{task.subtaskTotal} việc con
           </span>
         )}
       </div>
