@@ -4,7 +4,12 @@ import { useState } from "react";
 import { DashboardClient } from "./DashboardClient";
 import { DailyReport } from "./DailyReport";
 import { WeeklyReport } from "./WeeklyReport";
-import type { MemberLite, Project, TaskWithAssignees } from "@/lib/types";
+import type {
+  EditScope,
+  MemberLite,
+  Project,
+  TaskWithAssignees,
+} from "@/lib/types";
 
 type Tab = "overview" | "daily" | "weekly";
 
@@ -18,17 +23,38 @@ export function ReportsClient({
   tasks,
   members,
   projects,
-  canViewWeekly,
+  scope,
+  myMemberId,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
   projects: Pick<Project, "id" | "name">[];
-  canViewWeekly: boolean;
+  scope: EditScope; // all = đầy đủ, own = chỉ cá nhân
+  myMemberId: string | null;
 }) {
-  const [tab, setTab] = useState<Tab>("overview");
-  const tabs = canViewWeekly
-    ? TABS
-    : TABS.filter(([id]) => id !== "weekly");
+  const personal = scope === "own";
+  // Cá nhân: chỉ báo cáo ngày & tuần của mình (ẩn Tổng quan toàn phòng).
+  const availableTabs: [Tab, string][] = personal
+    ? TABS.filter(([id]) => id !== "overview")
+    : TABS;
+  const [tab, setTab] = useState<Tab>(personal ? "daily" : "overview");
+  const tabs = availableTabs;
+
+  // Cá nhân nhưng tài khoản chưa được liên kết nhân sự -> không biết "của mình".
+  if (personal && !myMemberId) {
+    return (
+      <div>
+        <div className="page-header">
+          <h1 className="page-title">Báo cáo</h1>
+        </div>
+        <div className="card p-6 text-sm text-gray-600 dark:text-gray-300">
+          Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự nên chưa thể xem
+          báo cáo cá nhân. Vui lòng liên hệ Quản trị viên để liên kết trong trang
+          Nhân sự.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -64,12 +90,22 @@ export function ReportsClient({
         ))}
       </div>
 
-      {tab === "overview" && (
+      {!personal && tab === "overview" && (
         <DashboardClient tasks={tasks} members={members} projects={projects} />
       )}
-      {tab === "daily" && <DailyReport tasks={tasks} members={members} />}
-      {canViewWeekly && tab === "weekly" && (
-        <WeeklyReport tasks={tasks} members={members} />
+      {tab === "daily" && (
+        <DailyReport
+          tasks={tasks}
+          members={members}
+          lockMemberId={personal ? myMemberId ?? undefined : undefined}
+        />
+      )}
+      {tab === "weekly" && (
+        <WeeklyReport
+          tasks={tasks}
+          members={members}
+          lockMemberId={personal ? myMemberId ?? undefined : undefined}
+        />
       )}
     </div>
   );

@@ -60,11 +60,13 @@ function normalizeSearch(value: string): string {
 export function DailyReport({
   tasks,
   members,
+  lockMemberId,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
+  lockMemberId?: string;
 }) {
-  const [memberId, setMemberId] = useState("");
+  const [memberId, setMemberId] = useState(lockMemberId ?? "");
   const [reportDate, setReportDate] = useState(todayISO());
   const [workLogs, setWorkLogs] = useState<TaskWorkLog[]>([]);
   const [dailyNotes, setDailyNotes] = useState<TaskDailyNote[]>([]);
@@ -352,21 +354,23 @@ export function DailyReport({
     <div>
       <div className="card no-print mb-6 p-4">
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="label">Nhân viên</label>
-            <select
-              className="input"
-              value={memberId}
-              onChange={(e) => setMemberId(e.target.value)}
-            >
-              <option value="">— Xem tất cả —</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!lockMemberId && (
+            <div>
+              <label className="label">Nhân viên</label>
+              <select
+                className="input"
+                value={memberId}
+                onChange={(e) => setMemberId(e.target.value)}
+              >
+                <option value="">— Xem tất cả —</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="label">Ngày báo cáo</label>
             <input

@@ -48,6 +48,30 @@ async function editScope(
   return (data as { edit_scope: EditScope } | null)?.edit_scope ?? "none";
 }
 
+/**
+ * Mức quyền báo cáo của người dùng hiện tại:
+ *  - 'all'  = Đầy đủ (xem báo cáo mọi người)
+ *  - 'own'  = Chỉ cá nhân (chỉ báo cáo của chính mình)
+ *  - 'none' = Không có chức năng báo cáo
+ */
+export async function reportScope(): Promise<EditScope> {
+  const me = await getCurrentProfile();
+  if (!me) return "none";
+  // Admin luôn xem đầy đủ (khớp trigger enforce_admin_permissions ở DB).
+  if (me.role === "admin") return "all";
+
+  // Mặc định 'all' khi CHƯA cấu hình (vd migration 0024 chưa chạy) để không
+  // vô tình khóa báo cáo của mọi người; khi có cấu hình thì theo cấu hình.
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("role_permissions")
+    .select("edit_scope")
+    .eq("resource", "report")
+    .eq("role", me.role)
+    .maybeSingle();
+  return (data as { edit_scope: EditScope } | null)?.edit_scope ?? "all";
+}
+
 /** Có quyền sửa/xóa một công việc cụ thể không. */
 export async function canWriteTask(taskId: string): Promise<boolean> {
   const me = await getCurrentProfile();

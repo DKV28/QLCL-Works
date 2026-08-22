@@ -165,16 +165,17 @@ function inRange(d: string | null, start: string, end: string): boolean {
 export function weeklyReport(
   tasks: TaskWithAssignees[],
   weekStart: string,
-  teamId?: string,
+  opts: { teamId?: string; memberId?: string } = {},
 ): WeeklyReport {
+  const { teamId, memberId } = opts;
   const weekEnd = weekEndOf(weekStart);
   const nextWeekEnd = addDaysISO(weekEnd, 7);
 
   const scoped = tasks.filter((t) => {
-    if (teamId) {
-      const people = t.primary ? [t.primary, ...t.supporters] : t.supporters;
-      if (!people.some((p) => p.team_id === teamId)) return false;
-    }
+    const people = t.primary ? [t.primary, ...t.supporters] : t.supporters;
+    // Lọc theo cá nhân: chỉ việc mà người đó là phụ trách chính hoặc hỗ trợ.
+    if (memberId && !people.some((p) => p.id === memberId)) return false;
+    if (teamId && !people.some((p) => p.team_id === teamId)) return false;
     return true;
   });
 

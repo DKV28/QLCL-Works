@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   createMember,
   setMemberActive,
+  setMemberProfile,
   updateMember,
 } from "@/lib/data/members";
 import { getCurrentProfile } from "@/lib/data/profiles";
@@ -72,6 +73,33 @@ export async function updateMemberAction(
     return { ok: false, error: "Không cập nhật được nhân sự." };
   }
   revalidate();
+  return { ok: true };
+}
+
+/**
+ * Gán/bỏ liên kết nhân sự với một tài khoản đăng nhập (chỉ Quản trị).
+ * Dùng cho mức báo cáo "chỉ cá nhân": tài khoản sẽ báo cáo đúng nhân sự này.
+ * Truyền profileId = "" hoặc null để bỏ liên kết.
+ */
+export async function linkMemberProfileAction(
+  memberId: string,
+  profileId: string | null,
+): Promise<ActionResult> {
+  const me = await getCurrentProfile();
+  if (!me || me.role !== "admin") {
+    return { ok: false, error: "Chỉ Quản trị viên được liên kết tài khoản." };
+  }
+  try {
+    await setMemberProfile(memberId, profileId || null);
+  } catch (e) {
+    // Vi phạm unique (tài khoản đã gắn nhân sự khác) hoặc lỗi khác.
+    return {
+      ok: false,
+      error: "Không liên kết được. Tài khoản có thể đã gắn với nhân sự khác.",
+    };
+  }
+  revalidate();
+  revalidatePath("/bao-cao");
   return { ok: true };
 }
 

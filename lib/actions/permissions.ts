@@ -8,7 +8,7 @@ import type { EditScope, PermissionResource, Role } from "@/lib/types";
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 const SCOPES: EditScope[] = ["all", "own", "none"];
-const RESOURCES: PermissionResource[] = ["project", "task"];
+const RESOURCES: PermissionResource[] = ["project", "task", "report"];
 const ROLES: Role[] = ["admin", "manager", "staff"];
 
 export async function updateRolePermissionAction(
@@ -41,5 +41,7 @@ export async function updateRolePermissionAction(
   revalidatePath("/cai-dat");
   revalidatePath("/cong-viec");
   revalidatePath("/du-an", "layout");
+  revalidatePath("/bao-cao");
+  revalidatePath("/", "layout"); // cập nhật điều hướng (ẩn/hiện mục Báo cáo)
   return { ok: true };
 }

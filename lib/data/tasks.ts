@@ -1,6 +1,6 @@
 // Data access: tasks (kèm join task_assignees -> members).
 // Chỉ chứa query Supabase, không JSX.
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { listTeams, teamDisplayName } from "./teams";
 import { setTaskTags } from "./tags";
 import { todayISO } from "@/lib/logic/overdue";
@@ -199,6 +199,19 @@ export async function updateTask(
   return data as Task;
 }
 
+/** Chỉ đặt/xóa mốc completed_at (dùng khi hoàn thành qua form sửa trạng thái). */
+export async function setTaskCompletedAt(
+  id: string,
+  completedAt: string | null,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ completed_at: completedAt })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 /** Bật/tắt hoàn thành nhanh: set/clear completed_at + đồng bộ status. */
 export async function toggleComplete(
   id: string,
@@ -234,14 +247,21 @@ interface RecurSrc extends Task {
  * lần kế tiếp với mốc ngày dời theo chu kỳ, giữ người phụ trách/nhãn/nhiệm vụ con.
  */
 export async function createNextRecurrence(taskId: string): Promise<void> {
-  const supabase = createClient();
-  const { data } = await supabase
+  // Dùng admin client cho toàn bộ thao tác sinh việc lặp: đây là hành động do
+  // HỆ THỐNG thực hiện, không nên bị RLS/can_create của người hoàn thành chặn
+  // (nguyên nhân "đôi lúc không tạo được việc mới"). Giữ created_by theo bản gốc.
+  const supabase = createAdminClient();
+  const { data, error: readErr } = await supabase
     .from("tasks")
     .select(
       "*, task_assignees ( member_id, is_primary ), subtasks ( title, sort_order ), task_tags ( tag_id )",
     )
     .eq("id", taskId)
     .single();
+  if (readErr) {
+    console.error("createNextRecurrence: không đọc được việc gốc", readErr);
+    return;
+  }
   if (!data) return;
   const src = data as unknown as RecurSrc;
   if (!src.repeat || src.repeat === "none") return;
@@ -265,10 +285,15 @@ export async function createNextRecurrence(taskId: string): Promise<void> {
       repeat: src.repeat,
       is_arising: src.is_arising,
       completed_at: null,
+      created_by: src.created_by,
     })
     .select("id")
     .single();
-  if (error || !created) return;
+  if (error || !created) {
+    // KHÔNG nuốt lỗi: ghi log để chẩn đoán thay vì âm thầm bỏ qua việc lặp.
+    console.error("createNextRecurrence: không tạo được việc kế tiếp", error);
+    return;
+  }
   const newId = (created as { id: string }).id;
 
   const assignees = (src.task_assignees ?? []).map((a) => ({
@@ -276,7 +301,12 @@ export async function createNextRecurrence(taskId: string): Promise<void> {
     member_id: a.member_id,
     is_primary: a.is_primary,
   }));
-  if (assignees.length) await supabase.from("task_assignees").insert(assignees);
+  if (assignees.length) {
+    const { error: aErr } = await supabase
+      .from("task_assignees")
+      .insert(assignees);
+    if (aErr) console.error("createNextRecurrence: lỗi gán người phụ trách", aErr);
+  }
 
   const subs = (src.subtasks ?? []).map((st) => ({
     task_id: newId,
@@ -284,13 +314,19 @@ export async function createNextRecurrence(taskId: string): Promise<void> {
     sort_order: st.sort_order,
     is_done: false,
   }));
-  if (subs.length) await supabase.from("subtasks").insert(subs);
+  if (subs.length) {
+    const { error: sErr } = await supabase.from("subtasks").insert(subs);
+    if (sErr) console.error("createNextRecurrence: lỗi tạo nhiệm vụ con", sErr);
+  }
 
   const tagRows = (src.task_tags ?? []).map((tt) => ({
     task_id: newId,
     tag_id: tt.tag_id,
   }));
-  if (tagRows.length) await supabase.from("task_tags").insert(tagRows);
+  if (tagRows.length) {
+    const { error: tErr } = await supabase.from("task_tags").insert(tagRows);
+    if (tErr) console.error("createNextRecurrence: lỗi gắn nhãn", tErr);
+  }
 }
 
 /** Lấy thông tin tối thiểu để chuyển bước quy trình vận hành. */

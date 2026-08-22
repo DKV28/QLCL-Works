@@ -66,12 +66,17 @@ function TaskLines({ tasks }: { tasks: TaskWithAssignees[] }) {
 export function WeeklyReport({
   tasks,
   members,
+  lockMemberId,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
+  lockMemberId?: string;
 }) {
   const [teamId, setTeamId] = useState("");
+  const [memberId, setMemberId] = useState(lockMemberId ?? "");
   const [weekStart, setWeekStart] = useState(weekStartOf(todayISO()));
+
+  const effectiveMemberId = lockMemberId ?? memberId;
 
   const teamOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -84,29 +89,52 @@ export function WeeklyReport({
   }, [members]);
 
   const r = useMemo(
-    () => weeklyReport(tasks, weekStart, teamId || undefined),
-    [tasks, weekStart, teamId],
+    () =>
+      weeklyReport(tasks, weekStart, {
+        teamId: teamId || undefined,
+        memberId: effectiveMemberId || undefined,
+      }),
+    [tasks, weekStart, teamId, effectiveMemberId],
   );
 
   return (
     <div>
       <div className="card no-print mb-6 p-4">
         <div className="flex flex-wrap items-end gap-4">
-          <div className="min-w-48 flex-1 sm:flex-none">
-            <label className="label">Team</label>
-            <select
-              className="input"
-              value={teamId}
-              onChange={(e) => setTeamId(e.target.value)}
-            >
-              <option value="">Tất cả</option>
-              {teamOptions.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!lockMemberId && (
+            <>
+              <div className="min-w-48 flex-1 sm:flex-none">
+                <label className="label">Nhân viên</label>
+                <select
+                  className="input"
+                  value={memberId}
+                  onChange={(e) => setMemberId(e.target.value)}
+                >
+                  <option value="">— Tất cả —</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-48 flex-1 sm:flex-none">
+                <label className="label">Team</label>
+                <select
+                  className="input"
+                  value={teamId}
+                  onChange={(e) => setTeamId(e.target.value)}
+                >
+                  <option value="">Tất cả</option>
+                  {teamOptions.map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
           <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">
             <button
               className="btn-secondary text-sm"
