@@ -9,7 +9,6 @@ import {
   getTaskStepInfo,
   isTaskCompleted,
   setStatus,
-  setTaskCompletedAt,
   softDeleteTask,
   toggleComplete,
   updateTask,
@@ -175,27 +174,15 @@ export async function updateTaskAction(
     return { ok: false, error: "Bạn chỉ sửa được công việc do mình tạo." };
 
   try {
-    // Phát hiện chuyển trạng thái hoàn thành ngay trong form sửa, để đồng bộ
-    // completed_at và sinh việc lặp kế tiếp (trước đây bị bỏ sót ở luồng này).
-    const wasDone = await isTaskCompleted(id);
-    const willBeDone = fields.status === "hoan_thanh";
-
+    // Form sửa không còn ô trạng thái/hoàn thành — hoàn thành điều khiển bằng
+    // checkbox (toggleCompleteAction), nên ở đây chỉ cập nhật nội dung công việc.
     await updateTask(id, fields);
-
-    if (willBeDone !== wasDone) {
-      await setTaskCompletedAt(id, willBeDone ? new Date().toISOString() : null);
-    }
-
-    await Promise.all([
-      recordActivity({
-        task_id: id,
-        project_id: projectId,
-        action: "cap_nhat_cong_viec",
-        detail: fields.title,
-      }),
-      // Chuyển sang hoàn thành lần đầu -> sinh lần lặp kế tiếp.
-      willBeDone && !wasDone ? createNextRecurrence(id) : Promise.resolve(),
-    ]);
+    await recordActivity({
+      task_id: id,
+      project_id: projectId,
+      action: "cap_nhat_cong_viec",
+      detail: fields.title,
+    });
   } catch (e) {
     return { ok: false, error: "Không cập nhật được công việc." };
   }
