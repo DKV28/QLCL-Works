@@ -89,7 +89,7 @@ export function SubtaskList({ taskId }: { taskId: string }) {
             <span
               className={`flex-1 ${
                 s.is_done
-                  ? "text-gray-400 line-through dark:text-gray-500"
+                  ? "text-gray-400 dark:text-gray-500"
                   : "text-gray-800 dark:text-gray-200"
               }`}
             >

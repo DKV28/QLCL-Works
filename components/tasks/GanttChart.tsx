@@ -7,7 +7,6 @@ import type {
   MemberLite,
   Tag,
   TaskPrioritySetting,
-  TaskStatusSetting,
   TaskWithAssignees,
 } from "@/lib/types";
 
@@ -35,32 +34,27 @@ export function GanttChart({
   members,
   tags,
   prioritySettings,
-  statusSettings,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
   tags: Tag[];
   prioritySettings: TaskPrioritySetting[];
-  statusSettings: TaskStatusSetting[];
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const editing = tasks.find((t) => t.id === editingId) ?? null;
 
-  // Mốc thời gian mỗi công việc (ưu tiên start..due; nếu thiếu thì dùng cái có).
+  // Mỗi công việc là một mốc theo deadline.
   const dated = useMemo(() => {
     return tasks
       .map((t) => {
-        const s = t.start_date ?? t.due_date;
-        const e = t.due_date ?? t.start_date;
-        if (!s || !e) return null;
-        const startIdx = Math.min(toDayIndex(s), toDayIndex(e));
-        const endIdx = Math.max(toDayIndex(s), toDayIndex(e));
-        return { task: t, startIdx, endIdx };
+        if (!t.due_date) return null;
+        const idx = toDayIndex(t.due_date);
+        return { task: t, startIdx: idx, endIdx: idx };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
   }, [tasks]);
 
-  const undated = tasks.filter((t) => !t.start_date && !t.due_date);
+  const undated = tasks.filter((t) => !t.due_date);
 
   const range = useMemo(() => {
     if (dated.length === 0) return null;
@@ -79,7 +73,7 @@ export function GanttChart({
   if (!range) {
     return (
       <div className="empty-state">
-        Chưa có công việc nào có ngày bắt đầu hoặc deadline để vẽ Gantt.
+        Chưa có công việc nào có deadline để vẽ Gantt.
       </div>
     );
   }
@@ -100,7 +94,7 @@ export function GanttChart({
   }
 
   function barColor(t: TaskWithAssignees): string {
-    if (t.status === "hoan_thanh") return "bg-green-500";
+    if (t.completed_at || t.status === "hoan_thanh") return "bg-green-500";
     if (isOverdue(t)) return "bg-red-500";
     return "bg-brand";
   }
@@ -220,7 +214,6 @@ export function GanttChart({
         members={members}
         tags={tags}
         prioritySettings={prioritySettings}
-        statusSettings={statusSettings}
         onClose={() => setEditingId(null)}
       />
     </>

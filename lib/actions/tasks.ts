@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import {
   createNextRecurrence,
   createTask,
+  createTasksBulk,
   duplicateTask,
   getTaskStepInfo,
   isTaskCompleted,
   setStatus,
-  setTaskCompletedAt,
   softDeleteTask,
   toggleComplete,
   updateTask,
@@ -31,6 +31,7 @@ import { addWorkingDays } from "@/lib/logic/working-days";
 import { todayISO } from "@/lib/logic/overdue";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUserId } from "@/lib/data/profiles";
+import { parseBulkTasks } from "@/lib/logic/bulk-tasks";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -38,12 +39,9 @@ function parseTaskForm(formData: FormData) {
   return {
     title: String(formData.get("title") ?? "").trim(),
     description: String(formData.get("description") ?? "").trim() || null,
-    start_date: String(formData.get("start_date") ?? "") || null,
     due_date: String(formData.get("due_date") ?? "") || null,
     priority: (String(formData.get("priority") ?? "trung_binh") ||
       "trung_binh") as TaskPriority,
-    status: (String(formData.get("status") ?? "chua_bat_dau") ||
-      "chua_bat_dau") as TaskStatus,
     repeat: (String(formData.get("repeat") ?? "none") || "none") as TaskRepeat,
     is_arising: formData.get("is_arising") === "on",
     van_hanh_step: String(formData.get("van_hanh_step") ?? "").trim() || null,
@@ -102,6 +100,66 @@ export async function createTaskFromListAction(
   return createTaskAction(projectId, formData);
 }
 
+export type BulkActionResult =
+  | { ok: true; count: number }
+  | { ok: false; error: string };
+
+/**
+ * Nhập hàng loạt: mỗi dòng dán vào -> một công việc.
+ * Áp dụng chung người phụ trách/dự án/deadline/nhãn; dòng nào ghi kèm ngày
+ * (vd "Tên | 25/09") thì dùng ngày riêng đó.
+ */
+export async function createTasksBulkAction(
+  formData: FormData,
+): Promise<BulkActionResult> {
+  const projectId = String(formData.get("project_id") ?? "") || null;
+  const primaryMemberId = String(formData.get("primary_member_id") ?? "") || null;
+  const commonDue = String(formData.get("due_date") ?? "") || null;
+  const supportMemberIds = formData
+    .getAll("support_member_ids")
+    .map((v) => String(v))
+    .filter(Boolean);
+  const tagIds = formData
+    .getAll("tag_ids")
+    .map((v) => String(v))
+    .filter(Boolean);
+  const raw = String(formData.get("lines") ?? "");
+
+  if (!primaryMemberId)
+    return { ok: false, error: "Vui lòng chọn người phụ trách chính." };
+
+  const defaultYear = Number(todayISO().slice(0, 4));
+  const parsed = parseBulkTasks(raw, defaultYear);
+  if (parsed.length === 0)
+    return { ok: false, error: "Chưa có dòng công việc hợp lệ để tạo." };
+
+  let count = 0;
+  try {
+    count = await createTasksBulk({
+      project_id: projectId,
+      primary_member_id: primaryMemberId,
+      support_member_ids: supportMemberIds,
+      tag_ids: tagIds,
+      due_date: commonDue,
+      lines: parsed.map((line) => ({
+        title: line.title,
+        due_date: line.dueDate,
+      })),
+    });
+    await createNotification({
+      type: "cong_viec_moi",
+      project_id: projectId,
+      message: `Đã thêm ${count} công việc (nhập hàng loạt)`,
+    });
+  } catch (e) {
+    return { ok: false, error: "Không tạo được công việc hàng loạt." };
+  }
+
+  if (projectId) revalidatePath(`/du-an/${projectId}`);
+  revalidatePath("/cong-viec");
+  return { ok: true, count };
+}
+
 export async function updateTaskAction(
   id: string,
   projectId: string | null,
@@ -116,27 +174,15 @@ export async function updateTaskAction(
     return { ok: false, error: "Bạn chỉ sửa được công việc do mình tạo." };
 
   try {
-    // Phát hiện chuyển trạng thái hoàn thành ngay trong form sửa, để đồng bộ
-    // completed_at và sinh việc lặp kế tiếp (trước đây bị bỏ sót ở luồng này).
-    const wasDone = await isTaskCompleted(id);
-    const willBeDone = fields.status === "hoan_thanh";
-
+    // Form sửa không còn ô trạng thái/hoàn thành — hoàn thành điều khiển bằng
+    // checkbox (toggleCompleteAction), nên ở đây chỉ cập nhật nội dung công việc.
     await updateTask(id, fields);
-
-    if (willBeDone !== wasDone) {
-      await setTaskCompletedAt(id, willBeDone ? new Date().toISOString() : null);
-    }
-
-    await Promise.all([
-      recordActivity({
-        task_id: id,
-        project_id: projectId,
-        action: "cap_nhat_cong_viec",
-        detail: fields.title,
-      }),
-      // Chuyển sang hoàn thành lần đầu -> sinh lần lặp kế tiếp.
-      willBeDone && !wasDone ? createNextRecurrence(id) : Promise.resolve(),
-    ]);
+    await recordActivity({
+      task_id: id,
+      project_id: projectId,
+      action: "cap_nhat_cong_viec",
+      detail: fields.title,
+    });
   } catch (e) {
     return { ok: false, error: "Không cập nhật được công việc." };
   }

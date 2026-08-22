@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
 import { ProjectStatusBadge } from "@/components/ui/Badges";
 import { TaskForm } from "@/components/tasks/TaskForm";
+import { BulkTaskForm } from "@/components/tasks/BulkTaskForm";
 import { TaskTable } from "@/components/tasks/TaskTable";
 import { createTaskAction } from "@/lib/actions/tasks";
 import type {
@@ -13,7 +14,6 @@ import type {
   Project,
   Tag,
   TaskPrioritySetting,
-  TaskStatusSetting,
   TaskWithAssignees,
 } from "@/lib/types";
 
@@ -23,17 +23,16 @@ export function ProjectDetailClient({
   members,
   tags,
   prioritySettings,
-  statusSettings,
 }: {
   project: Project;
   tasks: TaskWithAssignees[];
   members: MemberLite[];
   tags: Tag[];
   prioritySettings: TaskPrioritySetting[];
-  statusSettings: TaskStatusSetting[];
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const [bulkCreating, setBulkCreating] = useState(false);
   const [localTasks, setLocalTasks] = useState(tasks);
   useEffect(() => setLocalTasks(tasks), [tasks]);
 
@@ -65,10 +64,19 @@ export function ProjectDetailClient({
             </p>
           )}
         </div>
-        <button className="btn-primary shrink-0" onClick={() => setCreating(true)}>
-          <span className="text-lg leading-none">+</span>
-          Công việc
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setBulkCreating(true)}
+          >
+            Nhập hàng loạt
+          </button>
+          <button className="btn-primary" onClick={() => setCreating(true)}>
+            <span className="text-lg leading-none">+</span>
+            Công việc
+          </button>
+        </div>
       </div>
 
       <TaskTable
@@ -76,7 +84,6 @@ export function ProjectDetailClient({
         members={members}
         tags={tags}
         prioritySettings={prioritySettings}
-        statusSettings={statusSettings}
         onTaskChange={replaceTask}
         onTaskRemove={(id) =>
           setLocalTasks((current) => current.filter((task) => task.id !== id))
@@ -92,10 +99,25 @@ export function ProjectDetailClient({
           members={members}
           tags={tags}
           prioritySettings={prioritySettings}
-          statusSettings={statusSettings}
           onSubmit={(fd) => createTaskAction(project.id, fd)}
           onDone={() => {
             setCreating(false);
+            router.refresh();
+          }}
+        />
+      </Modal>
+
+      <Modal
+        open={bulkCreating}
+        onClose={() => setBulkCreating(false)}
+        title="Nhập công việc hàng loạt"
+      >
+        <BulkTaskForm
+          members={members}
+          tags={tags}
+          defaultProjectId={project.id}
+          onDone={() => {
+            setBulkCreating(false);
             router.refresh();
           }}
         />

@@ -4,10 +4,7 @@ import { getProject } from "@/lib/data/projects";
 import { listTasksByProject } from "@/lib/data/tasks";
 import { listActiveMemberLites } from "@/lib/data/members";
 import { listTags } from "@/lib/data/tags";
-import {
-  listTaskPrioritySettings,
-  listTaskStatusSettings,
-} from "@/lib/data/settings";
+import { listTaskPrioritySettings } from "@/lib/data/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +16,11 @@ export default async function ProjectDetailPage({
   const project = await getProject(params.id);
   if (!project) notFound();
 
-  const [tasks, members, tags, prioritySettings, statusSettings] = await Promise.all([
+  const [tasks, members, tags, prioritySettings] = await Promise.all([
     listTasksByProject(params.id),
     listActiveMemberLites(),
     listTags(),
     listTaskPrioritySettings(),
-    listTaskStatusSettings(),
   ]);
 
   return (
@@ -34,7 +30,6 @@ export default async function ProjectDetailPage({
       members={members}
       tags={tags}
       prioritySettings={prioritySettings}
-      statusSettings={statusSettings}
     />
   );
 }

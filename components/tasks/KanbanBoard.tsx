@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -10,24 +10,30 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  ArisingBadge,
-  NeedStartBadge,
-  OverdueBadge,
-} from "@/components/ui/Badges";
+import { ArisingBadge, OverdueBadge } from "@/components/ui/Badges";
 import { TagChips } from "@/components/ui/TagChips";
 import { TaskEditModal } from "./TaskEditModal";
-import { updateTaskStatusAction } from "@/lib/actions/tasks";
-import { isOverdue, needsAttention, needsToStart } from "@/lib/logic/overdue";
+import { toggleCompleteAction } from "@/lib/actions/tasks";
+import { isOverdue, needsAttention } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
 import type {
   MemberLite,
   Tag,
   TaskPrioritySetting,
-  TaskStatus,
-  TaskStatusSetting,
   TaskWithAssignees,
 } from "@/lib/types";
+
+// Kanban rút gọn: chỉ hai cột theo tình trạng hoàn thành.
+type ColumnKey = "todo" | "done";
+
+const COLUMNS: { key: ColumnKey; label: string }[] = [
+  { key: "todo", label: "Chưa hoàn thành" },
+  { key: "done", label: "Hoàn thành" },
+];
+
+function isDone(task: TaskWithAssignees): boolean {
+  return task.status === "hoan_thanh" || !!task.completed_at;
+}
 
 function KanbanCard({
   task,
@@ -48,9 +54,8 @@ function KanbanCard({
     useDraggable({ id: task.id });
 
   const overdue = isOverdue(task);
-  const startLate = needsToStart(task);
   const attention = needsAttention(task);
-  const done = task.status === "hoan_thanh" || !!task.completed_at;
+  const done = isDone(task);
   const canLog =
     !!workMemberId &&
     (task.primary?.id === workMemberId ||
@@ -89,7 +94,7 @@ function KanbanCard({
           onClick={(event) => event.stopPropagation()}
           className="flex h-7 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing dark:hover:bg-gray-800 dark:hover:text-gray-200"
           aria-label={`Kéo để di chuyển ${task.title}`}
-          title="Kéo để đổi trạng thái"
+          title="Kéo để đổi tình trạng hoàn thành"
         >
           <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
             <circle cx="5" cy="4" r="1" /><circle cx="11" cy="4" r="1" />
@@ -124,7 +129,6 @@ function KanbanCard({
       <div className="flex flex-wrap items-center gap-1.5">
         {task.is_arising && <ArisingBadge />}
         {overdue && <OverdueBadge />}
-        {startLate && !overdue && <NeedStartBadge />}
         {task.subtaskTotal > 0 && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {task.subtaskDone}/{task.subtaskTotal} việc con
@@ -147,7 +151,7 @@ function KanbanCard({
 }
 
 function KanbanColumn({
-  status,
+  columnKey,
   label,
   tasks,
   projectNameOf,
@@ -156,7 +160,7 @@ function KanbanColumn({
   onToggleWorkLog,
   onEdit,
 }: {
-  status: TaskStatus;
+  columnKey: ColumnKey;
   label: string;
   tasks: TaskWithAssignees[];
   projectNameOf: (id: string) => string | undefined;
@@ -165,7 +169,7 @@ function KanbanColumn({
   onToggleWorkLog: (taskId: string, enabled: boolean) => void;
   onEdit: (id: string) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: status });
+  const { setNodeRef, isOver } = useDroppable({ id: columnKey });
 
   return (
     <div className="flex min-w-[280px] flex-1 snap-start flex-col">
@@ -210,7 +214,6 @@ export function KanbanBoard({
   projects,
   tags,
   prioritySettings,
-  statusSettings,
   onTaskChange,
   workMemberId,
   workTaskIds,
@@ -221,7 +224,6 @@ export function KanbanBoard({
   projects: { id: string; name: string }[];
   tags: Tag[];
   prioritySettings: TaskPrioritySetting[];
-  statusSettings: TaskStatusSetting[];
   onTaskChange: (task: TaskWithAssignees) => void;
   workMemberId: string;
   workTaskIds: Set<string>;
@@ -229,14 +231,6 @@ export function KanbanBoard({
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const editing = tasks.find((t) => t.id === editingId) ?? null;
-  const visibleStatuses = useMemo(
-    () =>
-      statusSettings.filter(
-        (item) =>
-          item.is_active || tasks.some((task) => task.status === item.code),
-      ),
-    [statusSettings, tasks],
-  );
 
   const projectNameOf = (id: string) =>
     projects.find((p) => p.id === id)?.name;
@@ -247,21 +241,26 @@ export function KanbanBoard({
 
   function handleDragEnd(event: DragEndEvent) {
     const taskId = String(event.active.id);
-    const newStatus = event.over?.id as TaskStatus | undefined;
-    if (!newStatus) return;
+    const target = event.over?.id as ColumnKey | undefined;
+    if (!target) return;
 
     const task = tasks.find((t) => t.id === taskId);
-    if (!task || task.status === newStatus) return;
+    if (!task) return;
+    const completed = target === "done";
+    if (isDone(task) === completed) return;
 
     // Cập nhật lạc quan: thẻ di chuyển ngay, không chờ mạng.
     onTaskChange({
       ...task,
-      status: newStatus,
-      completed_at:
-        newStatus === "hoan_thanh" ? new Date().toISOString() : null,
+      completed_at: completed ? new Date().toISOString() : null,
+      status: completed
+        ? "hoan_thanh"
+        : task.status === "hoan_thanh"
+          ? "dang_lam"
+          : task.status,
     });
 
-    updateTaskStatusAction(taskId, newStatus).then((res) => {
+    toggleCompleteAction(taskId, completed).then((res) => {
       if (!res.ok) onTaskChange(task);
     });
   }
@@ -270,12 +269,14 @@ export function KanbanBoard({
     <>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3">
-          {visibleStatuses.map((statusSetting) => (
+          {COLUMNS.map((column) => (
             <KanbanColumn
-              key={statusSetting.code}
-              status={statusSetting.code}
-              label={statusSetting.label}
-              tasks={tasks.filter((t) => t.status === statusSetting.code)}
+              key={column.key}
+              columnKey={column.key}
+              label={column.label}
+              tasks={tasks.filter((t) =>
+                column.key === "done" ? isDone(t) : !isDone(t),
+              )}
               projectNameOf={projectNameOf}
               workMemberId={workMemberId}
               workTaskIds={workTaskIds}
@@ -291,7 +292,6 @@ export function KanbanBoard({
         members={members}
         tags={tags}
         prioritySettings={prioritySettings}
-        statusSettings={statusSettings}
         onClose={() => setEditingId(null)}
       />
     </>

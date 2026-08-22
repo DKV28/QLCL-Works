@@ -8,6 +8,7 @@ import { TaskTable } from "./TaskTable";
 import { KanbanBoard } from "./KanbanBoard";
 import { GanttChart } from "./GanttChart";
 import { TaskForm } from "./TaskForm";
+import { BulkTaskForm } from "./BulkTaskForm";
 import { Modal } from "@/components/ui/Modal";
 import { createTaskFromListAction } from "@/lib/actions/tasks";
 import {
@@ -21,7 +22,6 @@ import type {
   Project,
   Tag,
   TaskPrioritySetting,
-  TaskStatusSetting,
   TaskWithAssignees,
 } from "@/lib/types";
 
@@ -122,7 +122,6 @@ export function TasksView({
   projects,
   tags,
   prioritySettings,
-  statusSettings,
   initialTaskId,
 }: {
   tasks: TaskWithAssignees[];
@@ -130,11 +129,11 @@ export function TasksView({
   projects: Pick<Project, "id" | "name">[];
   tags: Tag[];
   prioritySettings: TaskPrioritySetting[];
-  statusSettings: TaskStatusSetting[];
   initialTaskId?: string;
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const [bulkCreating, setBulkCreating] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [myDayOpen, setMyDayOpen] = useState(false);
@@ -364,6 +363,13 @@ export function TasksView({
               My day
             </button>
           )}
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setBulkCreating(true)}
+          >
+            Nhập hàng loạt
+          </button>
           <button className="btn-primary" onClick={() => setCreating(true)}>
             <span className="text-lg leading-none">+</span>
             Công việc
@@ -492,27 +498,6 @@ export function TasksView({
             </div>
           )}
           <div>
-            <label className="label">Trạng thái</label>
-            <select
-              className="input"
-              value={filters.statusCode ?? ""}
-              onChange={(e) => update({ statusCode: e.target.value })}
-            >
-              <option value="">Tất cả</option>
-              {statusSettings
-                .filter(
-                  (item) =>
-                    item.is_active ||
-                    localTasks.some((task) => task.status === item.code),
-                )
-                .map((item) => (
-                  <option key={item.code} value={item.code}>
-                    {item.label}
-                  </option>
-                ))}
-            </select>
-          </div>
-          <div>
             <label className="label">Deadline từ</label>
             <input
               type="date"
@@ -616,7 +601,6 @@ export function TasksView({
           members={members}
           tags={tags}
           prioritySettings={prioritySettings}
-          statusSettings={statusSettings}
           onTaskChange={replaceTask}
           onTaskRemove={removeTask}
           workMemberId={activeWorkMemberId}
@@ -632,7 +616,6 @@ export function TasksView({
           projects={projects}
           tags={tags}
           prioritySettings={prioritySettings}
-          statusSettings={statusSettings}
           onTaskChange={replaceTask}
           workMemberId={activeWorkMemberId}
           workTaskIds={workTaskIds}
@@ -645,7 +628,6 @@ export function TasksView({
           members={members}
           tags={tags}
           prioritySettings={prioritySettings}
-          statusSettings={statusSettings}
         />
       )}
 
@@ -659,10 +641,25 @@ export function TasksView({
           projects={projects}
           tags={tags}
           prioritySettings={prioritySettings}
-          statusSettings={statusSettings}
           onSubmit={createTaskFromListAction}
           onDone={() => {
             setCreating(false);
+            router.refresh();
+          }}
+        />
+      </Modal>
+
+      <Modal
+        open={bulkCreating}
+        onClose={() => setBulkCreating(false)}
+        title="Nhập công việc hàng loạt"
+      >
+        <BulkTaskForm
+          members={members}
+          projects={projects}
+          tags={tags}
+          onDone={() => {
+            setBulkCreating(false);
             router.refresh();
           }}
         />
