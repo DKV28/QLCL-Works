@@ -171,6 +171,77 @@ export async function createTask(input: TaskInput): Promise<Task> {
   return task;
 }
 
+export interface BulkTaskLine {
+  title: string;
+  due_date?: string | null; // deadline riêng của dòng (nếu có)
+}
+
+export interface BulkTaskInput {
+  project_id: string | null;
+  primary_member_id: string | null;
+  support_member_ids?: string[];
+  tag_ids?: string[];
+  due_date?: string | null; // deadline chung, dùng cho dòng không ghi riêng
+  lines: BulkTaskLine[];
+}
+
+/**
+ * Tạo nhiều công việc trong một lượt (nhập hàng loạt).
+ * Chèn hàng loạt tasks trước, rồi gán người phụ trách và nhãn theo lô —
+ * hiệu quả hơn gọi createTask từng dòng. Trả về số công việc đã tạo.
+ */
+export async function createTasksBulk(input: BulkTaskInput): Promise<number> {
+  const supabase = createClient();
+
+  const rows = input.lines
+    .filter((line) => line.title.trim())
+    .map((line) => ({
+      project_id: input.project_id,
+      title: line.title.trim(),
+      due_date: line.due_date ?? input.due_date ?? null,
+    }));
+  if (rows.length === 0) return 0;
+
+  const { data, error } = await supabase.from("tasks").insert(rows).select("id");
+  if (error) throw error;
+  const ids = (data as { id: string }[]).map((r) => r.id);
+
+  const primary = input.primary_member_id ?? null;
+  const supportIds = (input.support_member_ids ?? []).filter(
+    (sid) => sid && sid !== primary,
+  );
+  const assigneeRows: {
+    task_id: string;
+    member_id: string;
+    is_primary: boolean;
+  }[] = [];
+  for (const id of ids) {
+    if (primary) {
+      assigneeRows.push({ task_id: id, member_id: primary, is_primary: true });
+    }
+    for (const sid of supportIds) {
+      assigneeRows.push({ task_id: id, member_id: sid, is_primary: false });
+    }
+  }
+  if (assigneeRows.length > 0) {
+    const { error: aErr } = await supabase
+      .from("task_assignees")
+      .insert(assigneeRows);
+    if (aErr) throw aErr;
+  }
+
+  const tagIds = (input.tag_ids ?? []).filter(Boolean);
+  if (tagIds.length > 0) {
+    const tagRows = ids.flatMap((id) =>
+      tagIds.map((tagId) => ({ task_id: id, tag_id: tagId })),
+    );
+    const { error: tErr } = await supabase.from("task_tags").insert(tagRows);
+    if (tErr) throw tErr;
+  }
+
+  return ids.length;
+}
+
 export async function updateTask(
   id: string,
   input: Partial<TaskInput>,

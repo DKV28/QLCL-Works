@@ -3,10 +3,7 @@ import { listAllTasks } from "@/lib/data/tasks";
 import { listActiveMemberLites } from "@/lib/data/members";
 import { listProjects } from "@/lib/data/projects";
 import { listTags } from "@/lib/data/tags";
-import {
-  listTaskPrioritySettings,
-  listTaskStatusSettings,
-} from "@/lib/data/settings";
+import { listTaskPrioritySettings } from "@/lib/data/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -15,14 +12,13 @@ export default async function TasksPage({
 }: {
   searchParams?: { task?: string };
 }) {
-  const [tasks, members, projects, tags, prioritySettings, statusSettings] =
+  const [tasks, members, projects, tags, prioritySettings] =
     await Promise.all([
     listAllTasks(),
     listActiveMemberLites(),
     listProjects(),
     listTags(),
     listTaskPrioritySettings(),
-    listTaskStatusSettings(),
   ]);
 
   const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }));
@@ -34,7 +30,6 @@ export default async function TasksPage({
       projects={projectOptions}
       tags={tags}
       prioritySettings={prioritySettings}
-      statusSettings={statusSettings}
       initialTaskId={searchParams?.task}
     />
   );

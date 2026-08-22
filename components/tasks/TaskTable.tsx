@@ -4,9 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArisingBadge,
-  NeedStartBadge,
   OverdueBadge,
-  StatusBadge,
   StepBadge,
 } from "@/components/ui/Badges";
 import { TaskEditModal } from "./TaskEditModal";
@@ -24,23 +22,17 @@ import { getWorkflowStepsAction } from "@/lib/actions/settings";
 import { ActionsMenu, type ActionItem } from "@/components/ui/ActionsMenu";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TagChips } from "@/components/ui/TagChips";
-import {
-  isOverdue,
-  needsAttention,
-  needsToStart,
-  todayISO,
-} from "@/lib/logic/overdue";
+import { isOverdue, needsAttention, todayISO } from "@/lib/logic/overdue";
 import { formatFriendlyDate } from "@/lib/logic/dates";
 import type {
   MemberLite,
   Tag,
   TaskPrioritySetting,
-  TaskStatusSetting,
   TaskWithAssignees,
   WorkflowStepSetting,
 } from "@/lib/types";
 
-type SortKey = "title" | "assignee" | "due_date" | "arising" | "status";
+type SortKey = "title" | "assignee" | "due_date" | "arising";
 type SortDirection = "asc" | "desc";
 type TaskGroup = {
   id: "today" | "upcoming" | "completed";
@@ -55,7 +47,6 @@ export function TaskTable({
   members,
   tags,
   prioritySettings,
-  statusSettings,
   onTaskChange,
   onTaskRemove,
   workMemberId = "",
@@ -67,7 +58,6 @@ export function TaskTable({
   members: MemberLite[];
   tags: Tag[];
   prioritySettings: TaskPrioritySetting[];
-  statusSettings: TaskStatusSetting[];
   onTaskChange: (task: TaskWithAssignees) => void;
   onTaskRemove: (id: string) => void;
   workMemberId?: string;
@@ -128,10 +118,6 @@ export function TaskTable({
   const isLastStep = (code: string | null) => !!getStep(code) && !getNextStep(code);
 
   const editing = tasks.find((t) => t.id === editingId) ?? null;
-  const statusOrder = useMemo(
-    () => new Map(statusSettings.map((item) => [item.code, item.sort_order])),
-    [statusSettings],
-  );
   const sortedTasks = useMemo(() => {
     if (!sortKey) return tasks;
     const direction = sortDirection === "asc" ? 1 : -1;
@@ -148,30 +134,26 @@ export function TaskTable({
         comparison = (a.due_date ?? "9999-12-31").localeCompare(
           b.due_date ?? "9999-12-31",
         );
-      } else if (sortKey === "arising") {
-        comparison = Number(b.is_arising) - Number(a.is_arising);
       } else {
-        comparison =
-          (statusOrder.get(a.status) ?? Number.MAX_SAFE_INTEGER) -
-          (statusOrder.get(b.status) ?? Number.MAX_SAFE_INTEGER);
+        comparison = Number(b.is_arising) - Number(a.is_arising);
       }
       return comparison * direction;
     });
-  }, [tasks, sortKey, sortDirection, statusOrder]);
+  }, [tasks, sortKey, sortDirection]);
   const taskGroups = useMemo(() => {
     const today = todayISO();
     const groups: TaskGroup[] = [
       {
         id: "today",
         label: "Hôm nay",
-        helper: "Đã đến ngày bắt đầu hoặc deadline",
+        helper: "Đã tới hoặc quá deadline",
         dotClass: "bg-orange-500",
         tasks: [],
       },
       {
         id: "upcoming",
         label: "Sắp tới",
-        helper: "Chưa đến thời điểm thực hiện",
+        helper: "Chưa tới deadline",
         dotClass: "bg-blue-500",
         tasks: [],
       },
@@ -188,10 +170,7 @@ export function TaskTable({
       const done = task.status === "hoan_thanh" || !!task.completed_at;
       if (done) {
         groups[2].tasks.push(task);
-      } else if (
-        (task.start_date !== null && task.start_date <= today) ||
-        (task.due_date !== null && task.due_date <= today)
-      ) {
+      } else if (task.due_date !== null && task.due_date <= today) {
         groups[0].tasks.push(task);
       } else {
         groups[1].tasks.push(task);
@@ -382,7 +361,6 @@ export function TaskTable({
             {!collapsedGroups.has(group.id) && <div className="space-y-2">
         {group.tasks.map((task) => {
           const overdue = isOverdue(task);
-          const startLate = needsToStart(task);
           const attention = needsAttention(task);
           const done = task.status === "hoan_thanh" || !!task.completed_at;
           const canLog =
@@ -432,13 +410,8 @@ export function TaskTable({
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <StatusBadge
-                  value={task.status}
-                  setting={statusSettings.find((item) => item.code === task.status)}
-                />
                 {task.is_arising && <ArisingBadge />}
                 {overdue && <OverdueBadge />}
-                {startLate && !overdue && <NeedStartBadge />}
                 {task.van_hanh_step && (
                   <StepBadge
                     order={
@@ -502,7 +475,6 @@ export function TaskTable({
             <th className="p-3"><SortHeader column="due_date">Deadline</SortHeader></th>
             <th className="p-3">Bước</th>
             <th className="p-3"><SortHeader column="arising">Phát sinh</SortHeader></th>
-            <th className="p-3"><SortHeader column="status">Trạng thái</SortHeader></th>
             <th className="p-3 text-right">Thao tác</th>
           </tr>
         </thead>
@@ -511,7 +483,7 @@ export function TaskTable({
             <Fragment key={group.id}>
               <tr className="border-y border-gray-100 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-950/45">
                 <td
-                  colSpan={workMemberId ? 9 : 8}
+                  colSpan={workMemberId ? 8 : 7}
                   className="px-3 py-2"
                 >
                   <button
@@ -536,7 +508,6 @@ export function TaskTable({
               </tr>
           {!collapsedGroups.has(group.id) && group.tasks.map((t) => {
             const overdue = isOverdue(t);
-            const startLate = needsToStart(t);
             const attention = needsAttention(t);
             const done = t.status === "hoan_thanh" || !!t.completed_at;
             const canLog =
@@ -645,7 +616,6 @@ export function TaskTable({
                       {formatFriendlyDate(t.due_date)}
                     </span>
                     {overdue && <OverdueBadge />}
-                    {startLate && !overdue && <NeedStartBadge />}
                   </div>
                 </td>
                 <td className="p-3 align-top">
@@ -670,12 +640,6 @@ export function TaskTable({
                 <td className="p-3 align-top">
                   {t.is_arising ? <ArisingBadge /> : <span className="text-gray-300">—</span>}
                 </td>
-                <td className="p-3 align-top">
-                  <StatusBadge
-                    value={t.status}
-                    setting={statusSettings.find((item) => item.code === t.status)}
-                  />
-                </td>
                 <td className="p-3 align-top text-right">
                   <div className="flex justify-end">
                     <ActionsMenu
@@ -698,7 +662,6 @@ export function TaskTable({
         members={members}
         tags={tags}
         prioritySettings={prioritySettings}
-        statusSettings={statusSettings}
         onClose={closeEditor}
       />
       {confirmDialog}

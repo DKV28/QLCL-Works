@@ -11,7 +11,6 @@ import type {
   MemberLite,
   Tag,
   TaskPrioritySetting,
-  TaskStatusSetting,
   TaskWithAssignees,
 } from "@/lib/types";
 
@@ -22,14 +21,12 @@ export function TaskEditModal({
   members,
   tags,
   prioritySettings,
-  statusSettings,
   onClose,
 }: {
   task: TaskWithAssignees | null;
   members: MemberLite[];
   tags?: Tag[];
   prioritySettings?: TaskPrioritySetting[];
-  statusSettings?: TaskStatusSetting[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -86,7 +83,6 @@ export function TaskEditModal({
             members={members}
             tags={tags}
             prioritySettings={prioritySettings}
-            statusSettings={statusSettings}
             onSubmit={(fd) => updateTaskAction(task.id, task.project_id, fd)}
             onDone={() => {
               onClose();

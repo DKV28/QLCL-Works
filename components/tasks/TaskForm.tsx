@@ -5,19 +5,16 @@ import Link from "next/link";
 import {
   TASK_PRIORITY_OPTIONS,
   TASK_REPEAT_OPTIONS,
-  TASK_STATUS_OPTIONS,
   type MemberLite,
   type Project,
   type Tag,
   type TaskPrioritySetting,
-  type TaskStatusSetting,
   type TaskWithAssignees,
   type WorkflowStepSetting,
 } from "@/lib/types";
 import type { ActionResult } from "@/lib/actions/tasks";
 import { getTagsAction } from "@/lib/actions/tags";
 import { getWorkflowStepsAction } from "@/lib/actions/settings";
-import { todayISO } from "@/lib/logic/overdue";
 import {
   FIRST_STEP_CODE,
   VAN_HANH_STEPS,
@@ -31,7 +28,6 @@ export function TaskForm({
   projects,
   tags,
   prioritySettings,
-  statusSettings,
   onSubmit,
   onDone,
 }: {
@@ -41,7 +37,6 @@ export function TaskForm({
   projects?: Pick<Project, "id" | "name">[];
   tags?: Tag[];
   prioritySettings?: TaskPrioritySetting[];
-  statusSettings?: TaskStatusSetting[];
   onSubmit: (formData: FormData) => Promise<ActionResult>;
   onDone: () => void;
 }) {
@@ -115,24 +110,8 @@ export function TaskForm({
           is_system: true,
           updated_at: "",
         }));
-  const statusOptions =
-    statusSettings && statusSettings.length > 0
-      ? statusSettings.filter((item) => item.is_active || item.code === task?.status)
-      : TASK_STATUS_OPTIONS.map(([code, label], index) => ({
-          code,
-          label,
-          color: "",
-          sort_order: index,
-          is_active: true,
-          is_default: code === "chua_bat_dau",
-          is_terminal: code === "hoan_thanh",
-          is_system: true,
-          updated_at: "",
-        }));
   const defaultPriority =
     priorityOptions.find((item) => item.is_default)?.code ?? "trung_binh";
-  const defaultStatus =
-    statusOptions.find((item) => item.is_default)?.code ?? "chua_bat_dau";
 
   const initialTagIds = useMemo(
     () => new Set((task?.tags ?? []).map((t) => t.id)),
@@ -293,32 +272,18 @@ export function TaskForm({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="label" htmlFor="start_date">
-            Ngày bắt đầu
-          </label>
-          <input
-            id="start_date"
-            name="start_date"
-            type="date"
-            defaultValue={task ? task.start_date ?? "" : todayISO()}
-            className="input"
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="due_date">
-            Deadline
-          </label>
-          <input
-            id="due_date"
-            name="due_date"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="input"
-          />
-        </div>
+      <div>
+        <label className="label" htmlFor="due_date">
+          Deadline
+        </label>
+        <input
+          id="due_date"
+          name="due_date"
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          className="input"
+        />
       </div>
 
       <div className="rounded-md border border-gray-200 p-3 dark:border-gray-700">
@@ -389,34 +354,15 @@ export function TaskForm({
         name="priority"
         value={task?.priority ?? defaultPriority}
       />
-      <div className="grid grid-cols-2 items-end gap-4">
-        <div>
-          <label className="label" htmlFor="status">
-            Trạng thái
-          </label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={task?.status ?? defaultStatus}
-            className="input"
-          >
-            {statusOptions.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <label className="flex h-10 items-center gap-2 rounded-md border border-gray-300 px-3 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300">
-          <input
-            type="checkbox"
-            name="is_arising"
-            defaultChecked={task?.is_arising ?? false}
-            className="h-4 w-4 accent-brand"
-          />
-          Công việc phát sinh (ngoài kế hoạch)
-        </label>
-      </div>
+      <label className="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2.5 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300">
+        <input
+          type="checkbox"
+          name="is_arising"
+          defaultChecked={task?.is_arising ?? false}
+          className="h-4 w-4 accent-brand"
+        />
+        Công việc phát sinh (ngoài kế hoạch)
+      </label>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
