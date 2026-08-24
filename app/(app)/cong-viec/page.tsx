@@ -1,6 +1,6 @@
 import { TasksView } from "@/components/tasks/TasksView";
 import { listAllTasks } from "@/lib/data/tasks";
-import { listActiveMemberLites } from "@/lib/data/members";
+import { getMyMemberId, listActiveMemberLites } from "@/lib/data/members";
 import { listProjects } from "@/lib/data/projects";
 import { listTags } from "@/lib/data/tags";
 import { listTaskPrioritySettings } from "@/lib/data/settings";
@@ -12,13 +12,14 @@ export default async function TasksPage({
 }: {
   searchParams?: { task?: string };
 }) {
-  const [tasks, members, projects, tags, prioritySettings] =
+  const [tasks, members, projects, tags, prioritySettings, myMemberId] =
     await Promise.all([
     listAllTasks(),
     listActiveMemberLites(),
     listProjects(),
     listTags(),
     listTaskPrioritySettings(),
+    getMyMemberId(),
   ]);
 
   const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }));
@@ -31,6 +32,7 @@ export default async function TasksPage({
       tags={tags}
       prioritySettings={prioritySettings}
       initialTaskId={searchParams?.task}
+      myMemberId={myMemberId}
     />
   );
 }

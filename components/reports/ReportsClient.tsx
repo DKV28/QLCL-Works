@@ -98,6 +98,7 @@ export function ReportsClient({
           tasks={tasks}
           members={members}
           lockMemberId={personal ? myMemberId ?? undefined : undefined}
+          defaultMemberId={!personal ? myMemberId ?? undefined : undefined}
         />
       )}
       {tab === "weekly" && (
