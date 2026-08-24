@@ -105,6 +105,29 @@ Supabase Free tự pause project sau **7 ngày không có request**. Để trán
    - URL: `https://<tên-app>.vercel.app/api/health`
    - Chu kỳ: 5 phút
 
+## Sao lưu & dọn dẹp định kỳ (dự kiến — chưa triển khai)
+
+Thiết kế đã chốt cho tính năng giảm tải dung lượng Supabase (ghi lại để triển khai sau; hiện
+**chưa** có code). Deploy và quan sát dung lượng thực tế một thời gian rồi mới làm.
+
+- **Mục tiêu:** giảm tải Supabase Free (giới hạn chặt nhất là **DB 500MB**; Storage 1GB).
+- **Điều kiện dọn:** công việc có `tasks.completed_at` đã quá **30 ngày**.
+- **Phạm vi:** gỡ **toàn bộ** bản ghi công việc đã xong khỏi database sống — `tasks` + mọi
+  bảng con (theo `on delete cascade`): `comments`, `subtasks`, `task_assignees`,
+  `task_work_logs`, `task_daily_notes`, `task_tags`, `attachments` (metadata),
+  `activity_log`, `notifications` — **và** file thật trong bucket Storage `task-attachments`
+  (Storage không cascade nên phải xóa object trước).
+- **Sao lưu trước khi xóa:** xuất một file JSON đầy đủ (đủ mọi cột + id gốc để có thể phục
+  hồi), lưu **cả** vào một bucket private `backups` **và** cho Quản trị **tải về máy**. Luôn
+  ghi bản sao lưu xong, xác minh, rồi mới xóa — lỗi giữa chừng thì không mất dữ liệu.
+- **Kích hoạt:** **nút thủ công** trong **Quản trị → Cài đặt** (không cron, không tự động);
+  xử lý theo lô, bấm lại nếu còn nhiều.
+- **Nền tảng có sẵn để dùng khi làm:** `createAdminClient()` (service role, bỏ RLS) ở
+  `lib/supabase/server.ts`; guard `requireAdmin()` (`lib/actions/admin.ts`); mẫu xóa object
+  Storage rồi metadata ở `lib/data/attachments.ts`.
+- **Ngoài phạm vi bản đầu:** công cụ phục hồi (import lại từ JSON) — làm ở phiên sau; trước
+  mắt file JSON được thiết kế để phục hồi được bằng script/SQL khi cần.
+
 ## Phạm vi V1 & lộ trình
 
 V1 đã có: đăng nhập email/mật khẩu, CRUD dự án, CRUD công việc (1 người phụ trách,
