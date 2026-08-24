@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "App quản lý dự án và công việc — Phòng Quản lý Chất lượng",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
+    background_color: "#1B2A6B",
     theme_color: "#1B2A6B",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
