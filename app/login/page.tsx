@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/auth/LoginForm";
+import { LogoMark } from "@/components/Logo";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -6,9 +7,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-10 dark:bg-gray-950">
       <div className="w-full max-w-md">
         <div className="mb-7 text-center">
-          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-lg font-bold text-white shadow-sm">
-            Q
-          </div>
+          <LogoMark className="mx-auto mb-3 h-12 w-auto" />
           <h1 className="text-2xl font-bold tracking-tight">QLCL Works</h1>
           <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
             Không gian quản lý công việc của Phòng QLCL
