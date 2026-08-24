@@ -61,12 +61,21 @@ export function DailyReport({
   tasks,
   members,
   lockMemberId,
+  defaultMemberId,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
   lockMemberId?: string;
+  defaultMemberId?: string;
 }) {
-  const [memberId, setMemberId] = useState(lockMemberId ?? "");
+  // Mặc định mềm: chọn sẵn nhân sự đang đăng nhập (nếu có trong danh sách),
+  // nhưng người dùng vẫn đổi được. lockMemberId (chế độ cá nhân) vẫn ưu tiên.
+  const initialMemberId =
+    lockMemberId ??
+    (defaultMemberId && members.some((m) => m.id === defaultMemberId)
+      ? defaultMemberId
+      : "");
+  const [memberId, setMemberId] = useState(initialMemberId);
   const [reportDate, setReportDate] = useState(todayISO());
   const [workLogs, setWorkLogs] = useState<TaskWorkLog[]>([]);
   const [dailyNotes, setDailyNotes] = useState<TaskDailyNote[]>([]);

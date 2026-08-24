@@ -123,6 +123,7 @@ export function TasksView({
   tags,
   prioritySettings,
   initialTaskId,
+  myMemberId,
 }: {
   tasks: TaskWithAssignees[];
   members: MemberLite[];
@@ -130,16 +131,23 @@ export function TasksView({
   tags: Tag[];
   prioritySettings: TaskPrioritySetting[];
   initialTaskId?: string;
+  myMemberId?: string | null;
 }) {
   const router = useRouter();
+  // Nhân sự đã liên kết tài khoản -> mặc định lọc theo chính họ khi mở trang.
+  // Chỉ áp dụng khi id nằm trong danh sách nhân sự đang hoạt động.
+  const defaultMemberId =
+    myMemberId && members.some((m) => m.id === myMemberId) ? myMemberId : "";
   const [creating, setCreating] = useState(false);
   const [bulkCreating, setBulkCreating] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [myDayOpen, setMyDayOpen] = useState(false);
-  const [filters, setFilters] = useState<TaskFilters>({});
+  const [filters, setFilters] = useState<TaskFilters>(() =>
+    defaultMemberId ? { assigneeId: defaultMemberId } : {},
+  );
   const [teamTab, setTeamTab] = useState("");
-  const [workMemberId, setWorkMemberId] = useState("");
+  const [workMemberId, setWorkMemberId] = useState(defaultMemberId);
   const [workDate, setWorkDate] = useState(todayISO());
   const [workTaskIds, setWorkTaskIds] = useState<Set<string>>(new Set());
   const [workLogError, setWorkLogError] = useState<string | null>(null);

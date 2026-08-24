@@ -16,7 +16,7 @@ export default async function ReportPage() {
     listAllTasks(),
     listActiveMemberLites(),
     listProjects(),
-    scope === "own" ? getMyMemberId() : Promise.resolve(null),
+    getMyMemberId(),
   ]);
 
   const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }));
