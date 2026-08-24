@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { LogoMark } from "@/components/Logo";
 import type { Profile } from "@/lib/types";
 
 const SIDEBAR_STORAGE_KEY = "qlcl-sidebar-collapsed";
@@ -65,9 +66,7 @@ export function AppShell({
             className="flex min-w-0 items-center gap-2.5 font-bold tracking-tight text-gray-950 dark:text-white"
             aria-label="QLCL Works"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-sm text-white">
-              Q
-            </span>
+            <LogoMark className="h-8 w-auto shrink-0" />
             {!sidebarCollapsed && <span className="truncate">QLCL Works</span>}
           </Link>
           <button

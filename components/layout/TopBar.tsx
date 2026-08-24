@@ -1,6 +1,7 @@
 import { signOut } from "@/lib/actions/auth";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationBell } from "./NotificationBell";
+import { LogoMark } from "@/components/Logo";
 import type { Profile } from "@/lib/types";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -13,6 +14,7 @@ export function TopBar({ profile }: { profile: Profile }) {
   return (
     <header className="flex h-16 min-w-0 items-center justify-between gap-3 border-b border-gray-200/80 bg-white/95 px-3 sm:px-6 dark:border-gray-800 dark:bg-gray-900/95">
       <div className="flex min-w-0 items-center gap-3">
+        <LogoMark className="h-7 w-auto shrink-0 md:hidden" />
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand dark:bg-brand/15 dark:text-brand-light">
           {(profile.full_name || profile.email || "U").trim().charAt(0).toUpperCase()}
         </div>
