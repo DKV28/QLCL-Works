@@ -389,9 +389,16 @@ export async function advanceVanHanhStepAction(
   return { ok: true };
 }
 
+/** Kiểm tra chuỗi ngày yyyy-mm-dd hợp lệ. */
+function isValidISODate(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(v + "T00:00:00Z");
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
+
 /**
  * Tạo việc theo dõi (đề xuất) THỦ CÔNG từ hộp thoại trên chi tiết công việc.
- * Mỗi item -> một công việc con, hạn = baseDate + offset ngày làm việc.
+ * Mỗi item -> một công việc con với ngày hạn cụ thể đã chọn.
  */
 export async function createFollowupsAction(
   input: FollowupManualInput,
@@ -400,10 +407,10 @@ export async function createFollowupsAction(
   if (!userId) return { ok: false, error: "Bạn cần đăng nhập." };
 
   const items = (input.items ?? []).filter(
-    (it) => it.title.trim() && Number.isFinite(it.offsetDays) && it.offsetDays > 0,
+    (it) => it.title.trim() && it.dueDate && isValidISODate(it.dueDate),
   );
   if (items.length === 0)
-    return { ok: false, error: "Chưa chọn đề xuất hợp lệ (cần tiêu đề và số ngày)." };
+    return { ok: false, error: "Chưa chọn đề xuất hợp lệ (cần tiêu đề và ngày hạn)." };
 
   let count = 0;
   try {

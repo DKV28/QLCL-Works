@@ -595,13 +595,12 @@ export async function createFollowupTasks(taskId: string): Promise<void> {
 
 export interface FollowupManualInput {
   parentTaskId: string;
-  baseDateISO: string; // YYYY-MM-DD, mốc tính hạn
   primaryMemberId: string | null;
   supportMemberIds?: string[];
   items: {
     subtaskId: string | null; // null = dòng đề xuất tự do
     title: string;
-    offsetDays: number;
+    dueDate: string; // YYYY-MM-DD, ngày hạn cụ thể
   }[];
 }
 
@@ -632,7 +631,7 @@ export async function createFollowupsManual(
       parentTaskId: input.parentTaskId,
       projectId,
       title,
-      dueDate: addWorkingDays(item.offsetDays, input.baseDateISO),
+      dueDate: item.dueDate,
       primaryMemberId: input.primaryMemberId,
       supportMemberIds: input.supportMemberIds,
       createdBy,

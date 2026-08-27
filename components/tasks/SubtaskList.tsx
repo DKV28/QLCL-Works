@@ -7,7 +7,6 @@ import {
   deleteSubtaskAction,
   getSubtasksAction,
   toggleSubtaskAction,
-  updateSubtaskAction,
 } from "@/lib/actions/subtasks";
 import type { Subtask } from "@/lib/types";
 
@@ -16,7 +15,6 @@ export function SubtaskList({ taskId }: { taskId: string }) {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
-  const [offset, setOffset] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -37,15 +35,12 @@ export function SubtaskList({ taskId }: { taskId: string }) {
   function add() {
     const clean = title.trim();
     if (!clean) return;
-    const days = offset.trim() ? Number(offset) : null;
     startTransition(async () => {
       await createSubtaskAction(taskId, {
         title: clean,
-        offsetDays: days,
         dueDate: dueDate || null,
       });
       setTitle("");
-      setOffset("");
       setDueDate("");
       await load();
       router.refresh(); // cập nhật badge đếm ở danh sách + việc theo dõi vừa tạo
@@ -65,22 +60,6 @@ export function SubtaskList({ taskId }: { taskId: string }) {
       await deleteSubtaskAction(s.id);
       await load();
       router.refresh();
-    });
-  }
-
-  /** Lưu số ngày hạn khi rời ô (nếu thay đổi). */
-  function saveOffset(s: Subtask, raw: string) {
-    const next = raw.trim() ? Number(raw) : null;
-    const current = s.followup_offset_days;
-    if (next === current) return;
-    // Cập nhật lạc quan để ô không nhảy về giá trị cũ.
-    setSubtasks((prev) =>
-      prev.map((x) =>
-        x.id === s.id ? { ...x, followup_offset_days: next } : x,
-      ),
-    );
-    startTransition(async () => {
-      await updateSubtaskAction(s.id, { offsetDays: next });
     });
   }
 
@@ -128,27 +107,6 @@ export function SubtaskList({ taskId }: { taskId: string }) {
                 </span>
               )}
             </span>
-            <label className="flex shrink-0 items-center gap-1 text-[11px] text-gray-400">
-              <span className="w-14">
-                <input
-                  type="number"
-                  min={1}
-                  defaultValue={s.followup_offset_days ?? ""}
-                  onBlur={(e) => saveOffset(s, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  disabled={pending}
-                  placeholder="hạn"
-                  title="Số ngày hạn sau khi hoàn thành: có số → tự tạo đề xuất theo dõi"
-                  className="input block px-1.5 py-0.5 text-right text-xs"
-                />
-              </span>
-              <span>ngày</span>
-            </label>
             <button
               type="button"
               onClick={() => remove(s)}
@@ -177,32 +135,11 @@ export function SubtaskList({ taskId }: { taskId: string }) {
           disabled={pending}
         />
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1">
-            <span className="w-14">
-              <input
-                type="number"
-                min={1}
-                className="input block text-right text-xs"
-                placeholder="số ngày"
-                title="Số ngày kể từ hôm nay (ngày làm việc, trừ CN)"
-                value={offset}
-                onChange={(e) => setOffset(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    add();
-                  }
-                }}
-                disabled={pending || !!dueDate}
-              />
-            </span>
-            <span className="text-[11px] text-gray-400">ngày</span>
-          </span>
-          <span className="text-[11px] text-gray-400">hoặc</span>
+          <span className="text-[11px] text-gray-400">Ngày hạn (tùy chọn):</span>
           <input
             type="date"
             className="input w-40 text-xs"
-            title="Chọn ngày hạn cụ thể"
+            title="Chọn ngày hạn cho đề xuất theo dõi"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             disabled={pending}
@@ -218,9 +155,8 @@ export function SubtaskList({ taskId }: { taskId: string }) {
         </div>
       </div>
       <p className="mt-1 text-[11px] text-gray-400">
-        Có nhập hạn (số ngày kể từ hôm nay hoặc chọn ngày cụ thể) → một công việc
-        theo dõi (đề xuất) được tạo ngay khi bấm Thêm, gắn với bài này. Nếu chọn
-        ngày cụ thể thì ưu tiên ngày đó.
+        Có chọn ngày hạn → một công việc theo dõi (đề xuất) được tạo ngay khi bấm
+        Thêm, gắn với bài này và đúng hạn đã chọn.
       </p>
     </div>
   );

@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { getSubtasksAction } from "@/lib/actions/subtasks";
 import { createFollowupsAction } from "@/lib/actions/tasks";
-import { todayISO, toVNDate } from "@/lib/logic/overdue";
 import type { MemberLite, Subtask, TaskWithAssignees } from "@/lib/types";
 
 interface Row {
   key: string;
   subtaskId: string | null; // null = dòng đề xuất tự do
   title: string;
-  offset: string;
+  dueDate: string; // yyyy-mm-dd
   selected: boolean;
   readonlyTitle: boolean;
 }
@@ -21,7 +20,7 @@ let freeKey = 0;
 
 /**
  * Hộp thoại "Tạo đề xuất theo dõi": chuyển các nhiệm vụ con (hoặc dòng tự do)
- * thành công việc con của bài gốc, hạn = ngày gốc + số ngày làm việc.
+ * thành công việc con của bài gốc, mỗi cái có một ngày hạn cụ thể.
  */
 export function FollowupDialog({
   task,
@@ -40,12 +39,6 @@ export function FollowupDialog({
   const [loading, setLoading] = useState(true);
   const [pending, startTransition] = useTransition();
 
-  // Ngày gốc để tính hạn: ngày hoàn thành nếu có, ngược lại hôm nay.
-  const baseDate = useMemo(
-    () => (task.completed_at ? toVNDate(task.completed_at) : todayISO()),
-    [task.completed_at],
-  );
-
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -60,9 +53,8 @@ export function FollowupDialog({
             key: s.id,
             subtaskId: s.id,
             title: s.title,
-            offset:
-              s.followup_offset_days != null ? String(s.followup_offset_days) : "",
-            selected: s.followup_offset_days != null,
+            dueDate: "",
+            selected: false,
             readonlyTitle: true,
           })),
       );
@@ -84,7 +76,7 @@ export function FollowupDialog({
         key: `free-${freeKey++}`,
         subtaskId: null,
         title: "",
-        offset: "",
+        dueDate: "",
         selected: true,
         readonlyTitle: false,
       },
@@ -98,20 +90,19 @@ export function FollowupDialog({
   function submit() {
     setError(null);
     const items = rows
-      .filter((r) => r.selected && r.title.trim() && Number(r.offset) > 0)
+      .filter((r) => r.selected && r.title.trim() && r.dueDate)
       .map((r) => ({
         subtaskId: r.subtaskId,
         title: r.title.trim(),
-        offsetDays: Number(r.offset),
+        dueDate: r.dueDate,
       }));
     if (items.length === 0) {
-      setError("Chưa chọn đề xuất hợp lệ (cần tiêu đề và số ngày > 0).");
+      setError("Chưa chọn đề xuất hợp lệ (cần tiêu đề và ngày hạn).");
       return;
     }
     startTransition(async () => {
       const res = await createFollowupsAction({
         parentTaskId: task.id,
-        baseDateISO: baseDate,
         primaryMemberId: primaryId || null,
         items,
       });
@@ -128,10 +119,8 @@ export function FollowupDialog({
     <Modal open onClose={onClose} title="Tạo đề xuất theo dõi">
       <div className="space-y-4">
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Từ bài <span className="font-medium">{task.title}</span>. Hạn tính từ{" "}
-          <span className="font-medium">{baseDate}</span>
-          {task.completed_at ? " (ngày hoàn thành)" : " (hôm nay)"} + số ngày làm
-          việc (trừ Chủ nhật).
+          Từ bài <span className="font-medium">{task.title}</span>. Mỗi đề xuất
+          được tạo thành một công việc con, gắn về bài này, với ngày hạn bạn chọn.
         </p>
 
         <div>
@@ -181,16 +170,13 @@ export function FollowupDialog({
                   disabled={pending}
                 />
                 <input
-                  type="number"
-                  min={1}
-                  className="input w-16 text-right text-xs"
-                  placeholder="hạn"
-                  value={r.offset}
-                  onChange={(e) => patch(r.key, { offset: e.target.value })}
+                  type="date"
+                  className="input w-40 text-xs"
+                  value={r.dueDate}
+                  onChange={(e) => patch(r.key, { dueDate: e.target.value })}
                   disabled={pending}
-                  aria-label="Số ngày hạn"
+                  aria-label="Ngày hạn"
                 />
-                <span className="text-[11px] text-gray-400">ngày</span>
                 {r.subtaskId === null && (
                   <button
                     type="button"
