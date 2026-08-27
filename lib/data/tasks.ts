@@ -47,7 +47,7 @@ const SELECT_WITH_ASSIGNEES = `
   subtasks ( is_done ),
   attachments ( count ),
   task_tags ( tags ( id, name, color ) ),
-  parent:parent_task_id ( id, title )
+  parent:tasks!parent_task_id ( id, title )
 `;
 
 function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {

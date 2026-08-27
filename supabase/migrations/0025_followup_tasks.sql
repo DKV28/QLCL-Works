@@ -1,5 +1,5 @@
 -- =============================================================
--- QLCL Works — Migration 0021
+-- QLCL Works — Migration 0025
 -- Sinh "việc theo dõi / đề xuất" khi hoàn thành công việc.
 --
 -- Khi hoàn thành một công việc (vd một bài báo cáo), có thể sinh ra các công
