@@ -122,23 +122,25 @@ export function SubtaskList({ taskId }: { taskId: string }) {
                 </span>
               )}
             </span>
-            <label className="flex items-center gap-1 text-[11px] text-gray-400">
-              <input
-                type="number"
-                min={1}
-                defaultValue={s.followup_offset_days ?? ""}
-                onBlur={(e) => saveOffset(s, e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    (e.target as HTMLInputElement).blur();
-                  }
-                }}
-                disabled={pending}
-                placeholder="hạn"
-                title="Số ngày hạn sau khi hoàn thành: có số → tự tạo đề xuất theo dõi"
-                className="input w-14 px-1.5 py-0.5 text-right text-xs"
-              />
+            <label className="flex shrink-0 items-center gap-1 text-[11px] text-gray-400">
+              <span className="w-14">
+                <input
+                  type="number"
+                  min={1}
+                  defaultValue={s.followup_offset_days ?? ""}
+                  onBlur={(e) => saveOffset(s, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  disabled={pending}
+                  placeholder="hạn"
+                  title="Số ngày hạn sau khi hoàn thành: có số → tự tạo đề xuất theo dõi"
+                  className="input block px-1.5 py-0.5 text-right text-xs"
+                />
+              </span>
               <span>ngày</span>
             </label>
             <button
@@ -154,9 +156,9 @@ export function SubtaskList({ taskId }: { taskId: string }) {
         ))}
       </div>
 
-      <div className="mt-2 flex gap-2">
+      <div className="mt-2 space-y-2">
         <input
-          className="input flex-1"
+          className="input"
           placeholder="Thêm nhiệm vụ con..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -168,30 +170,35 @@ export function SubtaskList({ taskId }: { taskId: string }) {
           }}
           disabled={pending}
         />
-        <input
-          type="number"
-          min={1}
-          className="input w-16 text-right text-xs"
-          placeholder="hạn"
-          title="Số ngày hạn (tùy chọn): có số → khi hoàn thành sẽ tự tạo đề xuất theo dõi"
-          value={offset}
-          onChange={(e) => setOffset(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add();
-            }
-          }}
-          disabled={pending}
-        />
-        <button
-          type="button"
-          className="btn-secondary shrink-0"
-          onClick={add}
-          disabled={pending || !title.trim()}
-        >
-          Thêm
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="w-16">
+            <input
+              type="number"
+              min={1}
+              className="input block text-right text-xs"
+              placeholder="hạn"
+              title="Số ngày hạn (tùy chọn): có số → khi hoàn thành sẽ tự tạo đề xuất theo dõi"
+              value={offset}
+              onChange={(e) => setOffset(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  add();
+                }
+              }}
+              disabled={pending}
+            />
+          </span>
+          <span className="text-[11px] text-gray-400">ngày (hạn đề xuất)</span>
+          <button
+            type="button"
+            className="btn-secondary ml-auto shrink-0"
+            onClick={add}
+            disabled={pending || !title.trim()}
+          >
+            Thêm
+          </button>
+        </div>
       </div>
       <p className="mt-1 text-[11px] text-gray-400">
         Nhiệm vụ con có “số ngày hạn” sẽ tự sinh một đề xuất theo dõi (hạn = ngày

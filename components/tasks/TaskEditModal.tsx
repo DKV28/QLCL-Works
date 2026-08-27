@@ -80,6 +80,12 @@ export function TaskEditModal({
       </div>
       <div className="flex-1 overflow-y-auto overscroll-contain p-5">
         <div key={task.id} className="space-y-5">
+          {task.parentTitle && (
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
+              Đây là <span className="font-semibold">đề xuất theo dõi</span> sinh
+              từ bài: <span className="font-semibold">{task.parentTitle}</span>
+            </div>
+          )}
           <TaskForm
             task={task}
             members={members}

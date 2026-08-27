@@ -35,7 +35,6 @@ interface TaskRow extends Task {
   subtasks: { is_done: boolean }[] | null;
   attachments: { count: number }[] | null;
   task_tags: { tags: Pick<Tag, "id" | "name" | "color"> | null }[] | null;
-  parent: { id: string; title: string } | null;
 }
 
 const SELECT_WITH_ASSIGNEES = `
@@ -46,13 +45,15 @@ const SELECT_WITH_ASSIGNEES = `
   ),
   subtasks!subtasks_task_id_fkey ( is_done ),
   attachments ( count ),
-  task_tags ( tags ( id, name, color ) ),
-  parent:tasks!parent_task_id ( id, title )
+  task_tags ( tags ( id, name, color ) )
 `;
 
-function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
-  const { task_assignees, subtasks, attachments, task_tags, parent, ...task } =
-    row;
+function mapRow(
+  row: TaskRow,
+  teams: Team[],
+  parentTitles?: Map<string, string>,
+): TaskWithAssignees {
+  const { task_assignees, subtasks, attachments, task_tags, ...task } = row;
 
   let primary: MemberLite | null = null;
   const supporters: MemberLite[] = [];
@@ -87,8 +88,37 @@ function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
     subtaskDone,
     attachmentCount,
     tags,
-    parentTitle: parent?.title ?? null,
+    parentTitle: task.parent_task_id
+      ? parentTitles?.get(task.parent_task_id) ?? null
+      : null,
   };
+}
+
+/**
+ * Lấy tiêu đề các bài gốc cho những task có parent_task_id — resolve trong JS
+ * thay vì embed self-reference (PostgREST hiểu nhầm hướng quan hệ tự tham chiếu).
+ */
+async function fetchParentTitles(
+  rows: { parent_task_id: string | null }[],
+): Promise<Map<string, string>> {
+  const ids = Array.from(
+    new Set(
+      rows
+        .map((r) => r.parent_task_id)
+        .filter((v): v is string => typeof v === "string"),
+    ),
+  );
+  const map = new Map<string, string>();
+  if (ids.length === 0) return map;
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("tasks")
+    .select("id, title")
+    .in("id", ids);
+  for (const t of (data as { id: string; title: string }[]) ?? []) {
+    map.set(t.id, t.title);
+  }
+  return map;
 }
 
 /** Danh sách công việc của 1 dự án. */
@@ -107,7 +137,9 @@ export async function listTasksByProject(
   ]);
 
   if (res.error) throw res.error;
-  return ((res.data as unknown as TaskRow[]) ?? []).map((r) => mapRow(r, teams));
+  const rows = (res.data as unknown as TaskRow[]) ?? [];
+  const parentTitles = await fetchParentTitles(rows);
+  return rows.map((r) => mapRow(r, teams, parentTitles));
 }
 
 /** Toàn bộ công việc vận hành (loại công việc thuộc dự án mẫu). */
@@ -135,9 +167,11 @@ export async function listAllTasks(): Promise<TaskWithAssignees[]> {
 
   if (res.error) throw res.error;
   // Lọc ở JS để KHÔNG loại nhầm công việc không thuộc dự án (project_id = null).
-  return ((res.data as unknown as TaskRow[]) ?? [])
-    .filter((r) => !r.project_id || !templateIds.has(r.project_id))
-    .map((r) => mapRow(r, teams));
+  const rows = ((res.data as unknown as TaskRow[]) ?? []).filter(
+    (r) => !r.project_id || !templateIds.has(r.project_id),
+  );
+  const parentTitles = await fetchParentTitles(rows);
+  return rows.map((r) => mapRow(r, teams, parentTitles));
 }
 
 export interface TaskInput {
@@ -289,6 +323,24 @@ export async function setTaskCompletedAt(
   if (error) throw error;
 }
 
+/**
+ * Đồng bộ hoàn thành NGƯỢC về nhiệm vụ con nguồn: khi hoàn thành/mở lại một
+ * việc theo dõi (đề xuất), đánh dấu nhiệm vụ con đã sinh ra nó tương ứng — để
+ * tiến độ nhiệm vụ con phản ánh đúng khi đề xuất đã xong. Best-effort: lỗi chỉ
+ * ghi log, không chặn thao tác chính.
+ */
+async function syncSourceSubtaskDone(
+  childTaskId: string,
+  done: boolean,
+): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("subtasks")
+    .update({ is_done: done })
+    .eq("followup_task_id", childTaskId);
+  if (error) console.error("syncSourceSubtaskDone", error);
+}
+
 /** Bật/tắt hoàn thành nhanh: set/clear completed_at + đồng bộ status. */
 export async function toggleComplete(
   id: string,
@@ -303,6 +355,7 @@ export async function toggleComplete(
     })
     .eq("id", id);
   if (error) throw error;
+  await syncSourceSubtaskDone(id, completed);
 }
 
 function shiftISODate(iso: string, repeat: TaskRepeat): string {
@@ -633,6 +686,8 @@ export async function updateTaskStep(
   }
   const { error } = await supabase.from("tasks").update(fields).eq("id", id);
   if (error) throw error;
+  if (patch.completed !== undefined)
+    await syncSourceSubtaskDone(id, patch.completed);
 }
 
 export async function getTaskTitle(id: string): Promise<string | null> {
@@ -672,6 +727,7 @@ export async function setStatus(
     })
     .eq("id", id);
   if (error) throw error;
+  await syncSourceSubtaskDone(id, status === "hoan_thanh");
 }
 
 export async function softDeleteTask(id: string): Promise<void> {
