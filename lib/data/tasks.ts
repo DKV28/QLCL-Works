@@ -44,7 +44,7 @@ const SELECT_WITH_ASSIGNEES = `
     is_primary,
     members ( id, full_name, team_id )
   ),
-  subtasks ( is_done ),
+  subtasks!subtasks_task_id_fkey ( is_done ),
   attachments ( count ),
   task_tags ( tags ( id, name, color ) ),
   parent:tasks!parent_task_id ( id, title )
@@ -333,7 +333,7 @@ export async function createNextRecurrence(taskId: string): Promise<void> {
   const { data, error: readErr } = await supabase
     .from("tasks")
     .select(
-      "*, task_assignees ( member_id, is_primary ), subtasks ( title, sort_order, followup_offset_days ), task_tags ( tag_id )",
+      "*, task_assignees ( member_id, is_primary ), subtasks!subtasks_task_id_fkey ( title, sort_order, followup_offset_days ), task_tags ( tag_id )",
     )
     .eq("id", taskId)
     .single();
@@ -498,7 +498,7 @@ export async function createFollowupTasks(taskId: string): Promise<void> {
   const { data, error } = await supabase
     .from("tasks")
     .select(
-      "project_id, completed_at, created_by, task_assignees ( member_id, is_primary ), subtasks ( id, title, followup_offset_days, followup_task_id )",
+      "project_id, completed_at, created_by, task_assignees ( member_id, is_primary ), subtasks!subtasks_task_id_fkey ( id, title, followup_offset_days, followup_task_id )",
     )
     .eq("id", taskId)
     .single();
@@ -704,7 +704,7 @@ export async function duplicateTask(
   const { data, error } = await supabase
     .from("tasks")
     .select(
-      "*, task_assignees ( member_id, is_primary ), subtasks ( title, sort_order ), task_tags ( tag_id )",
+      "*, task_assignees ( member_id, is_primary ), subtasks!subtasks_task_id_fkey ( title, sort_order ), task_tags ( tag_id )",
     )
     .eq("id", taskId)
     .single();
