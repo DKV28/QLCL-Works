@@ -17,6 +17,7 @@ export function SubtaskList({ taskId }: { taskId: string }) {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [offset, setOffset] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [pending, startTransition] = useTransition();
 
   const doneCount = subtasks.filter((s) => s.is_done).length;
@@ -38,11 +39,16 @@ export function SubtaskList({ taskId }: { taskId: string }) {
     if (!clean) return;
     const days = offset.trim() ? Number(offset) : null;
     startTransition(async () => {
-      await createSubtaskAction(taskId, clean, days);
+      await createSubtaskAction(taskId, {
+        title: clean,
+        offsetDays: days,
+        dueDate: dueDate || null,
+      });
       setTitle("");
       setOffset("");
+      setDueDate("");
       await load();
-      router.refresh(); // cập nhật badge đếm ở danh sách
+      router.refresh(); // cập nhật badge đếm ở danh sách + việc theo dõi vừa tạo
     });
   }
 
@@ -170,26 +176,37 @@ export function SubtaskList({ taskId }: { taskId: string }) {
           }}
           disabled={pending}
         />
-        <div className="flex items-center gap-2">
-          <span className="w-16">
-            <input
-              type="number"
-              min={1}
-              className="input block text-right text-xs"
-              placeholder="hạn"
-              title="Số ngày hạn (tùy chọn): có số → khi hoàn thành sẽ tự tạo đề xuất theo dõi"
-              value={offset}
-              onChange={(e) => setOffset(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  add();
-                }
-              }}
-              disabled={pending}
-            />
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1">
+            <span className="w-14">
+              <input
+                type="number"
+                min={1}
+                className="input block text-right text-xs"
+                placeholder="số ngày"
+                title="Số ngày kể từ hôm nay (ngày làm việc, trừ CN)"
+                value={offset}
+                onChange={(e) => setOffset(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    add();
+                  }
+                }}
+                disabled={pending || !!dueDate}
+              />
+            </span>
+            <span className="text-[11px] text-gray-400">ngày</span>
           </span>
-          <span className="text-[11px] text-gray-400">ngày (hạn đề xuất)</span>
+          <span className="text-[11px] text-gray-400">hoặc</span>
+          <input
+            type="date"
+            className="input w-40 text-xs"
+            title="Chọn ngày hạn cụ thể"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            disabled={pending}
+          />
           <button
             type="button"
             className="btn-secondary ml-auto shrink-0"
@@ -201,8 +218,9 @@ export function SubtaskList({ taskId }: { taskId: string }) {
         </div>
       </div>
       <p className="mt-1 text-[11px] text-gray-400">
-        Nhiệm vụ con có “số ngày hạn” sẽ tự sinh một đề xuất theo dõi (hạn = ngày
-        hoàn thành + số ngày làm việc) khi công việc hoàn thành.
+        Có nhập hạn (số ngày kể từ hôm nay hoặc chọn ngày cụ thể) → một công việc
+        theo dõi (đề xuất) được tạo ngay khi bấm Thêm, gắn với bài này. Nếu chọn
+        ngày cụ thể thì ưu tiên ngày đó.
       </p>
     </div>
   );

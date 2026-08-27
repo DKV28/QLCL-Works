@@ -651,6 +651,48 @@ export async function createFollowupsManual(
   return count;
 }
 
+/**
+ * Tạo NGAY một việc theo dõi (đề xuất) từ một nhiệm vụ con khi vừa thêm — không
+ * chờ bài cha hoàn thành. Kế thừa dự án + người phụ trách chính của bài cha,
+ * dùng dueDate đã tính sẵn (yyyy-mm-dd). Đánh dấu subtask.followup_task_id.
+ */
+export async function createImmediateFollowup(input: {
+  subtaskId: string;
+  parentTaskId: string;
+  title: string;
+  dueDate: string;
+}): Promise<void> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("tasks")
+    .select("project_id, created_by, task_assignees ( member_id, is_primary )")
+    .eq("id", input.parentTaskId)
+    .single();
+  const p = data as {
+    project_id: string | null;
+    created_by: string | null;
+    task_assignees: { member_id: string; is_primary: boolean }[] | null;
+  } | null;
+  const primaryMemberId =
+    (p?.task_assignees ?? []).find((a) => a.is_primary)?.member_id ?? null;
+
+  const childId = await insertFollowupChild(supabase, {
+    parentTaskId: input.parentTaskId,
+    projectId: p?.project_id ?? null,
+    title: input.title,
+    dueDate: input.dueDate,
+    primaryMemberId,
+    createdBy: p?.created_by ?? null,
+  });
+  if (childId) {
+    const { error } = await supabase
+      .from("subtasks")
+      .update({ followup_task_id: childId })
+      .eq("id", input.subtaskId);
+    if (error) console.error("createImmediateFollowup: lỗi đánh dấu subtask", error);
+  }
+}
+
 /** Lấy thông tin tối thiểu để chuyển bước quy trình vận hành. */
 export async function getTaskStepInfo(
   id: string,
