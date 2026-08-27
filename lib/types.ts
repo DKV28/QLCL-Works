@@ -131,6 +131,8 @@ export interface Project {
 export interface Task {
   id: string;
   project_id: string | null;
+  // Bài gốc đã sinh ra công việc này (null = công việc thường, không phải đề xuất).
+  parent_task_id: string | null;
   title: string;
   description: string | null;
   start_date: string | null;
@@ -155,6 +157,11 @@ export interface Subtask {
   title: string;
   is_done: boolean;
   sort_order: number;
+  // Số ngày hạn: có số -> khi hoàn thành công việc sẽ tự sinh một việc theo dõi
+  // (đề xuất) với hạn = ngày hoàn thành + N ngày làm việc. null = không tự sinh.
+  followup_offset_days: number | null;
+  // Việc theo dõi đã sinh từ nhiệm vụ con này (liên kết + chống sinh trùng).
+  followup_task_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -181,6 +188,8 @@ export interface TaskWithAssignees extends Task {
   subtaskDone: number;
   attachmentCount: number;
   tags: Pick<Tag, "id" | "name" | "color">[];
+  // Tên bài gốc (nếu đây là việc theo dõi/đề xuất) — cho badge "Từ: …".
+  parentTitle: string | null;
 }
 
 export interface TaskWorkLog {

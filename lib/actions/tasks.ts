@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  createFollowupsManual,
+  createFollowupTasks,
   createNextRecurrence,
   createTask,
   createTasksBulk,
@@ -13,6 +15,7 @@ import {
   toggleComplete,
   updateTask,
   updateTaskStep,
+  type FollowupManualInput,
 } from "@/lib/data/tasks";
 import { recordActivity } from "@/lib/data/activity";
 import { createNotification } from "@/lib/data/notifications";
@@ -232,6 +235,10 @@ export async function updateTaskStatusAction(
       status === "hoan_thanh" && !wasDone
         ? createNextRecurrence(id)
         : Promise.resolve(),
+      // ... và tự sinh việc theo dõi (đề xuất) từ nhiệm vụ con có số ngày hạn.
+      status === "hoan_thanh" && !wasDone
+        ? createFollowupTasks(id)
+        : Promise.resolve(),
     ]);
   } catch (e) {
     return { ok: false, error: "Không đổi được trạng thái." };
@@ -258,6 +265,8 @@ export async function toggleCompleteAction(
       }),
       // Đánh dấu hoàn thành -> sinh lần lặp kế tiếp (chỉ khi thực sự chuyển).
       completed && !wasDone ? createNextRecurrence(id) : Promise.resolve(),
+      // ... và tự sinh việc theo dõi (đề xuất) từ nhiệm vụ con có số ngày hạn.
+      completed && !wasDone ? createFollowupTasks(id) : Promise.resolve(),
     ]);
   } catch (e) {
     return { ok: false, error: "Không cập nhật được trạng thái." };
@@ -303,6 +312,9 @@ export async function toggleTaskCompleteForReportAction(input: {
       }),
       input.completed && !wasDone
         ? createNextRecurrence(input.taskId)
+        : Promise.resolve(),
+      input.completed && !wasDone
+        ? createFollowupTasks(input.taskId)
         : Promise.resolve(),
     ]);
   } catch {
@@ -352,6 +364,7 @@ export async function advanceVanHanhStepAction(
           detail: `${currentStep.label} → Hoàn thành`,
         }),
         wasDone ? Promise.resolve() : createNextRecurrence(id),
+        wasDone ? Promise.resolve() : createFollowupTasks(id),
       ]);
     } else {
       await updateTaskStep(id, {
@@ -374,6 +387,41 @@ export async function advanceVanHanhStepAction(
   revalidatePath("/cong-viec");
   revalidatePath("/du-an", "layout");
   return { ok: true };
+}
+
+/**
+ * Tạo việc theo dõi (đề xuất) THỦ CÔNG từ hộp thoại trên chi tiết công việc.
+ * Mỗi item -> một công việc con, hạn = baseDate + offset ngày làm việc.
+ */
+export async function createFollowupsAction(
+  input: FollowupManualInput,
+): Promise<BulkActionResult> {
+  const userId = await getSessionUserId();
+  if (!userId) return { ok: false, error: "Bạn cần đăng nhập." };
+
+  const items = (input.items ?? []).filter(
+    (it) => it.title.trim() && Number.isFinite(it.offsetDays) && it.offsetDays > 0,
+  );
+  if (items.length === 0)
+    return { ok: false, error: "Chưa chọn đề xuất hợp lệ (cần tiêu đề và số ngày)." };
+
+  let count = 0;
+  try {
+    count = await createFollowupsManual({ ...input, items });
+    if (count > 0) {
+      await recordActivity({
+        task_id: input.parentTaskId,
+        action: "tao_de_xuat",
+        detail: `Tạo ${count} đề xuất theo dõi`,
+      });
+    }
+  } catch (e) {
+    return { ok: false, error: "Không tạo được đề xuất theo dõi." };
+  }
+
+  revalidatePath("/cong-viec");
+  revalidatePath("/du-an", "layout");
+  return { ok: true, count };
 }
 
 export async function deleteTaskAction(

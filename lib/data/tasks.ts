@@ -3,7 +3,8 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { listTeams, teamDisplayName } from "./teams";
 import { setTaskTags } from "./tags";
-import { todayISO } from "@/lib/logic/overdue";
+import { todayISO, toVNDate } from "@/lib/logic/overdue";
+import { addWorkingDays } from "@/lib/logic/working-days";
 import type {
   Attachment,
   MemberLite,
@@ -34,6 +35,7 @@ interface TaskRow extends Task {
   subtasks: { is_done: boolean }[] | null;
   attachments: { count: number }[] | null;
   task_tags: { tags: Pick<Tag, "id" | "name" | "color"> | null }[] | null;
+  parent: { id: string; title: string } | null;
 }
 
 const SELECT_WITH_ASSIGNEES = `
@@ -44,11 +46,13 @@ const SELECT_WITH_ASSIGNEES = `
   ),
   subtasks ( is_done ),
   attachments ( count ),
-  task_tags ( tags ( id, name, color ) )
+  task_tags ( tags ( id, name, color ) ),
+  parent:parent_task_id ( id, title )
 `;
 
 function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
-  const { task_assignees, subtasks, attachments, task_tags, ...task } = row;
+  const { task_assignees, subtasks, attachments, task_tags, parent, ...task } =
+    row;
 
   let primary: MemberLite | null = null;
   const supporters: MemberLite[] = [];
@@ -83,6 +87,7 @@ function mapRow(row: TaskRow, teams: Team[]): TaskWithAssignees {
     subtaskDone,
     attachmentCount,
     tags,
+    parentTitle: parent?.title ?? null,
   };
 }
 
@@ -137,6 +142,7 @@ export async function listAllTasks(): Promise<TaskWithAssignees[]> {
 
 export interface TaskInput {
   project_id: string | null; // dự án là tùy chọn
+  parent_task_id?: string | null; // bài gốc (nếu là việc theo dõi/đề xuất)
   title: string;
   description?: string | null;
   start_date?: string | null;
@@ -309,7 +315,9 @@ function shiftISODate(iso: string, repeat: TaskRepeat): string {
 
 interface RecurSrc extends Task {
   task_assignees: { member_id: string; is_primary: boolean }[] | null;
-  subtasks: { title: string; sort_order: number }[] | null;
+  subtasks:
+    | { title: string; sort_order: number; followup_offset_days: number | null }[]
+    | null;
   task_tags: { tag_id: string }[] | null;
 }
 
@@ -325,7 +333,7 @@ export async function createNextRecurrence(taskId: string): Promise<void> {
   const { data, error: readErr } = await supabase
     .from("tasks")
     .select(
-      "*, task_assignees ( member_id, is_primary ), subtasks ( title, sort_order ), task_tags ( tag_id )",
+      "*, task_assignees ( member_id, is_primary ), subtasks ( title, sort_order, followup_offset_days ), task_tags ( tag_id )",
     )
     .eq("id", taskId)
     .single();
@@ -384,6 +392,9 @@ export async function createNextRecurrence(taskId: string): Promise<void> {
     title: st.title,
     sort_order: st.sort_order,
     is_done: false,
+    // Giữ số ngày hạn để lần lặp sau vẫn tự sinh đề xuất; followup_task_id để
+    // mặc định null (chưa sinh) cho lần lặp mới.
+    followup_offset_days: st.followup_offset_days ?? null,
   }));
   if (subs.length) {
     const { error: sErr } = await supabase.from("subtasks").insert(subs);
@@ -398,6 +409,193 @@ export async function createNextRecurrence(taskId: string): Promise<void> {
     const { error: tErr } = await supabase.from("task_tags").insert(tagRows);
     if (tErr) console.error("createNextRecurrence: lỗi gắn nhãn", tErr);
   }
+}
+
+// --- Việc theo dõi / đề xuất sinh từ công việc ---------------------------
+
+/** Mốc tính hạn: ngày (giờ VN) của completed_at, fallback hôm nay. */
+function toISODate(value: string | null | undefined): string {
+  if (!value) return todayISO();
+  return toVNDate(value);
+}
+
+/**
+ * Chèn một việc theo dõi (đề xuất) là con của `parentTaskId`, dùng admin client.
+ * Trả về id việc con vừa tạo (hoặc null nếu lỗi).
+ */
+async function insertFollowupChild(
+  supabase: ReturnType<typeof createAdminClient>,
+  input: {
+    parentTaskId: string;
+    projectId: string | null;
+    title: string;
+    dueDate: string | null;
+    primaryMemberId: string | null;
+    supportMemberIds?: string[];
+    createdBy: string | null;
+  },
+): Promise<string | null> {
+  const { data: created, error } = await supabase
+    .from("tasks")
+    .insert({
+      project_id: input.projectId,
+      parent_task_id: input.parentTaskId,
+      title: input.title,
+      due_date: input.dueDate,
+      status: "chua_bat_dau",
+      created_by: input.createdBy,
+    })
+    .select("id")
+    .single();
+  if (error || !created) {
+    console.error("insertFollowupChild: không tạo được việc theo dõi", error);
+    return null;
+  }
+  const childId = (created as { id: string }).id;
+
+  const primary = input.primaryMemberId ?? null;
+  const supportIds = (input.supportMemberIds ?? []).filter(
+    (sid) => sid && sid !== primary,
+  );
+  const assigneeRows: { task_id: string; member_id: string; is_primary: boolean }[] =
+    [];
+  if (primary)
+    assigneeRows.push({ task_id: childId, member_id: primary, is_primary: true });
+  for (const sid of supportIds)
+    assigneeRows.push({ task_id: childId, member_id: sid, is_primary: false });
+  if (assigneeRows.length) {
+    const { error: aErr } = await supabase
+      .from("task_assignees")
+      .insert(assigneeRows);
+    if (aErr) console.error("insertFollowupChild: lỗi gán người phụ trách", aErr);
+  }
+  return childId;
+}
+
+interface FollowupSrc {
+  project_id: string | null;
+  completed_at: string | null;
+  created_by: string | null;
+  task_assignees: { member_id: string; is_primary: boolean }[] | null;
+  subtasks:
+    | {
+        id: string;
+        title: string;
+        followup_offset_days: number | null;
+        followup_task_id: string | null;
+      }[]
+    | null;
+}
+
+/**
+ * TỰ ĐỘNG sinh việc theo dõi khi hoàn thành công việc: với mỗi nhiệm vụ con có
+ * `followup_offset_days` và CHƯA sinh (`followup_task_id` null), tạo một công
+ * việc con hạn = ngày hoàn thành + N ngày làm việc (trừ CN), kế thừa dự án +
+ * người phụ trách chính của bài gốc. Dùng admin client (thao tác hệ thống).
+ */
+export async function createFollowupTasks(taskId: string): Promise<void> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(
+      "project_id, completed_at, created_by, task_assignees ( member_id, is_primary ), subtasks ( id, title, followup_offset_days, followup_task_id )",
+    )
+    .eq("id", taskId)
+    .single();
+  if (error || !data) {
+    if (error) console.error("createFollowupTasks: không đọc được việc gốc", error);
+    return;
+  }
+  const src = data as unknown as FollowupSrc;
+
+  const pending = (src.subtasks ?? []).filter(
+    (s) =>
+      s.followup_offset_days != null &&
+      s.followup_offset_days > 0 &&
+      !s.followup_task_id,
+  );
+  if (pending.length === 0) return;
+
+  const base = toISODate(src.completed_at);
+  const primaryMemberId =
+    (src.task_assignees ?? []).find((a) => a.is_primary)?.member_id ?? null;
+
+  for (const st of pending) {
+    const childId = await insertFollowupChild(supabase, {
+      parentTaskId: taskId,
+      projectId: src.project_id,
+      title: st.title,
+      dueDate: addWorkingDays(st.followup_offset_days as number, base),
+      primaryMemberId,
+      createdBy: src.created_by,
+    });
+    if (childId) {
+      const { error: uErr } = await supabase
+        .from("subtasks")
+        .update({ followup_task_id: childId })
+        .eq("id", st.id);
+      if (uErr)
+        console.error("createFollowupTasks: lỗi đánh dấu subtask", uErr);
+    }
+  }
+}
+
+export interface FollowupManualInput {
+  parentTaskId: string;
+  baseDateISO: string; // YYYY-MM-DD, mốc tính hạn
+  primaryMemberId: string | null;
+  supportMemberIds?: string[];
+  items: {
+    subtaskId: string | null; // null = dòng đề xuất tự do
+    title: string;
+    offsetDays: number;
+  }[];
+}
+
+/**
+ * THỦ CÔNG (từ hộp thoại "Tạo đề xuất theo dõi"): tạo việc theo dõi cho từng
+ * item. Item gắn subtask thì đánh dấu `followup_task_id` để không sinh trùng.
+ * Trả về số việc con đã tạo.
+ */
+export async function createFollowupsManual(
+  input: FollowupManualInput,
+): Promise<number> {
+  const supabase = createAdminClient();
+
+  // Kế thừa dự án + người tạo từ bài gốc.
+  const { data: parent } = await supabase
+    .from("tasks")
+    .select("project_id, created_by")
+    .eq("id", input.parentTaskId)
+    .single();
+  const projectId = (parent as { project_id: string | null } | null)?.project_id ?? null;
+  const createdBy = (parent as { created_by: string | null } | null)?.created_by ?? null;
+
+  let count = 0;
+  for (const item of input.items) {
+    const title = item.title.trim();
+    if (!title) continue;
+    const childId = await insertFollowupChild(supabase, {
+      parentTaskId: input.parentTaskId,
+      projectId,
+      title,
+      dueDate: addWorkingDays(item.offsetDays, input.baseDateISO),
+      primaryMemberId: input.primaryMemberId,
+      supportMemberIds: input.supportMemberIds,
+      createdBy,
+    });
+    if (!childId) continue;
+    count += 1;
+    if (item.subtaskId) {
+      const { error: uErr } = await supabase
+        .from("subtasks")
+        .update({ followup_task_id: childId })
+        .eq("id", item.subtaskId);
+      if (uErr)
+        console.error("createFollowupsManual: lỗi đánh dấu subtask", uErr);
+    }
+  }
+  return count;
 }
 
 /** Lấy thông tin tối thiểu để chuyển bước quy trình vận hành. */

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TaskForm } from "./TaskForm";
 import { SubtaskList } from "./SubtaskList";
+import { FollowupDialog } from "./FollowupDialog";
 import { AttachmentList } from "./AttachmentList";
 import { TaskThread } from "./TaskThread";
 import { updateTaskAction } from "@/lib/actions/tasks";
@@ -32,6 +33,7 @@ export function TaskEditModal({
   const router = useRouter();
   const titleId = useId();
   const panelRef = useRef<HTMLElement>(null);
+  const [followupOpen, setFollowupOpen] = useState(false);
 
   useEffect(() => {
     if (!task) return;
@@ -91,6 +93,13 @@ export function TaskEditModal({
           />
           <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
             <SubtaskList taskId={task.id} />
+            <button
+              type="button"
+              onClick={() => setFollowupOpen(true)}
+              className="btn-secondary mt-3"
+            >
+              Tạo đề xuất theo dõi
+            </button>
           </div>
           <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
             <AttachmentList taskId={task.id} />
@@ -100,6 +109,13 @@ export function TaskEditModal({
           </div>
         </div>
       </div>
+      {followupOpen && (
+        <FollowupDialog
+          task={task}
+          members={members}
+          onClose={() => setFollowupOpen(false)}
+        />
+      )}
     </aside>
   );
 }

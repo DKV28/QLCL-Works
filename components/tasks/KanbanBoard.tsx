@@ -121,6 +121,14 @@ function KanbanCard({
       <div className="mb-1 font-semibold leading-5 text-gray-900 dark:text-gray-100">
         {task.title}
       </div>
+      {task.parentTitle && (
+        <div
+          className="mb-1 inline-block max-w-full truncate rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+          title={`Đề xuất từ bài: ${task.parentTitle}`}
+        >
+          Từ: {task.parentTitle}
+        </div>
+      )}
       {task.tags.length > 0 && (
         <div className="mb-1">
           <TagChips tags={task.tags} />

@@ -46,6 +46,9 @@ Kiến trúc tách lớp:
      trong `lib/logic/van-hanh.ts`; lịch sử chuyển bước dùng lại `activity_log`.
    - `0016_role_permissions.sql` — phân quyền 3 cấp trên dữ liệu vận hành: đọc dùng chung; Quản trị/Quản lý sửa mọi thứ; Thành viên chỉ sửa dự án mình sở hữu và công việc mình tạo.
    - `0017_configurable_permissions.sql` — bảng `role_permissions` để Quản trị viên tự chỉnh quyền tạo/sửa của từng vai trò trong **Cài đặt → Người dùng & phân quyền** (không cần sửa mã).
+   - `0021_followup_tasks.sql` — sinh "việc theo dõi / đề xuất" khi hoàn thành công việc:
+     `tasks.parent_task_id` (liên kết bài gốc) + `subtasks.followup_offset_days` (số ngày hạn)
+     và `subtasks.followup_task_id` (đánh dấu đã sinh, chống trùng).
    Khi có migration mới về sau, chạy tiếp theo số thứ tự.
 
 ### 2. Cấu hình biến môi trường

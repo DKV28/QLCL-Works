@@ -17,6 +17,7 @@ export async function listSubtasksByTask(taskId: string): Promise<Subtask[]> {
 export async function createSubtask(
   taskId: string,
   title: string,
+  offsetDays: number | null = null,
 ): Promise<Subtask> {
   const supabase = createClient();
 
@@ -32,12 +33,32 @@ export async function createSubtask(
 
   const { data, error } = await supabase
     .from("subtasks")
-    .insert({ task_id: taskId, title, sort_order: nextOrder })
+    .insert({
+      task_id: taskId,
+      title,
+      sort_order: nextOrder,
+      followup_offset_days: offsetDays,
+    })
     .select("*")
     .single();
 
   if (error) throw error;
   return data as Subtask;
+}
+
+/** Cập nhật tiêu đề và/hoặc số ngày hạn của một nhiệm vụ con. */
+export async function updateSubtask(
+  id: string,
+  fields: { title?: string; followup_offset_days?: number | null },
+): Promise<void> {
+  const supabase = createClient();
+  const patch: Record<string, unknown> = {};
+  if (fields.title !== undefined) patch.title = fields.title;
+  if (fields.followup_offset_days !== undefined)
+    patch.followup_offset_days = fields.followup_offset_days;
+  if (Object.keys(patch).length === 0) return;
+  const { error } = await supabase.from("subtasks").update(patch).eq("id", id);
+  if (error) throw error;
 }
 
 export async function toggleSubtask(id: string, isDone: boolean): Promise<void> {

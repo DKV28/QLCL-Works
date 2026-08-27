@@ -412,6 +412,16 @@ export function TaskTable({
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {task.is_arising && <ArisingBadge />}
                 {overdue && <OverdueBadge />}
+                {task.parentTitle && task.parent_task_id && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(task.parent_task_id)}
+                    className="max-w-[14rem] truncate rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300"
+                    title={`Đề xuất từ bài: ${task.parentTitle}`}
+                  >
+                    Từ: {task.parentTitle}
+                  </button>
+                )}
                 {task.van_hanh_step && (
                   <StepBadge
                     order={
@@ -568,6 +578,14 @@ export function TaskTable({
                   >
                     {t.title}
                   </div>
+                  {t.parentTitle && (
+                    <div
+                      className="mt-1 inline-block max-w-full truncate rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                      title={`Đề xuất từ bài: ${t.parentTitle}`}
+                    >
+                      Từ: {t.parentTitle}
+                    </div>
+                  )}
                   {t.description && (
                     <div className="mt-0.5 text-xs text-gray-500 line-clamp-2 dark:text-gray-400">
                       {t.description}
