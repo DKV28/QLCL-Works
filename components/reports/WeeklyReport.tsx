@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { StatCard } from "./StatCard";
 import {
+  assigneeCountInScope,
   weeklyReport,
   weeklyReportText,
   weekStartOf,
@@ -37,28 +38,54 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function TaskLines({ tasks }: { tasks: TaskWithAssignees[] }) {
+function TaskLines({
+  tasks,
+  scope,
+}: {
+  tasks: TaskWithAssignees[];
+  scope: { teamId?: string; memberId?: string };
+}) {
   if (tasks.length === 0) {
     return <li className="py-2.5 text-gray-400">Không có.</li>;
   }
   return (
     <>
-      {tasks.map((t) => (
-        <li
-          key={t.id}
-          className="flex items-start justify-between gap-3 py-2.5 text-gray-800 dark:text-gray-200"
-        >
-          <span>
-            {t.title}
-            {t.is_arising && (
-              <span className="text-xs text-orange-500"> (phát sinh)</span>
-            )}
-          </span>
-          <span className="shrink-0 text-xs text-gray-400">
-            {t.due_date ? formatFriendlyDate(t.due_date) : ""}
-          </span>
-        </li>
-      ))}
+      {tasks.map((t) => {
+        const count = assigneeCountInScope(t, scope);
+        return (
+          <li key={t.id} className="py-2.5 text-gray-800 dark:text-gray-200">
+            <div className="flex items-start justify-between gap-3">
+              <span>
+                {t.title}
+                {t.is_arising && (
+                  <span className="text-xs text-orange-500"> (phát sinh)</span>
+                )}
+              </span>
+              <span className="shrink-0 text-xs text-gray-400">
+                {t.due_date ? formatFriendlyDate(t.due_date) : ""}
+              </span>
+            </div>
+            <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              {t.primary || t.supporters.length > 0 ? (
+                <>
+                  {t.primary && (
+                    <span className="font-medium">{t.primary.full_name} (chính)</span>
+                  )}
+                  {t.supporters.map((s) => (
+                    <span key={s.id}>
+                      {t.primary ? ", " : ""}
+                      {s.full_name}
+                    </span>
+                  ))}
+                  <span className="text-gray-400"> · {count} lượt</span>
+                </>
+              ) : (
+                <span className="text-gray-400">Chưa giao</span>
+              )}
+            </div>
+          </li>
+        );
+      })}
     </>
   );
 }
@@ -88,13 +115,17 @@ export function WeeklyReport({
     );
   }, [members]);
 
+  const scope = useMemo(
+    () => ({
+      teamId: teamId || undefined,
+      memberId: effectiveMemberId || undefined,
+    }),
+    [teamId, effectiveMemberId],
+  );
+
   const r = useMemo(
-    () =>
-      weeklyReport(tasks, weekStart, {
-        teamId: teamId || undefined,
-        memberId: effectiveMemberId || undefined,
-      }),
-    [tasks, weekStart, teamId, effectiveMemberId],
+    () => weeklyReport(tasks, weekStart, scope),
+    [tasks, weekStart, scope],
   );
 
   return (
@@ -155,7 +186,11 @@ export function WeeklyReport({
         </div>
         <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
           Tuần chạy Thứ Bảy → Thứ Sáu. A/B/C tính theo task có deadline trong tuần;
-          D là task chưa hoàn thành có deadline đến hết Thứ Sáu tuần kế.
+          D là task chưa hoàn thành có deadline đến hết Thứ Sáu tuần kế.{" "}
+          <span className="font-medium">
+            A/B/C/D đếm theo lượt người phụ trách — việc do nhiều người phụ trách
+            được tính nhiều lượt (như báo cáo ngày).
+          </span>
         </p>
       </div>
 
@@ -189,18 +224,18 @@ export function WeeklyReport({
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card p-4">
           <h3 className="mb-2 text-sm font-semibold">
-            C · Chưa hoàn thành trong tuần ({r.c})
+            C · Chưa hoàn thành trong tuần ({r.cTasks.length} việc · {r.c} lượt)
           </h3>
           <ul className="divide-y divide-gray-100 text-sm dark:divide-gray-800">
-            <TaskLines tasks={r.cTasks} />
+            <TaskLines tasks={r.cTasks} scope={scope} />
           </ul>
         </div>
         <div className="card p-4">
           <h3 className="mb-2 text-sm font-semibold">
-            D · Kế hoạch tuần kế ({r.d})
+            D · Kế hoạch tuần kế ({r.dTasks.length} việc · {r.d} lượt)
           </h3>
           <ul className="divide-y divide-gray-100 text-sm dark:divide-gray-800">
-            <TaskLines tasks={r.dTasks} />
+            <TaskLines tasks={r.dTasks} scope={scope} />
           </ul>
         </div>
       </div>

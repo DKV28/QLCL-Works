@@ -154,6 +154,28 @@ function inRange(d: string | null, start: string, end: string): boolean {
   return !!d && d >= start && d <= end;
 }
 
+/** Danh sách người phụ trách (chính + hỗ trợ) của một công việc. */
+export function assigneesOf(t: TaskWithAssignees): MemberLite[] {
+  return t.primary ? [t.primary, ...t.supporters] : t.supporters;
+}
+
+/**
+ * Số "lượt người phụ trách" của một công việc trong phạm vi báo cáo:
+ *  - lọc theo cá nhân → 1 nếu người đó có tham gia, ngược lại 0;
+ *  - lọc theo team → số người phụ trách thuộc team đó;
+ *  - không lọc → tổng số người phụ trách.
+ * Nhờ đó việc do nhiều người phụ trách được tính đúng số lượt (giống báo cáo ngày).
+ */
+export function assigneeCountInScope(
+  t: TaskWithAssignees,
+  scope: { teamId?: string; memberId?: string } = {},
+): number {
+  const people = assigneesOf(t);
+  if (scope.memberId) return people.some((p) => p.id === scope.memberId) ? 1 : 0;
+  if (scope.teamId) return people.filter((p) => p.team_id === scope.teamId).length;
+  return people.length;
+}
+
 /**
  * Báo cáo tuần theo format A/B/C/D của Phòng QLCL:
  *  - A = task CÓ deadline rơi trong tuần này (T7 → T6);
@@ -181,25 +203,34 @@ export function weeklyReport(
 
   // A: task có deadline trong tuần này.
   const aTasks = scoped.filter((t) => inRange(t.due_date, weekStart, weekEnd));
+  const bTasks = aTasks.filter((t) => isDone(t));
   const cTasks = aTasks.filter((t) => !isDone(t));
   const arisingTasks = aTasks.filter((t) => t.is_arising);
-  const a = aTasks.length;
 
   // D: chưa hoàn thành, có deadline ≤ T6 tuần kế (lũy kế).
   const dTasks = scoped.filter(
     (t) => !isDone(t) && !!t.due_date && t.due_date <= nextWeekEnd,
   );
 
+  // Đếm theo LƯỢT NGƯỜI PHỤ TRÁCH: việc do nhiều người phụ trách tính nhiều lượt
+  // (nhất quán với báo cáo ngày). Trong phạm vi cá nhân/team thì chỉ tính người
+  // thuộc phạm vi đó.
+  const sumPeople = (list: TaskWithAssignees[]) =>
+    list.reduce((acc, t) => acc + assigneeCountInScope(t, { teamId, memberId }), 0);
+
+  const a = sumPeople(aTasks);
+  const arisingCount = sumPeople(arisingTasks);
+
   return {
     weekStart,
     weekEnd,
     nextWeekEnd,
     a,
-    b: a - cTasks.length,
-    c: cTasks.length,
-    arisingCount: arisingTasks.length,
-    arisingPct: a > 0 ? arisingTasks.length / a : 0,
-    d: dTasks.length,
+    b: sumPeople(bTasks),
+    c: sumPeople(cTasks),
+    arisingCount,
+    arisingPct: a > 0 ? arisingCount / a : 0,
+    d: sumPeople(dTasks),
     aTasks,
     cTasks,
     arisingTasks,
@@ -211,9 +242,10 @@ export function weeklyReportText(r: WeeklyReport): string {
   const pct = Math.round(r.arisingPct * 100);
   return [
     `Phần 1: Báo cáo công việc trong tuần (${formatDMY(r.weekStart)} → ${formatDMY(r.weekEnd)})`,
-    `- A (tổng số task có deadline tính đến T6) = ${r.a}`,
-    `- B (tổng số task có deadline tính đến T6 và đã hoàn thành) = ${r.b}`,
-    `- C (tổng số task có deadline tính đến T6 và chưa hoàn thành) = ${r.c}`,
+    `(A/B/C/D tính theo lượt người phụ trách — việc nhiều người tính nhiều lượt)`,
+    `- A (tổng số lượt có deadline tính đến T6) = ${r.a}`,
+    `- B (tổng số lượt có deadline tính đến T6 và đã hoàn thành) = ${r.b}`,
+    `- C (tổng số lượt có deadline tính đến T6 và chưa hoàn thành) = ${r.c}`,
     `Tổng số công việc phát sinh chiếm khoảng ${pct}% tổng công việc.`,
     ``,
     `Phần 2: Báo cáo công việc tuần tiếp theo (đến T6 ${formatDMY(r.nextWeekEnd)})`,

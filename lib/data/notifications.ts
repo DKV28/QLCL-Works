@@ -1,6 +1,6 @@
-// Data access: notifications (feed chung) + mốc đã xem + đếm cảnh báo.
+// Data access: notifications (feed) + mốc đã xem + đếm cảnh báo.
 import { createClient } from "@/lib/supabase/server";
-import { getSessionUserId } from "./profiles";
+import { getCurrentProfile, getSessionUserId } from "./profiles";
 import type { Notification } from "@/lib/types";
 
 export interface NotificationInput {
@@ -22,16 +22,51 @@ export async function createNotification(
   });
 }
 
+/** Id các công việc mà một tập nhân sự được phân công (chính hoặc hỗ trợ). */
+async function assignedTaskIds(memberIds: string[]): Promise<string[]> {
+  if (memberIds.length === 0) return [];
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("task_assignees")
+    .select("task_id")
+    .in("member_id", memberIds);
+  return Array.from(
+    new Set(((data as { task_id: string }[]) ?? []).map((r) => r.task_id)),
+  );
+}
+
+/**
+ * Thông báo gần đây cho TÀI KHOẢN hiện tại.
+ *  - Admin/Quản lý: xem toàn bộ feed (để giám sát).
+ *  - Thành viên: chỉ thấy thông báo của công việc mà nhân sự gắn với tài khoản
+ *    họ được phân công — tránh loãng vì thông báo của tất cả mọi người.
+ */
 export async function listRecentNotifications(
   limit = 30,
 ): Promise<Notification[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const me = await getCurrentProfile();
+
+  let query = supabase
     .from("notifications")
     .select("*")
     .in("type", ["cong_viec_moi", "binh_luan_moi"])
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  // Thành viên: lọc theo công việc mình được phân công.
+  if (me && me.role !== "admin" && me.role !== "manager") {
+    const { data: myMembers } = await supabase
+      .from("members")
+      .select("id")
+      .eq("profile_id", me.id);
+    const memberIds = ((myMembers as { id: string }[]) ?? []).map((m) => m.id);
+    const taskIds = await assignedTaskIds(memberIds);
+    if (taskIds.length === 0) return [];
+    query = query.in("task_id", taskIds);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return (data as Notification[]) ?? [];
 }
