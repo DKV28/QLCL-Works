@@ -3,6 +3,7 @@ import type { MemberLite, TaskWithAssignees, TaskWorkLog } from "@/lib/types";
 import { isDone } from "./stats";
 import { todayISO, toVNDate } from "./overdue";
 import { formatDMY } from "./dates";
+import { nextWorkingDay } from "./working-days";
 
 function addDaysISO(iso: string, days: number): string {
   const d = new Date(iso + "T00:00:00Z");
@@ -55,7 +56,8 @@ export function dailyReportFor(
   reportDate = todayISO(),
   workLogs: TaskWorkLog[] = [],
 ): DailyReport {
-  const tomorrow = addDaysISO(reportDate, 1);
+  // "Ngày mai" = ngày làm việc kế tiếp, bỏ qua Chủ nhật (T7 → T2, không phải CN).
+  const tomorrow = nextWorkingDay(reportDate);
   const mine = tasks.filter(
     (task) =>
       task.primary?.id === member.id ||
@@ -76,10 +78,14 @@ export function dailyReportFor(
   const b = todayTasks.filter((task) => isDoneOnReport(task, reportDate)).length;
   const c = todayTasks.length - b;
 
+  // Bắt việc rơi trong khoảng (reportDate, tomorrow] — với T7 khoảng này gồm cả
+  // CN (phòng thủ nếu lỡ có việc dính ngày CN) lẫn T2; ngày thường chỉ là hôm sau.
+  const inTomorrowWindow = (d: string | null): boolean =>
+    !!d && d > reportDate && d <= tomorrow;
   const tomorrowNew = mine.filter(
     (t) =>
       (!completedDate(t) || completedDate(t)! > reportDate) &&
-      (t.start_date === tomorrow || t.due_date === tomorrow) &&
+      (inTomorrowWindow(t.start_date) || inTomorrowWindow(t.due_date)) &&
       !todayTasks.includes(t),
   );
 

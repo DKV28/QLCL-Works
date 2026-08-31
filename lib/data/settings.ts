@@ -9,6 +9,8 @@ import type {
   TaskStatus,
   TaskStatusSetting,
   WorkflowStepSetting,
+  WorkflowTransition,
+  WorkflowTransitionWithTarget,
 } from "@/lib/types";
 
 function fallbackWorkflowSteps(): WorkflowStepSetting[] {
@@ -149,6 +151,105 @@ export async function getNextWorkflowStepSetting(
     );
   }
   return (data as WorkflowStepSetting | null) ?? null;
+}
+
+// ---------- Nhánh chuyển bước (workflow_transitions) ----------
+
+/** Toàn bộ cạnh chuyển bước, sắp theo bước nguồn rồi thứ tự nút. Rỗng nếu bảng
+ * chưa tồn tại (migration chưa chạy) — nơi gọi sẽ rơi về luồng tuyến tính. */
+export async function listWorkflowTransitions(): Promise<WorkflowTransition[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("workflow_transitions")
+    .select("*")
+    .order("from_code", { ascending: true })
+    .order("sort_order", { ascending: true });
+  if (error) return [];
+  return (data as WorkflowTransition[]) ?? [];
+}
+
+/**
+ * Các cạnh đi ra ĐANG BẬT của một bước, kèm nhãn + SLA của bước đích (để dựng
+ * nút và tính lại deadline). Bỏ cạnh trỏ tới bước đã tắt. Trả về null khi bảng
+ * transitions chưa tồn tại → nơi gọi rơi về luồng tuyến tính cũ.
+ */
+export async function getOutgoingTransitions(
+  fromCode: string,
+): Promise<WorkflowTransitionWithTarget[] | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("workflow_transitions")
+    .select("*")
+    .eq("from_code", fromCode)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  if (error) return null; // bảng chưa có → tín hiệu fallback tuyến tính
+  const rows = (data as WorkflowTransition[]) ?? [];
+  if (rows.length === 0) return [];
+
+  const targetCodes = Array.from(new Set(rows.map((t) => t.to_code)));
+  const { data: steps } = await supabase
+    .from("workflow_step_settings")
+    .select("code, label, sla_days, is_active")
+    .in("code", targetCodes);
+  const byCode = new Map(
+    ((steps as Pick<WorkflowStepSetting, "code" | "label" | "sla_days" | "is_active">[]) ?? []).map(
+      (s) => [s.code, s],
+    ),
+  );
+
+  return rows
+    .filter((t) => byCode.get(t.to_code)?.is_active !== false)
+    .map((t) => {
+      const target = byCode.get(t.to_code);
+      return {
+        ...t,
+        to_label: target?.label ?? t.to_code,
+        to_sla_days: target?.sla_days ?? 0,
+      };
+    });
+}
+
+export async function createWorkflowTransition(input: {
+  from_code: string;
+  to_code: string;
+  label: string;
+  kind: WorkflowTransition["kind"];
+  sort_order: number;
+  is_active: boolean;
+}): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("workflow_transitions")
+    .insert({ ...input, is_system: false });
+  if (error) throw error;
+}
+
+export async function updateWorkflowTransition(
+  id: string,
+  input: {
+    to_code: string;
+    label: string;
+    kind: WorkflowTransition["kind"];
+    sort_order: number;
+    is_active: boolean;
+  },
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("workflow_transitions")
+    .update(input)
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteWorkflowTransition(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("workflow_transitions")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
 }
 
 interface SettingUpdate {

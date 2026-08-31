@@ -22,6 +22,7 @@ import { createNotification } from "@/lib/data/notifications";
 import { canWriteTask } from "@/lib/data/permissions";
 import {
   getNextWorkflowStepSetting,
+  getOutgoingTransitions,
   getWorkflowStepSetting,
 } from "@/lib/data/settings";
 import {
@@ -326,13 +327,19 @@ export async function toggleTaskCompleteForReportAction(input: {
 }
 
 /**
- * Chuyển công việc quy trình vận hành sang BƯỚC TIẾP THEO.
- * - Bước cuối → đánh dấu Hoàn thành.
- * - Ngược lại → set bước kế + deadline = hôm nay + SLA bước kế (ngày làm việc, trừ CN).
+ * Chuyển công việc quy trình vận hành theo NHÁNH đã chọn (phi tuyến tính).
+ * - `toCode` = mã bước đích của nút mà người dùng bấm. Phải là một cạnh chuyển
+ *   bước ĐANG BẬT đi ra từ bước hiện tại.
+ * - Bước KHÔNG có cạnh đi ra (điểm dừng: "Ban hành", "Từ chối yêu cầu"...) →
+ *   không truyền `toCode` → đánh dấu Hoàn thành.
+ * - Khi chuyển bước: deadline = hôm nay + SLA bước đích (ngày làm việc, trừ CN);
+ *   bước SLA = 0 ("—") thì bỏ deadline.
+ * Có fallback tuyến tính (theo sort_order) khi bảng transitions chưa tồn tại.
  * Ghi vết vào nhật ký hoạt động ("chuyển bước").
  */
 export async function advanceVanHanhStepAction(
   id: string,
+  toCode?: string,
 ): Promise<ActionResult> {
   if (!(await canWriteTask(id)))
     return { ok: false, error: "Bạn chỉ chuyển bước công việc do mình tạo." };
@@ -346,10 +353,40 @@ export async function advanceVanHanhStepAction(
     if (!currentStep) {
       return { ok: false, error: "Bước hiện tại không còn trong cấu hình quy trình." };
     }
-    const next = await getNextWorkflowStepSetting(currentStep.sort_order);
 
-    if (!next) {
-      // Bước cuối: hoàn thành, giữ nguyên mã bước để còn biết dừng ở đâu.
+    // Nhánh đi ra của bước hiện tại. null = bảng transitions chưa có → fallback.
+    const outgoing = await getOutgoingTransitions(current);
+
+    // Bước đích + nhãn ghi vết, xác định theo transition (hoặc fallback tuyến tính).
+    let target: { code: string; label: string; sla_days: number } | null = null;
+    let transitionLabel = "";
+
+    if (outgoing === null) {
+      // Fallback: chưa cấu hình nhánh → đi bước kế theo sort_order như trước.
+      const next = await getNextWorkflowStepSetting(currentStep.sort_order);
+      if (next) {
+        target = { code: next.code, label: next.label, sla_days: next.sla_days };
+      }
+    } else if (outgoing.length > 0) {
+      // Có nhánh: bắt buộc chọn nút (toCode). Xác thực cạnh hợp lệ.
+      if (!toCode) {
+        return { ok: false, error: "Vui lòng chọn nhánh chuyển bước." };
+      }
+      const edge = outgoing.find((t) => t.to_code === toCode);
+      if (!edge) {
+        return { ok: false, error: "Nhánh chuyển bước không hợp lệ." };
+      }
+      target = {
+        code: edge.to_code,
+        label: edge.to_label,
+        sla_days: edge.to_sla_days,
+      };
+      transitionLabel = edge.label;
+    }
+    // outgoing.length === 0 → không có cạnh đi ra → target vẫn null → Hoàn thành.
+
+    if (!target) {
+      // Điểm dừng: hoàn thành, giữ nguyên mã bước để còn biết dừng ở đâu.
       const wasDone = await isTaskCompleted(id);
       await updateTaskStep(id, {
         van_hanh_step: current,
@@ -368,8 +405,8 @@ export async function advanceVanHanhStepAction(
       ]);
     } else {
       await updateTaskStep(id, {
-        van_hanh_step: next.code,
-        due_date: addWorkingDays(next.sla_days, todayISO()),
+        van_hanh_step: target.code,
+        due_date: target.sla_days > 0 ? addWorkingDays(target.sla_days, todayISO()) : null,
         status: "dang_lam",
         completed: false,
       });
@@ -377,7 +414,9 @@ export async function advanceVanHanhStepAction(
         task_id: id,
         project_id: info.project_id,
         action: "chuyen_buoc",
-        detail: `${currentStep.label} → ${next.label}`,
+        detail: transitionLabel
+          ? `${currentStep.label} → ${target.label} (${transitionLabel})`
+          : `${currentStep.label} → ${target.label}`,
       });
     }
   } catch (e) {

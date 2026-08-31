@@ -154,10 +154,6 @@ export function SubtaskList({ taskId }: { taskId: string }) {
           </button>
         </div>
       </div>
-      <p className="mt-1 text-[11px] text-gray-400">
-        Có chọn ngày hạn → một công việc theo dõi (đề xuất) được tạo ngay khi bấm
-        Thêm, gắn với bài này và đúng hạn đã chọn.
-      </p>
     </div>
   );
 }

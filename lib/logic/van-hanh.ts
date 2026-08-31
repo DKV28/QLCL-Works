@@ -1,10 +1,14 @@
 // Logic thuần: định nghĩa Quy trình VẬN HÀNH (kiểm soát tài liệu, TA2.QLCL.QT.06
 // mục 4.2 — do P. QLCL phụ trách). KHÔNG phụ thuộc Supabase/UI, dễ test.
 //
-// Nghiệp vụ đã chốt:
-//   - SLA = SLA gốc trong quy trình × 1.5, làm tròn lên (đơn vị: ngày làm việc).
-//   - Đã BỎ 3 bước: Viết mới/sửa đổi tài liệu, In tài liệu, Scan & phát hành.
-//   - Đi thẳng theo thứ tự; cần rẽ nhánh/quay lại/thu hồi thì chỉnh tay.
+// LƯU Ý: Danh mục bước + SLA + NHÁNH chuyển bước nay lưu trong DB
+// (workflow_step_settings + workflow_transitions, migration 0018 & 0026) và do
+// admin cấu hình. Mảng VAN_HANH_STEPS bên dưới chỉ còn là DỰ PHÒNG (fallback)
+// khi chưa đọc được DB (đang deploy) và làm giá trị mặc định lúc khởi tạo UI.
+// Giữ đồng bộ với seed trong migration 0026.
+//
+// Nghiệp vụ:
+//   - Quy trình PHI TUYẾN TÍNH: có bước duyệt/từ chối/quay lại (xem transitions).
 //   - Vai trò (role) chỉ để hiển thị tham khảo; người phụ trách công việc giữ
 //     nguyên xuyên suốt như một công việc bình thường.
 
@@ -16,8 +20,8 @@ export interface VanHanhStep {
   slaDays: number; // số ngày làm việc để tính deadline khi CHUYỂN vào bước này
 }
 
-// Deadline mặc định khi TẠO mới công việc quy trình (bắt đầu ở bước Duyệt yêu cầu).
-// Người dùng chọn +9 ngày làm việc — khác với SLA của bước 1; chỉ áp dụng lúc tạo.
+// (Đã bỏ) Trước đây deadline mặc định lúc tạo là +9 ngày; nay deadline lấy theo
+// SLA của bước được chọn trên form. Giữ hằng số để không vỡ import cũ nếu có.
 export const DEFAULT_FIRST_STEP_DAYS = 9;
 
 // Bảng màu vai trò tham khảo theo mẫu quy trình của người dùng.
@@ -38,17 +42,26 @@ export function workflowStepColorForRole(role: string): string {
   return WORKFLOW_STEP_COLOR_PRESETS[0].color;
 }
 
-// 9 bước theo thứ tự (đã bỏ viet_moi_sua_doi, in_tai_lieu, scan_phat_hanh).
+// 18 bước theo email P.QLCL (khớp seed migration 0026). Chỉ dùng làm fallback.
 export const VAN_HANH_STEPS: VanHanhStep[] = [
-  { code: "duyet_yeu_cau", order: 1, label: "Duyệt yêu cầu", role: "P. QLCL", slaDays: 3 },
-  { code: "duyet_truoc_gop_y", order: 2, label: "Duyệt trước khi góp ý", role: "P. QLCL", slaDays: 3 },
-  { code: "gop_y", order: 3, label: "Góp ý tài liệu", role: "Đơn vị liên quan", slaDays: 5 },
-  { code: "tong_hop_cap_ma", order: 4, label: "Tổng hợp góp ý & cấp mã tài liệu", role: "P. QLCL", slaDays: 3 },
-  { code: "chinh_sua_noi_dung", order: 5, label: "Chỉnh sửa nội dung", role: "ĐVST", slaDays: 3 },
-  { code: "ra_soat_sau_chinh_sua", order: 6, label: "Rà soát sau chỉnh sửa", role: "P. QLCL", slaDays: 3 },
-  { code: "phe_duyet_noi_dung", order: 7, label: "Phê duyệt nội dung (BGĐ)", role: "Phó TGĐ", slaDays: 5 },
-  { code: "yeu_cau_trinh_ky", order: 8, label: "Yêu cầu trình ký tài liệu", role: "P. QLCL", slaDays: 2 },
-  { code: "trinh_ky", order: 9, label: "Trình ký tài liệu", role: "P. QLCL", slaDays: 5 },
+  { code: "moi_tao", order: 1, label: "Mới tạo", role: "P. QLCL", slaDays: 0 },
+  { code: "yeu_cau_duyet", order: 2, label: "Yêu cầu duyệt", role: "P. QLCL", slaDays: 3 },
+  { code: "duyet_yeu_cau", order: 3, label: "Duyệt yêu cầu", role: "P. QLCL", slaDays: 9 },
+  { code: "tu_choi_yeu_cau", order: 4, label: "Từ chối yêu cầu", role: "P. QLCL", slaDays: 0 },
+  { code: "duyet_truoc_gop_y", order: 5, label: "Duyệt trước khi góp ý", role: "P. QLCL", slaDays: 3 },
+  { code: "gop_y", order: 6, label: "Góp ý", role: "Đơn vị liên quan", slaDays: 5 },
+  { code: "tong_hop_gop_y", order: 7, label: "Tổng hợp góp ý", role: "P. QLCL", slaDays: 3 },
+  { code: "tiep_nhan_ra_soat", order: 8, label: "Tiếp nhận và rà soát", role: "P. QLCL", slaDays: 3 },
+  { code: "chinh_sua_noi_dung", order: 9, label: "Chỉnh sửa nội dung", role: "ĐVST", slaDays: 3 },
+  { code: "ra_soat_sau_chinh_sua", order: 10, label: "Rà soát sau chỉnh sửa", role: "P. QLCL", slaDays: 3 },
+  { code: "cho_bgd_duyet", order: 11, label: "Chờ BGĐ duyệt", role: "Phó TGĐ", slaDays: 5 },
+  { code: "bgd_da_duyet", order: 12, label: "BGĐ đã duyệt", role: "Phó TGĐ", slaDays: 3 },
+  { code: "bgd_khong_duyet", order: 13, label: "BGĐ không duyệt", role: "Phó TGĐ", slaDays: 2 },
+  { code: "yeu_cau_trinh_ky", order: 14, label: "Yêu cầu trình ký", role: "P. QLCL", slaDays: 2 },
+  { code: "xet_duyet_trinh_ky", order: 15, label: "Xét duyệt trình ký", role: "P. QLCL", slaDays: 2 },
+  { code: "tu_choi_trinh_ky", order: 16, label: "Từ chối trình ký", role: "P. QLCL", slaDays: 2 },
+  { code: "cho_giam_doc_ky", order: 17, label: "Chờ Giám đốc ký", role: "Phó TGĐ", slaDays: 7 },
+  { code: "ban_hanh", order: 18, label: "Ban hành", role: "P. QLCL", slaDays: 2 },
 ];
 
 /** Mã bước đầu tiên (mặc định khi tạo công việc quy trình). */

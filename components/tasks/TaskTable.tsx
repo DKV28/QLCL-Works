@@ -18,7 +18,10 @@ import {
   VAN_HANH_STEPS,
   workflowStepColorForRole,
 } from "@/lib/logic/van-hanh";
-import { getWorkflowStepsAction } from "@/lib/actions/settings";
+import {
+  getWorkflowStepsAction,
+  getWorkflowTransitionsAction,
+} from "@/lib/actions/settings";
 import { ActionsMenu, type ActionItem } from "@/components/ui/ActionsMenu";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TagChips } from "@/components/ui/TagChips";
@@ -30,6 +33,7 @@ import type {
   TaskPrioritySetting,
   TaskWithAssignees,
   WorkflowStepSetting,
+  WorkflowTransition,
 } from "@/lib/types";
 
 type SortKey = "title" | "assignee" | "due_date" | "arising";
@@ -89,10 +93,13 @@ export function TaskTable({
     })),
   );
 
+  const [transitions, setTransitions] = useState<WorkflowTransition[]>([]);
+
   useEffect(() => {
     getWorkflowStepsAction().then((steps) => {
       if (steps.length > 0) setWorkflowSteps(steps);
     });
+    getWorkflowTransitionsAction().then(setTransitions);
   }, []);
 
   useEffect(() => {
@@ -116,6 +123,22 @@ export function TaskTable({
       .sort((a, b) => a.sort_order - b.sort_order)[0];
   };
   const isLastStep = (code: string | null) => !!getStep(code) && !getNextStep(code);
+
+  // Đã cấu hình nhánh (bảng transitions có dữ liệu) hay chưa → quyết định dùng
+  // đồ thị nhánh hay rơi về luồng tuyến tính cũ.
+  const hasTransitions = transitions.length > 0;
+  // Các cạnh đi ra ĐANG BẬT của một bước, trỏ tới bước còn hoạt động, sắp theo thứ tự nút.
+  const outgoingFor = (code: string | null): WorkflowTransition[] => {
+    if (!code) return [];
+    return transitions
+      .filter(
+        (t) =>
+          t.from_code === code &&
+          t.is_active &&
+          getStep(t.to_code)?.is_active !== false,
+      )
+      .sort((a, b) => a.sort_order - b.sort_order);
+  };
 
   const editing = tasks.find((t) => t.id === editingId) ?? null;
   const sortedTasks = useMemo(() => {
@@ -272,6 +295,7 @@ export function TaskTable({
     duplicateTaskAction(task.id, task.project_id).then(() => router.refresh());
   }
 
+  // Luồng tuyến tính cũ (khi CHƯA cấu hình nhánh): 1 nút "Bước tiếp theo"/"Hoàn thành".
   async function handleAdvance(task: TaskWithAssignees) {
     const last = isLastStep(task.van_hanh_step);
     const nextLabel = last
@@ -290,22 +314,79 @@ export function TaskTable({
     });
   }
 
+  // Chuyển bước theo một NHÁNH cụ thể (đã cấu hình transitions).
+  async function handleTransition(
+    task: TaskWithAssignees,
+    edge: WorkflowTransition,
+  ) {
+    const toLabel = getStep(edge.to_code)?.label ?? edge.to_code;
+    const accepted = await confirm({
+      title: "Chuyển bước quy trình",
+      message: `${edge.label}: chuyển “${task.title}” sang “${toLabel}”? Deadline sẽ được tính lại theo SLA của bước mới.`,
+      confirmLabel: edge.label,
+    });
+    if (!accepted) return;
+    setActionError(null);
+    advanceVanHanhStepAction(task.id, edge.to_code).then((res) => {
+      if (res.ok) router.refresh();
+      else setActionError(res.error);
+    });
+  }
+
+  // Bước kết thúc (không có cạnh đi ra): nút "Hoàn thành".
+  async function handleComplete(task: TaskWithAssignees) {
+    const accepted = await confirm({
+      title: "Hoàn thành công việc",
+      message: `Đánh dấu “${task.title}” hoàn thành? Đây là bước kết thúc của quy trình.`,
+      confirmLabel: "Hoàn thành",
+    });
+    if (!accepted) return;
+    setActionError(null);
+    advanceVanHanhStepAction(task.id).then((res) => {
+      if (res.ok) router.refresh();
+      else setActionError(res.error);
+    });
+  }
+
+  // Các nút chuyển bước cho một công việc quy trình chưa hoàn thành.
+  function stepActionsFor(task: TaskWithAssignees): ActionItem[] {
+    if (!task.van_hanh_step) return [];
+    if (hasTransitions) {
+      const edges = outgoingFor(task.van_hanh_step);
+      if (edges.length === 0) {
+        // Bước kết thúc → Hoàn thành.
+        return [
+          {
+            label: "Hoàn thành",
+            onClick: () => handleComplete(task),
+            emphasize: true,
+          },
+        ];
+      }
+      // Một nút cho mỗi nhánh (màu theo loại: reject=đỏ, forward=nổi bật).
+      return edges.map((edge) => ({
+        label: edge.label,
+        onClick: () => handleTransition(task, edge),
+        danger: edge.kind === "reject",
+        emphasize: edge.kind === "forward",
+      }));
+    }
+    // Fallback tuyến tính khi chưa cấu hình nhánh.
+    return [
+      {
+        label: isLastStep(task.van_hanh_step) ? "Hoàn thành" : "Bước tiếp theo →",
+        onClick: () => handleAdvance(task),
+        emphasize: true,
+      },
+    ];
+  }
+
   function actionsFor(
     task: TaskWithAssignees,
     done: boolean,
   ): ActionItem[] {
     return [
-      ...(task.van_hanh_step && !done
-        ? [
-            {
-              label: isLastStep(task.van_hanh_step)
-                ? "Hoàn thành"
-                : "Bước tiếp theo →",
-              onClick: () => handleAdvance(task),
-              emphasize: true,
-            } satisfies ActionItem,
-          ]
-        : []),
+      ...(!done ? stepActionsFor(task) : []),
       { label: "Sửa", onClick: () => setEditingId(task.id) },
       { label: "Nhân bản", onClick: () => handleDuplicate(task) },
       {
