@@ -69,9 +69,11 @@ export function TaskForm({
   function toggleVanHanh(on: boolean) {
     setIsVanHanh(on);
     // Khi bật quy trình cho công việc mới, lấy SLA của bước đang chọn.
+    // Bước SLA = 0 ("—", vd Mới tạo) thì không đặt deadline.
     if (on && !task && !dueDate) {
       const selected = workflowSteps.find((step) => step.code === vanHanhStep);
-      setDueDate(addWorkingDays(selected?.sla_days ?? 1));
+      const sla = selected?.sla_days ?? 1;
+      if (sla > 0) setDueDate(addWorkingDays(sla));
     }
   }
 

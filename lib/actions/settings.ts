@@ -8,18 +8,24 @@ import {
   createTaskPrioritySetting,
   createTaskStatusSetting,
   createWorkflowStepSetting,
+  createWorkflowTransition,
   deleteTaskPrioritySetting,
   deleteTaskStatusSetting,
   deleteWorkflowStepSetting,
+  deleteWorkflowTransition,
   listWorkflowStepSettings,
+  listWorkflowTransitions,
   updateTaskPrioritySetting,
   updateTaskStatusSetting,
   updateWorkflowStepSetting,
+  updateWorkflowTransition,
 } from "@/lib/data/settings";
 import type {
   TaskPriority,
   TaskStatus,
   WorkflowStepSetting,
+  WorkflowTransition,
+  WorkflowTransitionKind,
 } from "@/lib/types";
 import { DEFAULT_WORKFLOW_STEP_COLOR } from "@/lib/logic/van-hanh";
 
@@ -271,5 +277,92 @@ export async function deleteWorkflowStepAction(code: string): Promise<ActionResu
       ok: false,
       error: "Không thể xóa bước hệ thống hoặc bước đang được sử dụng.",
     };
+  }
+}
+
+// ---------- Nhánh chuyển bước (workflow_transitions) ----------
+
+const TRANSITION_KINDS: WorkflowTransitionKind[] = ["forward", "reject", "back"];
+
+function parseWorkflowTransition(formData: FormData) {
+  const kindRaw = String(formData.get("kind") ?? "forward").trim();
+  const sortOrder = Number(formData.get("sort_order") ?? 0);
+  return {
+    from_code: String(formData.get("from_code") ?? "").trim(),
+    to_code: String(formData.get("to_code") ?? "").trim(),
+    label: String(formData.get("label") ?? "").trim(),
+    kind: (TRANSITION_KINDS.includes(kindRaw as WorkflowTransitionKind)
+      ? kindRaw
+      : "forward") as WorkflowTransitionKind,
+    sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+    is_active: formData.get("is_active") === "on",
+  };
+}
+
+function validateWorkflowTransition(
+  input: ReturnType<typeof parseWorkflowTransition>,
+): string | null {
+  if (!input.from_code || !input.to_code) return "Thiếu bước nguồn hoặc bước đích.";
+  if (input.from_code === input.to_code) return "Bước đích phải khác bước nguồn.";
+  if (!input.label) return "Nhãn nút không được để trống.";
+  return null;
+}
+
+export async function getWorkflowTransitionsAction(): Promise<WorkflowTransition[]> {
+  return listWorkflowTransitions();
+}
+
+export async function createWorkflowTransitionAction(
+  formData: FormData,
+): Promise<ActionResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  const input = parseWorkflowTransition(formData);
+  const error = validateWorkflowTransition(input);
+  if (error) return { ok: false, error };
+  try {
+    await createWorkflowTransition(input);
+    revalidate();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Không thể thêm nhánh. Cạnh này có thể đã tồn tại." };
+  }
+}
+
+export async function updateWorkflowTransitionAction(
+  id: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  const input = parseWorkflowTransition(formData);
+  const error = validateWorkflowTransition(input);
+  if (error) return { ok: false, error };
+  try {
+    await updateWorkflowTransition(id, {
+      to_code: input.to_code,
+      label: input.label,
+      kind: input.kind,
+      sort_order: input.sort_order,
+      is_active: input.is_active,
+    });
+    revalidate();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Không thể cập nhật nhánh chuyển bước." };
+  }
+}
+
+export async function deleteWorkflowTransitionAction(
+  id: string,
+): Promise<ActionResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  try {
+    await deleteWorkflowTransition(id);
+    revalidate();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Không thể xóa nhánh chuyển bước." };
   }
 }

@@ -5,6 +5,7 @@ import { listRolePermissions } from "@/lib/data/permissions";
 import {
   listTaskStatusSettings,
   listWorkflowStepSettings,
+  listWorkflowTransitions,
 } from "@/lib/data/settings";
 import { listTags } from "@/lib/data/tags";
 import { listTeams } from "@/lib/data/teams";
@@ -19,15 +20,23 @@ export default async function SettingsPage({
   const me = await getCurrentProfile();
   if (!me || me.role !== "admin") redirect("/cong-viec");
 
-  const [statuses, workflowSteps, tags, teams, users, rolePermissions] =
-    await Promise.all([
-      listTaskStatusSettings(),
-      listWorkflowStepSettings(),
-      listTags(),
-      listTeams(),
-      listProfiles(),
-      listRolePermissions(),
-    ]);
+  const [
+    statuses,
+    workflowSteps,
+    workflowTransitions,
+    tags,
+    teams,
+    users,
+    rolePermissions,
+  ] = await Promise.all([
+    listTaskStatusSettings(),
+    listWorkflowStepSettings(),
+    listWorkflowTransitions(),
+    listTags(),
+    listTeams(),
+    listProfiles(),
+    listRolePermissions(),
+  ]);
 
   const requested = searchParams?.tab;
   const initialTab =
@@ -43,6 +52,7 @@ export default async function SettingsPage({
       initialTab={initialTab}
       statuses={statuses}
       workflowSteps={workflowSteps}
+      workflowTransitions={workflowTransitions}
       tags={tags}
       teams={teams}
       users={users}

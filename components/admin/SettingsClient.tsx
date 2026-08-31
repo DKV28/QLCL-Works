@@ -6,6 +6,7 @@ import { UsersClient } from "./UsersClient";
 import { RolePermissionsClient } from "./RolePermissionsClient";
 import { WorkflowSettingsClient } from "./WorkflowSettingsClient";
 import { WorkflowStepsSettingsClient } from "./WorkflowStepsSettingsClient";
+import { WorkflowTransitionsSettingsClient } from "./WorkflowTransitionsSettingsClient";
 import { TeamsClient } from "./TeamsClient";
 import type {
   Profile,
@@ -14,6 +15,7 @@ import type {
   TaskStatusSetting,
   Team,
   WorkflowStepSetting,
+  WorkflowTransition,
 } from "@/lib/types";
 
 type SettingsTab =
@@ -35,6 +37,7 @@ export function SettingsClient({
   initialTab,
   statuses,
   workflowSteps,
+  workflowTransitions,
   tags,
   teams,
   users,
@@ -43,6 +46,7 @@ export function SettingsClient({
   initialTab: SettingsTab;
   statuses: TaskStatusSetting[];
   workflowSteps: WorkflowStepSetting[];
+  workflowTransitions: WorkflowTransition[];
   tags: Tag[];
   teams: Team[];
   users: Profile[];
@@ -82,7 +86,13 @@ export function SettingsClient({
         <WorkflowSettingsClient statuses={statuses} />
       )}
       {tab === "buoc-quy-trinh" && (
-        <WorkflowStepsSettingsClient steps={workflowSteps} />
+        <div className="space-y-10">
+          <WorkflowStepsSettingsClient steps={workflowSteps} />
+          <WorkflowTransitionsSettingsClient
+            steps={workflowSteps}
+            transitions={workflowTransitions}
+          />
+        </div>
       )}
       {tab === "nhan" && <TagsClient tags={tags} />}
       {tab === "co-cau" && <TeamsClient teams={teams} />}

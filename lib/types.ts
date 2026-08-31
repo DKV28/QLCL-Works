@@ -80,6 +80,28 @@ export interface WorkflowStepSetting {
   updated_at: string;
 }
 
+export type WorkflowTransitionKind = "forward" | "reject" | "back";
+
+/** Một cạnh chuyển bước trong quy trình vận hành (phi tuyến tính). */
+export interface WorkflowTransition {
+  id: string;
+  from_code: string;
+  to_code: string;
+  label: string; // nhãn nút hiển thị: "Duyệt", "Từ chối", "Bước tiếp theo"...
+  kind: WorkflowTransitionKind;
+  sort_order: number;
+  is_active: boolean;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Cạnh chuyển bước kèm thông tin bước đích (để dựng nút + tính deadline). */
+export interface WorkflowTransitionWithTarget extends WorkflowTransition {
+  to_label: string;
+  to_sla_days: number;
+}
+
 export interface Profile {
   id: string;
   full_name: string | null;
