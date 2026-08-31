@@ -17,6 +17,25 @@ function nextCalendarDay(iso: string): string {
 }
 
 /**
+ * Nếu `iso` rơi vào Chủ nhật, dời tới ngày làm việc kế tiếp (Thứ 2). Ngược lại
+ * giữ nguyên. Dùng `while` để an toàn và dễ mở rộng cho ngày lễ sau này (hiện
+ * chỉ trừ Chủ nhật nên tối đa 1 bước).
+ */
+export function bumpToWorkingDay(iso: string): string {
+  let cursor = iso;
+  while (weekday(cursor) === 0) cursor = nextCalendarDay(cursor); // 0 = Chủ nhật
+  return cursor;
+}
+
+/**
+ * Ngày làm việc kế tiếp NGAY SAU `iso` (bỏ qua Chủ nhật).
+ * Ví dụ: Thứ 7 → Thứ 2; Thứ 2 → Thứ 3.
+ */
+export function nextWorkingDay(iso: string): string {
+  return bumpToWorkingDay(nextCalendarDay(iso));
+}
+
+/**
  * Cộng `n` ngày làm việc vào `fromISO`, BỎ QUA Chủ nhật (Thứ 7 vẫn tính là
  * ngày làm việc). `fromISO` mặc định là hôm nay theo giờ Việt Nam.
  *

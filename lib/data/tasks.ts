@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { listTeams, teamDisplayName } from "./teams";
 import { setTaskTags } from "./tags";
 import { todayISO, toVNDate } from "@/lib/logic/overdue";
-import { addWorkingDays } from "@/lib/logic/working-days";
+import { addWorkingDays, bumpToWorkingDay } from "@/lib/logic/working-days";
 import type {
   Attachment,
   MemberLite,
@@ -399,9 +399,10 @@ export async function createNextRecurrence(taskId: string): Promise<void> {
   if (!src.repeat || src.repeat === "none") return;
 
   const anchor = src.due_date ?? src.start_date ?? todayISO();
-  const nextDue = shiftISODate(anchor, src.repeat);
+  // Dời mốc theo chu kỳ rồi né Chủ nhật (ngày nghỉ) → dời tới Thứ 2 nếu rơi vào CN.
+  const nextDue = bumpToWorkingDay(shiftISODate(anchor, src.repeat));
   const nextStart = src.start_date
-    ? shiftISODate(src.start_date, src.repeat)
+    ? bumpToWorkingDay(shiftISODate(src.start_date, src.repeat))
     : null;
 
   const { data: created, error } = await supabase
